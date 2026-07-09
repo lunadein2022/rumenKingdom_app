@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Princess OS — Home Scene Ultimate</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link rel="stylesheet" href="../styles/foundation.css">
+<link rel="stylesheet" href="../styles/button.css">
+<link rel="stylesheet" href="../styles/home-scene-ultimate.css">
+<style>.pos-crystal-dock-lite a{text-decoration:none}</style>
+</head>
+<body>
+<div style="max-width:1160px;margin:0 auto;padding:12px 24px 0;position:relative;z-index:5;"><a href="../index.html" style="font-size:13px;color:#5D6478;text-decoration:none;">‹ 디자인 시스템으로</a></div>
+<main class="pos-home">
+
+<section class="pos-live-scene" id="posLiveScene">
+  <div class="pos-ambient"></div>
+
+  <header class="pos-top-hud">
+    <div>
+      <div class="pos-kicker">
+        <span id="posTimeLabel">☀️ Morning</span>
+        <span>🌸 Spring</span>
+        <span id="posClock">09:24</span>
+      </div>
+      <div class="pos-top-title">
+        <h1>🏰 루멘 왕성</h1>
+        <div class="pos-mini-exp"><span id="posMiniExp"></span></div>
+      </div>
+    </div>
+
+    <div class="pos-hud-actions">
+      <button class="pos-hud-btn" title="Princess Level">👑</button>
+      <button class="pos-hud-btn" title="Notification">🔔</button>
+      <button class="pos-hud-btn" title="Reward">🎁</button>
+      <button class="pos-hud-btn" title="Theme" id="posThemeToggle">🌙</button>
+    </div>
+  </header>
+
+  <section class="pos-main-hero">
+    <article class="pos-greeting-panel">
+      <h2 id="posGreetingTitle">공주님.</h2>
+      <p id="posGreetingText">
+        좋은 아침입니다. 오늘은 회의 2건과 퀘스트 4개가 기다리고 있습니다.
+        제가 먼저 왕실 일정을 정리해드릴게요.
+      </p>
+
+      <div class="pos-brief-grid">
+        <div class="pos-brief"><b id="posQuestCount">4</b><span>오늘 퀘스트</span></div>
+        <div class="pos-brief"><b id="posMeetingCount">2</b><span>오늘 일정</span></div>
+        <div class="pos-brief"><b id="posLevel">Lv.7</b><span>Princess Level</span></div>
+      </div>
+
+      <div class="pos-hero-actions">
+        <button class="btn btn-primary btn-lg">오늘 브리핑 시작</button>
+        <button class="btn btn-glass btn-lg">세린에게 맡기기</button>
+      </div>
+    </article>
+
+    <div class="pos-serin-stage">
+      <div class="pos-serin-aura"></div>
+      <div class="pos-serin-status" id="posSerinStatus">✨ Thinking</div>
+      <img class="pos-serin-full" src="../assets/serin-full.png" alt="세린">
+    </div>
+  </section>
+
+  <div class="pos-scroll-hint">궁전을 탐험하려면 아래로 스크롤하세요 ↓</div>
+
+  <section class="pos-palace-map" aria-label="Palace Rooms">
+
+    <article class="pos-room" style="--room-bg:url('../assets/garden.png')">
+      <div class="pos-room-media"></div>
+      <div class="pos-room-copy">
+        <span class="pos-room-kicker">🌸 Garden</span>
+        <h3>왕궁 정원</h3>
+        <p>오늘의 루틴, 컨디션 회복, 짧은 데일리 퀘스트를 관리하는 공간입니다.</p>
+        <div class="pos-room-stats">
+          <span class="pos-room-stat">Daily 3</span>
+          <span class="pos-room-stat">Mood +2</span>
+          <span class="pos-room-stat">Routine</span>
+        </div>
+        <button class="btn btn-primary btn-md" data-coming-soon="🌸 정원">정원으로 이동</button>
+      </div>
+    </article>
+
+    <article class="pos-room" style="--room-bg:url('../assets/library.png')">
+      <div class="pos-room-media"></div>
+      <div class="pos-room-copy">
+        <span class="pos-room-kicker">📚 Library</span>
+        <h3>왕국 도서관</h3>
+        <p>메모, 검색, AI 요약, 지식 보관함이 모이는 Princess OS의 지식 공간입니다.</p>
+        <div class="pos-room-stats">
+          <span class="pos-room-stat">Memo 12</span>
+          <span class="pos-room-stat">Search</span>
+          <span class="pos-room-stat">Summary</span>
+        </div>
+        <button class="btn btn-primary btn-md" data-coming-soon="📚 도서관">도서관으로 이동</button>
+      </div>
+    </article>
+
+    <article class="pos-room" style="--room-bg:url('../assets/office.png')">
+      <div class="pos-room-media"></div>
+      <div class="pos-room-copy">
+        <span class="pos-room-kicker">🖋 Office</span>
+        <h3>집무실</h3>
+        <p>캘린더, 회의, 프로젝트, 업무 퀘스트가 정리되는 생산성 중심 공간입니다.</p>
+        <div class="pos-room-stats">
+          <span class="pos-room-stat">Meetings 2</span>
+          <span class="pos-room-stat">Tasks 4</span>
+          <span class="pos-room-stat">Focus</span>
+        </div>
+        <a class="btn btn-primary btn-md" href="quest-screen.html" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">집무실로 이동</a>
+      </div>
+    </article>
+
+    <article class="pos-room" style="--room-bg:url('../assets/bedroom.png')">
+      <div class="pos-room-media"></div>
+      <div class="pos-room-copy">
+        <span class="pos-room-kicker">🛏 Bedroom</span>
+        <h3>공주의 침실</h3>
+        <p>수면, 컨디션, 감정 회고, 야간 루틴을 정리하는 편안한 공간입니다.</p>
+        <div class="pos-room-stats">
+          <span class="pos-room-stat">Rest</span>
+          <span class="pos-room-stat">Diary</span>
+          <span class="pos-room-stat">Night</span>
+        </div>
+        <button class="btn btn-primary btn-md" data-coming-soon="🛏 침실">침실로 이동</button>
+      </div>
+    </article>
+
+    <article class="pos-room" style="--room-bg:url('../assets/throne.png')">
+      <div class="pos-room-media"></div>
+      <div class="pos-room-copy">
+        <span class="pos-room-kicker">👑 Throne</span>
+        <h3>왕좌의 방</h3>
+        <p>레벨, 업적, 보상, 궁전 성장과 해금 상태를 확인하는 게임성 중심 공간입니다.</p>
+        <div class="pos-room-stats">
+          <span class="pos-room-stat">Lv.7</span>
+          <span class="pos-room-stat">Reward 3</span>
+          <span class="pos-room-stat">Castle</span>
+        </div>
+        <a class="btn btn-primary btn-md" href="castle-map.html" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">왕좌로 이동</a>
+      </div>
+    </article>
+
+  </section>
+
+  <nav class="pos-crystal-dock-lite" aria-label="Princess OS Navigation">
+    <a class="pos-dock-item active" href="home-scene-ultimate.html"><span>🏰</span><span>홈</span></a>
+    <a class="pos-dock-item" href="quest-screen.html"><span>📜</span><span>퀘스트</span></a>
+    <a class="pos-dock-item" href="serin-screen.html"><span>☕</span><span>세린</span></a>
+    <a class="pos-dock-item" href="calendar-screen.html"><span>📅</span><span>캘린더</span></a>
+    <button type="button" class="pos-dock-item" id="navSettingsBtn"><span>⚙️</span><span>설정</span></button>
+  </nav>
+
+</section>
+
+</main>
+
+<script src="../scripts/home-scene-ultimate.js"></script>
+<script src="../scripts/nav.js"></script>
+</body>
+</html>

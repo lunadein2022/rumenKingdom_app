@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Princess OS Serin AI</title>
+<link rel="stylesheet" href="../styles/foundation.css">
+<link rel="stylesheet" href="../styles/button.css">
+<link rel="stylesheet" href="../styles/serin-screen.css">
+<link rel="stylesheet" href="../styles/navigation.css">
+<style>.crystal-dock a{text-decoration:none}</style>
+</head>
+<body>
+<main class="serin-screen">
+
+<section class="serin-hero">
+  <div class="serin-hero-copy">
+    <span class="serin-status-orb">✨ Thinking</span>
+    <h1>☕ Serin AI</h1>
+    <p>공주님. 오늘 무엇을 도와드릴까요?<br>일정 정리, 퀘스트 생성, 메모 요약, 검색까지 제가 함께하겠습니다.</p>
+    <button class="btn btn-primary btn-lg">오늘 브리핑 시작</button>
+    <button class="btn btn-glass btn-lg">음성으로 부르기</button>
+  </div>
+  <div class="serin-portrait">
+    <img src="../assets/serin-full.png" alt="세린">
+  </div>
+</section>
+
+<section class="serin-layout">
+
+  <section class="chat-panel">
+    <h2>💬 세린과 대화</h2>
+
+    <div class="chat-thread" id="chatThread">
+      <article class="message">
+        <div class="message-avatar"><img src="../assets/serin-bust.png" alt="세린"></div>
+        <div class="message-bubble">공주님, 오늘 회의가 2건 있습니다. 먼저 회의 자료를 정리해드릴까요?</div>
+      </article>
+
+      <article class="message user">
+        <div class="message-bubble">첫 번째 회의 자료 정리해줘.</div>
+        <div class="message-avatar"><img src="../assets/princess-bust.png" alt="공주"></div>
+      </article>
+
+      <article class="message">
+        <div class="message-avatar"><img src="../assets/serin-bust.png" alt="세린"></div>
+        <div class="message-bubble">좋습니다. 관련 메모와 일정, 이전 대화 기록을 묶어 브리핑 카드로 정리하겠습니다.</div>
+      </article>
+    </div>
+
+    <form class="prompt-bar" id="serinForm">
+      <input class="prompt-input" id="serinInput" placeholder="세린에게 요청하기">
+      <button class="btn btn-primary btn-md" type="submit">전송</button>
+      <button class="btn btn-glass btn-md" type="button">🎤</button>
+    </form>
+  </section>
+
+  <aside class="serin-side-panel">
+    <h2>✨ Quick Actions</h2>
+
+    <div class="quick-actions">
+      <button class="quick-action"><b>📜 퀘스트 생성</b><span>일정을 업무 단위로 변환</span></button>
+      <button class="quick-action"><b>📅 일정 추가</b><span>캘린더에 바로 등록</span></button>
+      <button class="quick-action"><b>📚 메모 요약</b><span>도서관 기록 정리</span></button>
+      <button class="quick-action"><b>🔍 AI 검색</b><span>앱 전체에서 찾기</span></button>
+      <button class="quick-action"><b>🏰 오늘 브리핑</b><span>하루 계획 자동 정리</span></button>
+      <button class="quick-action"><b>🌙 회고 시작</b><span>완료한 일 정리</span></button>
+    </div>
+
+    <div class="voice-orb">🎤</div>
+
+    <h2>추천</h2>
+    <div class="suggestion-list">
+      <article class="suggestion">15:00 회의 전 20분 집중 퀘스트를 추천합니다.</article>
+      <article class="suggestion">최근 메모 3개를 오늘 브리핑에 포함할 수 있습니다.</article>
+      <article class="suggestion">오늘 완료한 퀘스트를 회고 카드로 정리할 수 있습니다.</article>
+    </div>
+  </aside>
+
+</section>
+
+<!-- Bottom Navigation Component 삽입 -->
+<div style="position:relative;height:120px;">
+  <div class="bottom-area">
+    <div class="nav-shell">
+      <nav class="crystal-dock">
+        <a class="nav-item" href="home-scene-ultimate.html"><span class="nav-icon">🏰</span><span class="nav-label">홈</span></a>
+        <a class="nav-item" href="quest-screen.html"><span class="nav-icon">📜</span><span class="nav-label">퀘스트</span></a>
+        <div class="serin-zone">
+          <a class="serin-core" href="serin-screen.html">
+            <span class="serin-orbit"></span><span class="serin-ring"></span>
+            <span class="serin-star s1"></span><span class="serin-star s2"></span><span class="serin-star s3"></span>
+            <span class="serin-face"><img src="../assets/serin-bust.png" alt="세린"></span>
+            <span class="status" data-serin-status>✨</span>
+          </a>
+        </div>
+        <a class="nav-item" href="calendar-screen.html"><span class="nav-icon">📅</span><span class="nav-label">캘린더</span></a>
+        <button type="button" class="nav-item" id="navSettingsBtn"><span class="nav-icon">⚙️</span><span class="nav-label">설정</span></button>
+      </nav>
+    </div>
+  </div>
+</div>
+
+</main>
+<script src="../scripts/serin-screen.js"></script>
+<script src="../scripts/nav.js"></script>
+</body>
+</html>

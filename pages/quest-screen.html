@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="../styles/button.css">
 <link rel="stylesheet" href="../styles/quest.css">
 <link rel="stylesheet" href="../styles/quest-screen.css">
+<link rel="stylesheet" href="../styles/navigation.css">
+<style>.crystal-dock a{text-decoration:none}</style>
 </head>
 <body>
 <main class="quest-screen">
@@ -73,6 +75,29 @@
 
 </div>
 
+<!-- Bottom Navigation Component 삽입 -->
+<div style="position:relative;height:120px;">
+  <div class="bottom-area">
+    <div class="nav-shell">
+      <nav class="crystal-dock">
+        <a class="nav-item" href="home-scene-ultimate.html"><span class="nav-icon">🏰</span><span class="nav-label">홈</span></a>
+        <a class="nav-item active" href="quest-screen.html"><span class="nav-icon">📜</span><span class="nav-label">퀘스트</span></a>
+        <div class="serin-zone">
+          <a class="serin-core" href="serin-screen.html">
+            <span class="serin-orbit"></span><span class="serin-ring"></span>
+            <span class="serin-star s1"></span><span class="serin-star s2"></span><span class="serin-star s3"></span>
+            <span class="serin-face"><img src="../assets/serin-bust.png" alt="세린"></span>
+            <span class="status" data-serin-status>✨</span>
+          </a>
+        </div>
+        <a class="nav-item" href="calendar-screen.html"><span class="nav-icon">📅</span><span class="nav-label">캘린더</span></a>
+        <button type="button" class="nav-item" id="navSettingsBtn"><span class="nav-icon">⚙️</span><span class="nav-label">설정</span></button>
+      </nav>
+    </div>
+  </div>
+</div>
+
 </main>
 <script src="../scripts/quest-screen.js"></script>
+<script src="../scripts/nav.js"></script>
 </body></html>

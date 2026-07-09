@@ -35,6 +35,34 @@ document.getElementById('serinCoreBtn').addEventListener('click', () => {
   document.getElementById('serinStatus').textContent = statuses[statusIndex];
 });
 
+// ---------- Serin AI 질문 (실제 Claude API 연결, netlify/functions/serin-chat.js) ----------
+document.getElementById('serinAskForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const askInput = document.getElementById('serinAskInput');
+  const replyEl = document.getElementById('serinAskReply');
+  const askBtn = document.getElementById('serinAskBtn');
+  const q = askInput.value.trim();
+  if (!q) return;
+
+  replyEl.textContent = '✨ 세린이 생각 중이에요...';
+  askBtn.disabled = true;
+
+  try {
+    const res = await fetch('/.netlify/functions/serin-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: q }),
+    });
+    const data = await res.json();
+    replyEl.textContent = res.ok && data.reply ? data.reply : `오류: ${data.error || '알 수 없는 오류'}`;
+  } catch (err) {
+    replyEl.textContent = '세린과 연결하지 못했어요. Netlify 배포 상태와 API 키 설정을 확인해주세요.';
+  } finally {
+    askBtn.disabled = false;
+    askInput.value = '';
+  }
+});
+
 // ---------- Bottom nav ----------
 document.querySelectorAll('.nav-item').forEach(item => {
   item.addEventListener('click', () => {

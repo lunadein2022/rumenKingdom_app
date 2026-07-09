@@ -1,0 +1,74 @@
+<!-- Princess OS — Castle Growth System v1 -->
+<section class="section castle-system">
+  <h2>Castle Growth System v1</h2>
+
+  <div class="castle-stage">
+    <header class="castle-header">
+      <div>
+        <h2>🏰 루멘 왕성 성장 지도</h2>
+        <p>레벨이 오르면 새로운 방이 해금되고, 완료한 퀘스트에 따라 궁전이 성장합니다.</p>
+      </div>
+      <div class="castle-level" id="castleLevelBadge">Lv. 7</div>
+    </header>
+
+    <div class="castle-map" id="castleMap">
+      <div class="castle-path">
+        <svg viewBox="0 0 820 520" preserveAspectRatio="none">
+          <path d="M410 75 L410 230 L160 330 M410 230 L660 330 M410 230 L250 135 M410 230 L570 135 M410 230 L410 470" />
+        </svg>
+      </div>
+
+      <button class="castle-room room-throne locked" data-room="throne" data-unlock="10" data-title="왕좌의 방">
+        <span class="castle-room-icon">👑</span>
+        <span class="castle-room-title">왕좌의 방</span>
+        <span class="castle-room-meta">Lv.10 해금</span>
+      </button>
+
+      <button class="castle-room room-library upgraded" data-room="library" data-unlock="4" data-title="왕국 도서관">
+        <span class="castle-room-icon">📚</span>
+        <span class="castle-room-title">왕국 도서관</span>
+        <span class="castle-room-meta">Lv.4 · Upgraded</span>
+      </button>
+
+      <button class="castle-room room-office upgraded" data-room="office" data-unlock="6" data-title="집무실">
+        <span class="castle-room-icon">🖋</span>
+        <span class="castle-room-title">집무실</span>
+        <span class="castle-room-meta">Lv.6 · Upgraded</span>
+      </button>
+
+      <button class="castle-room room-lobby upgraded" data-room="lobby" data-unlock="1" data-title="왕궁 로비">
+        <span class="castle-room-icon">🏰</span>
+        <span class="castle-room-title">왕궁 로비</span>
+        <span class="castle-room-meta">Lv.1 · Core</span>
+      </button>
+
+      <button class="castle-room room-garden upgraded" data-room="garden" data-unlock="2" data-title="왕궁 정원">
+        <span class="castle-room-icon">🌸</span>
+        <span class="castle-room-title">왕궁 정원</span>
+        <span class="castle-room-meta">Lv.2 · Upgraded</span>
+      </button>
+
+      <button class="castle-room room-bedroom" data-room="bedroom" data-unlock="8" data-title="공주의 침실">
+        <span class="castle-room-icon">🛏</span>
+        <span class="castle-room-title">공주의 침실</span>
+        <span class="castle-room-meta">Lv.8 해금 예정</span>
+      </button>
+
+      <button class="castle-room room-tower locked" data-room="tower" data-unlock="15" data-title="동쪽 탑">
+        <span class="castle-room-icon">🔒</span>
+        <span class="castle-room-title">동쪽 탑</span>
+        <span class="castle-room-meta">Lv.15 해금</span>
+      </button>
+    </div>
+
+    <p class="castle-empty">방을 선택하면 세린이 성장 상태를 설명합니다.</p>
+
+    <article class="castle-detail" id="castleDetail">
+      <div>
+        <h3>🏰 왕궁 로비</h3>
+        <p>Princess OS의 중심 공간입니다. 오늘의 일정, 세린 브리핑, 퀘스트 시작점이 이곳에 모입니다.</p>
+      </div>
+      <button class="btn btn-primary btn-md">이 방으로 이동</button>
+    </article>
+  </div>
+</section>

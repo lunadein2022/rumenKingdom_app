@@ -1,0 +1,234 @@
+/* Princess OS — Castle Growth System v1 */
+.castle-system {
+  display: grid;
+  gap: 20px;
+}
+
+.castle-stage {
+  min-height: 720px;
+  border-radius: 44px;
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
+  background:
+    linear-gradient(180deg, rgba(7,11,26,.08), rgba(7,11,26,.74)),
+    url("../assets/palace-main.png") center / cover;
+  border: 1px solid rgba(255,255,255,.42);
+  box-shadow: var(--shadow-floating);
+}
+
+.castle-header {
+  position: relative;
+  z-index: 2;
+  padding: 22px;
+  border-radius: 32px;
+  background: rgba(255,255,255,.52);
+  border: 1px solid rgba(255,255,255,.68);
+  backdrop-filter: blur(26px);
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.castle-header h2 {
+  margin: 0 0 6px;
+  font-family: Cinzel, Georgia, serif;
+  color: var(--royal-900, #101936);
+}
+
+.castle-header p {
+  margin: 0;
+  color: var(--text-secondary, #5D6478);
+}
+
+.castle-level {
+  min-width: 108px;
+  height: 48px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 900;
+  background: linear-gradient(135deg, #2E4FA3, #4169E1);
+  box-shadow: 0 12px 30px rgba(46,79,163,.28);
+}
+
+.castle-map {
+  position: relative;
+  z-index: 2;
+  width: min(820px, 100%);
+  min-height: 520px;
+  margin: 34px auto 0;
+}
+
+.castle-path {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .78;
+}
+
+.castle-path svg {
+  width: 100%;
+  height: 100%;
+}
+
+.castle-path path {
+  fill: none;
+  stroke: rgba(242,222,170,.72);
+  stroke-width: 3;
+  stroke-dasharray: 10 10;
+  filter: drop-shadow(0 0 8px rgba(242,222,170,.34));
+  animation: castlePath 18s linear infinite;
+}
+
+@keyframes castlePath {
+  to { stroke-dashoffset: -220; }
+}
+
+.castle-room {
+  position: absolute;
+  width: 150px;
+  min-height: 132px;
+  border: 0;
+  border-radius: 32px;
+  padding: 16px;
+  cursor: pointer;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.46)),
+    radial-gradient(circle at 20% 0%, rgba(169,187,255,.28), transparent 32%);
+  border: 1px solid rgba(255,255,255,.72);
+  backdrop-filter: blur(26px);
+  box-shadow: 0 16px 44px rgba(16,25,54,.18);
+  transition: transform .24s cubic-bezier(.34,1.56,.64,1), opacity .24s, filter .24s;
+}
+
+.castle-room:hover {
+  transform: translateY(-6px) scale(1.02);
+}
+
+.castle-room.locked {
+  opacity: .58;
+  filter: grayscale(.25);
+}
+
+.castle-room.upgraded {
+  box-shadow:
+    0 18px 48px rgba(46,79,163,.22),
+    0 0 44px rgba(216,183,106,.26);
+}
+
+.castle-room-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 10px;
+  border-radius: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  background: linear-gradient(135deg, #2E4FA3, #4169E1);
+  color: #fff;
+}
+
+.castle-room.locked .castle-room-icon {
+  background: linear-gradient(135deg, #7D8394, #ADB3C3);
+}
+
+.castle-room-title {
+  display: block;
+  color: var(--royal-900, #101936);
+  font-weight: 900;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.castle-room-meta {
+  display: block;
+  color: var(--text-secondary, #5D6478);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.room-lobby { left: 50%; top: 42%; transform: translate(-50%, -50%); }
+.room-garden { left: 8%; top: 62%; }
+.room-bedroom { right: 8%; top: 62%; }
+.room-library { left: 18%; top: 24%; }
+.room-office { right: 18%; top: 24%; }
+.room-throne { left: 50%; top: 4%; transform: translateX(-50%); }
+.room-tower { left: 50%; bottom: 0; transform: translateX(-50%); }
+
+.room-lobby:hover { transform: translate(-50%, -50%) translateY(-6px) scale(1.02); }
+.room-throne:hover, .room-tower:hover { transform: translateX(-50%) translateY(-6px) scale(1.02); }
+
+.castle-detail {
+  margin-top: 24px;
+  padding: 20px;
+  border-radius: 30px;
+  background: rgba(255,255,255,.58);
+  border: 1px solid rgba(255,255,255,.68);
+  backdrop-filter: blur(26px);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.castle-detail h3 {
+  margin: 0 0 8px;
+  color: var(--royal-900, #101936);
+}
+
+.castle-detail p {
+  margin: 0;
+  color: var(--text-secondary, #5D6478);
+  line-height: 1.55;
+}
+
+.castle-empty {
+  color: rgba(255,255,255,.86);
+  text-align: center;
+  margin-top: 20px;
+  font-weight: 800;
+}
+
+@media(max-width: 860px) {
+  .castle-stage { min-height: 980px; }
+  .castle-map {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 14px;
+    min-height: auto;
+  }
+  .castle-path { display: none; }
+  .castle-room,
+  .room-lobby,
+  .room-garden,
+  .room-bedroom,
+  .room-library,
+  .room-office,
+  .room-throne,
+  .room-tower {
+    position: relative;
+    inset: auto;
+    left: auto;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    transform: none;
+    width: 100%;
+  }
+  .castle-room:hover,
+  .room-lobby:hover,
+  .room-throne:hover,
+  .room-tower:hover {
+    transform: translateY(-4px);
+  }
+  .castle-detail { grid-template-columns: 1fr; }
+}
+
+@media(max-width: 560px) {
+  .castle-map { grid-template-columns: 1fr; }
+  .castle-header { flex-direction: column; align-items: flex-start; }
+}
