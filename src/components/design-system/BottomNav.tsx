@@ -1,11 +1,11 @@
 import type { ViewKey } from "../../app/types";
 
-export const primaryNavItems: Array<{ key: ViewKey; label: string; icon: string }> = [
-  { key: "home", label: "홈", icon: "⌂" },
+const navItems: Array<{ key: ViewKey; label: string; icon: string }> = [
+  { key: "home", label: "왕궁", icon: "🏰" },
   { key: "quests", label: "Quest", icon: "◆" },
   { key: "serin", label: "세린", icon: "✦" },
   { key: "calendar", label: "일정", icon: "□" },
-  { key: "library", label: "도서관", icon: "▤" },
+  { key: "library", label: "도서관", icon: "📚" },
 ];
 
 interface BottomNavProps {
@@ -15,8 +15,8 @@ interface BottomNavProps {
 
 export function BottomNav({ activeView, onChange }: BottomNavProps) {
   return (
-    <nav className="bottom-nav" aria-label="Princess OS mobile navigation">
-      {primaryNavItems.map((item) => (
+    <nav className="bottom-nav" aria-label="Princess OS navigation">
+      {navItems.map((item) => (
         <button
           key={item.key}
           type="button"

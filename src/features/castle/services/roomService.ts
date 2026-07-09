@@ -1,9 +1,6 @@
-import type { CastleRoom } from "../types/castle.types";
+import type { CastleRoom, CastleRoomKey } from "../types/castle.types";
 
-export function getVisibleRooms(rooms: CastleRoom[]) {
-  return rooms;
-}
-
-export function getMostVisitedRoom(rooms: CastleRoom[]) {
-  return [...rooms].sort((a, b) => b.visitedCount - a.visitedCount)[0] ?? null;
+export function getRoomByKey(rooms: CastleRoom[], key: CastleRoomKey) {
+  // TODO: Replace with Supabase Query
+  return rooms.find((room) => room.key === key) ?? rooms[0];
 }

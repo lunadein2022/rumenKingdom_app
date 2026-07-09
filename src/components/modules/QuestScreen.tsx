@@ -18,15 +18,15 @@ type QuestTimeScope = "past" | "current" | "future" | "all";
 
 const questTabs: QuestType[] = ["main", "side", "daily", "routine", "story"];
 const timeTabs: Array<{ key: QuestTimeScope; label: string }> = [
-  { key: "past", label: "과거" },
+  { key: "past", label: "이전" },
   { key: "current", label: "현재" },
-  { key: "future", label: "미래" },
+  { key: "future", label: "이후" },
   { key: "all", label: "전체" },
 ];
 const today = "2026-07-09";
 
 function statusText(status: Quest["status"]) {
-  if (status === "completed") return "완료";
+  if (status === "completed") return "왕국도서관";
   if (status === "inProgress") return "진행 중";
   return "대기";
 }
@@ -60,14 +60,14 @@ export function QuestScreen({
   );
 
   return (
-    <section className="quest-domain-screen simple">
+    <section className="quest-domain-screen">
       <header className="quest-domain-hero">
-        <Badge tone="gold">Quest</Badge>
-        <h1>Quest</h1>
-        <p>등록은 세린에게 말하면 됩니다. 여기서는 상태를 확인하고 완료 처리만 합니다.</p>
+        <Badge tone="gold">Quest Domain</Badge>
+        <h1>왕실 Quest</h1>
+        <p>Quest는 Princess OS의 성장, Castle EXP, 보상, 기록을 움직이는 중심 도메인입니다.</p>
         <div className="quest-hero-stats">
-          <div><strong>{progress.todayProgress}%</strong><span>오늘 진행</span></div>
-          <div><strong>Lv.{progress.level}</strong><span>공주 레벨</span></div>
+          <div><strong>{progress.todayProgress}%</strong><span>오늘 진행률</span></div>
+          <div><strong>Lv.{progress.level}</strong><span>레벨</span></div>
           <div><strong>{progress.todayCompletedQuests}/{progress.todayTotalQuests}</strong><span>오늘 완료</span></div>
         </div>
         <ProgressBar value={progress.expRate} label="Quest EXP" />
@@ -98,15 +98,15 @@ export function QuestScreen({
 
       <div className="quest-toolbar">
         <button type="button" onClick={() => setShowHistory((value) => !value)}>
-          {showHistory ? "진행 Quest 보기" : "완료 기록 보기"}
+          {showHistory ? "진행 Quest 보기" : "완료 보기 · 왕국도서관"}
         </button>
       </div>
 
       <div className="quest-list rpg">
         {visibleQuests.length === 0 ? (
           <article className="quest-empty">
-            <strong>표시할 Quest가 없습니다.</strong>
-            <span>새 Quest는 세린에게 말하면 등록됩니다.</span>
+            <strong>이 조건에 맞는 Quest가 없습니다.</strong>
+            <span>종류 또는 시간축을 바꿔 이전/현재/이후 Quest를 확인하세요.</span>
           </article>
         ) : (
           visibleQuests.map((quest) => (
@@ -120,13 +120,14 @@ export function QuestScreen({
               </div>
               <h2>{quest.title}</h2>
               <p>{quest.description}</p>
+              {quest.chapter && <span className="quest-chapter">{quest.chapter}</span>}
               <div className="quest-meta-row">
-                <span>{quest.rewardItem ?? `${quest.goldReward} Gold`}</span>
-                <span>{quest.dueDate}</span>
+                <span>보상 {quest.rewardItem ?? `${quest.goldReward} Gold`}</span>
+                <span>마감 {quest.dueDate}</span>
               </div>
               <ProgressBar value={quest.progress} label={`${quest.title} progress`} />
               <div className="quest-actions">
-                <Button variant="glass" size="sm" onClick={() => onCycleQuest(quest.id)}>진행</Button>
+                <Button variant="glass" size="sm" onClick={() => onCycleQuest(quest.id)}>계속</Button>
                 <Button size="sm" onClick={() => onCompleteQuest(quest.id)} disabled={quest.status === "completed"}>완료</Button>
               </div>
             </article>
@@ -136,7 +137,7 @@ export function QuestScreen({
 
       {showHistory && (
         <section className="quest-history">
-          <h2>완료 기록</h2>
+          <h2>왕국도서관 기록</h2>
           {history.map((item) => (
             <article key={item.id}>
               <strong>{item.completedAt.slice(0, 10)} · EXP +{item.rewardExp}</strong>

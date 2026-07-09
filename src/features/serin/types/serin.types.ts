@@ -91,7 +91,6 @@ export interface SerinServiceMessageInput {
   conversationId: string;
   content: string;
   attachments?: SerinAttachment[];
-  history?: Array<{ role: "user" | "assistant"; content: string }>;
 }
 
 export interface SerinExecutionResult {

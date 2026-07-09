@@ -27,7 +27,7 @@ export interface CastleRoom {
   role: string;
   description: string;
   image: string;
-  route: "home" | "quests" | "calendar" | "serin" | "castle" | "library" | "garden" | "progress" | "profile";
+  route: "home" | "quests" | "calendar" | "serin" | "library" | "garden" | "progress" | "profile";
   roomLevel: number;
   isDiscovered: boolean;
   visitedCount: number;
@@ -39,5 +39,6 @@ export interface RoomDecoration {
   id: string;
   roomKey: CastleRoomKey;
   decorationKey: string;
+  isUnlocked: boolean;
   isEquipped: boolean;
 }

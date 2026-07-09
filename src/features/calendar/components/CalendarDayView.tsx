@@ -12,13 +12,13 @@ export function CalendarDayView({ selectedDate, events, onComplete, onCancel }: 
   return (
     <section className="calendar-day-view">
       <div className="calendar-section-title">
-        <h2>{selectedDate}</h2>
-        <span>{events.length}개 일정</span>
+        <h2>{selectedDate} 일정</h2>
+        <span>{events.length}개</span>
       </div>
       {events.length === 0 ? (
         <article className="calendar-empty">
-          <strong>일정이 없습니다.</strong>
-          <span>새 일정은 세린에게 말하면 바로 등록됩니다.</span>
+          <strong>등록된 일정이 없습니다.</strong>
+          <span>세린에게 말하거나 아래 입력으로 왕실 일정을 추가하세요.</span>
         </article>
       ) : (
         events.map((event) => (

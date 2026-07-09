@@ -9,18 +9,16 @@ interface CastleRoomCardProps {
 
 export function CastleRoomCard({ room, onEnter }: CastleRoomCardProps) {
   return (
-    <article
-      className="castle-room-scene"
-      style={{ backgroundImage: `linear-gradient(180deg, rgba(16, 25, 54, 0.28), rgba(16, 25, 54, 0.68)), url(${room.image})` }}
-    >
-      <div className="castle-room-scene-copy">
-        <Badge tone="royal">{room.subtitle}</Badge>
+    <article className="castle-room-card scene">
+      <img src={room.image} alt={room.name} />
+      <div className="castle-room-copy">
+        <Badge tone="royal">{room.subtitle} · Lv.{room.roomLevel}</Badge>
         <h2>{room.name}</h2>
         <p>{room.description}</p>
         <div className="castle-room-stats">
           {room.stats.map((stat) => <span key={stat}>{stat}</span>)}
         </div>
-        <Button size="sm" onClick={onEnter}>이동</Button>
+        <Button size="sm" onClick={onEnter}>입장</Button>
       </div>
     </article>
   );

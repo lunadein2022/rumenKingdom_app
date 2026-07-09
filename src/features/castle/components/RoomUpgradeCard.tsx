@@ -13,7 +13,7 @@ export function RoomUpgradeCard({ room, onUpgrade }: RoomUpgradeCardProps) {
         <strong>{room.name} Lv.{room.roomLevel}</strong>
         <span>{room.decorations.length}개 장식 활성화</span>
       </div>
-      <Button size="sm" onClick={onUpgrade} disabled={!room.isUnlocked}>방 성장</Button>
+      <Button size="sm" onClick={onUpgrade}>방 성장</Button>
     </section>
   );
 }

@@ -12,17 +12,9 @@ export function getCastleState(): CastleState {
   };
 }
 
-export function normalizeRoomState(room: CastleRoom): CastleRoom {
-  return { ...room, isDiscovered: true };
-}
-
-export function normalizeRooms(rooms: CastleRoom[]) {
-  return rooms.map((room) => normalizeRoomState(room));
-}
-
 export function getRooms(rooms: CastleRoom[]) {
   // TODO: Replace with Supabase Query
-  return normalizeRooms(rooms);
+  return rooms;
 }
 
 export function visitRoom(rooms: CastleRoom[], key: CastleRoomKey) {
@@ -33,7 +25,7 @@ export function visitRoom(rooms: CastleRoom[], key: CastleRoomKey) {
 }
 
 export function upgradeRoom(rooms: CastleRoom[], key: CastleRoomKey) {
-  // TODO: Replace with Supabase Query. This is room score growth.
+  // TODO: Replace with Supabase Query
   return rooms.map((room) =>
     room.key === key ? { ...room, roomLevel: room.roomLevel + 1 } : room,
   );

@@ -323,31 +323,6 @@ alter table public.contacts enable row level security;
 alter table public.relationship_book enable row level security;
 alter table public.diary_drafts enable row level security;
 
-drop policy if exists "Users manage own profile" on public.profiles;
-drop policy if exists "Users manage own princess profile" on public.princess_profiles;
-drop policy if exists "Users manage own princess stats" on public.princess_stats;
-drop policy if exists "Users manage own princess equipment" on public.princess_equipment;
-drop policy if exists "Users manage own princess diary" on public.princess_diary;
-drop policy if exists "Users manage own quests" on public.quests;
-drop policy if exists "Users manage own quest history" on public.quest_history;
-drop policy if exists "Users manage own calendar events" on public.calendar_events;
-drop policy if exists "Users manage own calendar reminders" on public.calendar_reminders;
-drop policy if exists "Users manage own progress" on public.user_progress;
-drop policy if exists "Users manage own daily completions" on public.daily_completions;
-drop policy if exists "Users manage own rooms" on public.castle_rooms;
-drop policy if exists "Users manage own castle state" on public.castle_state;
-drop policy if exists "Users manage own room decorations" on public.room_decorations;
-drop policy if exists "Anyone can view achievement catalog" on public.achievements;
-drop policy if exists "Users manage own achievements" on public.user_achievements;
-drop policy if exists "Users manage own inventory" on public.inventory_items;
-drop policy if exists "Users manage own titles" on public.user_titles;
-drop policy if exists "Users manage own Serin conversations" on public.serin_conversations;
-drop policy if exists "Users manage own Serin messages" on public.serin_messages;
-drop policy if exists "Users manage own Serin memory" on public.serin_memory;
-drop policy if exists "Users manage own contacts" on public.contacts;
-drop policy if exists "Users manage own relationship book" on public.relationship_book;
-drop policy if exists "Users manage own diary drafts" on public.diary_drafts;
-
 create policy "Users manage own profile" on public.profiles
   for all using (auth.uid() = id) with check (auth.uid() = id);
 

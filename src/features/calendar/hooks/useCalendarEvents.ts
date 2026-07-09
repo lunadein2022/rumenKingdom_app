@@ -27,7 +27,7 @@ export function useCalendarEvents(initialEvents: CalendarEvent[]) {
       setEvents((current) => updateEvent(current, id, input)),
     deleteEvent: (id: string) => setEvents((current) => deleteEvent(current, id)),
     completeEvent: (id: string) => setEvents((current) => completeEvent(current, id)),
-    createEventWithLinkedQuest: (input: CalendarEventInput): CalendarEvent | null => {
+    createEventWithLinkedQuest: (input: CalendarEventInput) => {
       let resultEvent: CalendarEvent | null = null;
       setEvents((current) => {
         const result = createEventWithLinkedQuest(current, input);

@@ -7,7 +7,7 @@ function hasAny(message: string, words: string[]) {
 
 function extractTitle(message: string) {
   return message
-    .replace(/내일|오늘|모레|까지|퀘스트|todo|투두|할 일|일정|만들어줘|생성해줘|추가해줘|등록해줘|기억해줘|저장해줘/g, "")
+    .replace(/내일|오늘|모레|다음주|까지|퀘스트|할\s?일|todo|task|일정|만들어줘|생성해줘|추가해줘|등록해줘|기억해줘|저장해줘|해야겠다|해야돼|해야해|부탁해|부탁|줄래/gi, "")
     .replace(/\s+/g, " ")
     .trim() || "새 요청";
 }
@@ -19,7 +19,7 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
       intent: "calendar.create",
       confidence: calendarIntent.confidence,
       entities: { calendar: calendarIntent },
-      needsConfirmation: false,
+      needsConfirmation: true,
     };
   }
 
@@ -30,11 +30,11 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
       entities: {
         contact: {
           name: "새 연락처",
-          memo: "첨부 이미지 또는 대화에서 추출한 연락처입니다.",
+          memo: "첨부 이미지 또는 대화에서 추출할 연락처입니다.",
           source: "serin",
         },
       },
-      needsConfirmation: false,
+      needsConfirmation: true,
     };
   }
 
@@ -54,17 +54,17 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
     };
   }
 
-  if (hasAny(message, ["퀘스트", "todo", "투두", "할 일", "해야", "작성", "준비"])) {
+  if (hasAny(message, ["퀘스트", "할 일", "할일", "todo", "task", "해야", "작성", "준비", "부탁", "챙겨야", "리스트", "체크리스트"])) {
     return {
       intent: "quest.create",
-      confidence: 0.78,
+      confidence: 0.76,
       entities: {
         quest: {
           title: extractTitle(message),
           dueDate: message.includes("내일") ? "2026-07-10" : "2026-07-09",
         },
       },
-      needsConfirmation: false,
+      needsConfirmation: true,
     };
   }
 
@@ -75,22 +75,18 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
       entities: {
         diary: {
           title: "오늘의 공주 다이어리",
-          content: "오늘 일정과 완료 Quest를 바탕으로 다이어리 초안을 준비합니다.",
+          content: "오늘 일정과 완료한 Quest를 바탕으로 다이어리 초안을 준비합니다.",
         },
       },
-      needsConfirmation: false,
+      needsConfirmation: true,
     };
   }
 
   if (hasAny(message, ["보상", "칭호", "레벨"])) {
-    return { intent: "reward.claim", confidence: 0.7, entities: {}, needsConfirmation: false };
-  }
-
-  if (hasAny(message, ["찾아줘", "기록", "지난번", "도서관"])) {
     return {
-      intent: "library.search",
-      confidence: 0.66,
-      entities: { query: message },
+      intent: "reward.claim",
+      confidence: 0.7,
+      entities: {},
       needsConfirmation: false,
     };
   }

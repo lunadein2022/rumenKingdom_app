@@ -11,8 +11,8 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
       id: actionId,
       intent: "calendar.create",
       title: draft.title,
-      summary: `${draft.startAt.slice(0, 16).replace("T", " ")} 일정으로 등록합니다.`,
-      confirmLabel: "일정 등록",
+      summary: `공주님, '${draft.title}'을(를) ${draft.startAt.slice(0, 16).replace("T", " ")} 일정으로 등록해드릴까요? 알림도 함께 챙겨드릴게요.`,
+      confirmLabel: "일정 추가",
       secondaryLabel: "Quest도 만들기",
       payload: {
         calendar: {
@@ -37,12 +37,12 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
       id: actionId,
       intent: "quest.create",
       title: quest.title ?? "새 Quest",
-      summary: "공주의 성장에 반영할 Quest로 등록합니다.",
-      confirmLabel: "Quest 등록",
+      summary: `공주님, '${quest.title ?? "이 일"}'을(를) 퀘스트로 등록해드릴까요? 처리하시기 편한 시간을 알려주시면 그에 맞춰 챙겨드릴게요.`,
+      confirmLabel: "Quest 생성",
       payload: {
         quest: {
           title: quest.title ?? "새 Quest",
-          description: "세린의 대화에서 정리한 Quest입니다.",
+          description: "세린이 대화에서 정리한 Quest입니다.",
           type: "side",
           priority: "medium",
           progress: 0,
@@ -56,15 +56,34 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
     };
   }
 
-  if (parsedIntent.intent === "memory.save" && parsedIntent.entities.memory) {
+  if (parsedIntent.intent === "diary.create" || parsedIntent.intent === "diary.summarize") {
     return {
       id: actionId,
-      intent: "memory.save",
-      title: "세린 기억",
-      summary: "대화 내용을 세린 기억으로 저장합니다.",
-      confirmLabel: "기억 저장",
+      intent: parsedIntent.intent,
+      title: "오늘의 공주 다이어리",
+      summary: "공주님, 오늘 일정과 완료한 Quest를 바탕으로 다이어리 초안을 정리해드릴까요?",
+      confirmLabel: "다이어리 초안 저장",
       payload: {
-        memory: parsedIntent.entities.memory as SerinAction["payload"]["memory"],
+        diary: {
+          title: "오늘의 공주 다이어리",
+          content: "오늘의 흐름을 정리한 다이어리 초안입니다.",
+        },
+      },
+    };
+  }
+
+  if (parsedIntent.intent === "contact.extract") {
+    return {
+      id: actionId,
+      intent: "contact.extract",
+      title: "새 연락처",
+      summary: "공주님, 첨부 이미지나 대화에서 찾은 연락처를 왕국도서관에 저장해드릴까요?",
+      confirmLabel: "연락처 저장",
+      payload: {
+        contact: {
+          name: "새 연락처",
+          memo: "OCR 연결 전 mock 추출 결과입니다.",
+        },
       },
     };
   }

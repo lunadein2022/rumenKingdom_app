@@ -2,12 +2,13 @@ import type { CalendarEvent } from "../features/calendar/types/calendar.types";
 import type { CastleRoom } from "../features/castle/types/castle.types";
 import type { SerinMessageType } from "../features/serin/types/serin.types";
 
+// "castle"는 더 이상 별도 화면이 아닙니다. Home 자체가 왕궁 로비이며, Castle의 방 선택
+// 경험이 Home 안으로 통합되었습니다.
 export type ViewKey =
   | "home"
   | "quests"
   | "calendar"
   | "serin"
-  | "castle"
   | "library"
   | "garden"
   | "progress"

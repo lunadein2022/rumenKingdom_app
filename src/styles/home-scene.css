@@ -3,6 +3,243 @@
   gap: 14px;
 }
 
+/* ===== Palace Lobby (Home = Castle) =====
+   앱을 열면 메뉴가 아니라 왕궁 로비가 먼저 보입니다.
+   공주/세린 등장 -> 인사 말풍선 -> 0.5~1초 뒤 장소 선택 Pill이 Fade+Slide로 등장. */
+.palace-lobby {
+  display: grid;
+  gap: 14px;
+  transition: opacity 260ms var(--ease-soft), transform 260ms var(--ease-soft);
+}
+
+.palace-lobby.leaving {
+  opacity: 0;
+  transform: scale(1.03);
+}
+
+.palace-lobby-scene {
+  position: relative;
+  overflow: hidden;
+  min-height: 420px;
+  padding: 18px;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(7, 11, 26, 0.55)),
+    url("/assets/home-bg.png") center / cover;
+  box-shadow: var(--shadow-floating);
+  animation: lobby-scene-in 520ms var(--ease-soft);
+}
+
+.palace-lobby-figures {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: -24px;
+}
+
+.lobby-princess {
+  z-index: 2;
+  width: min(56%, 220px);
+  object-fit: contain;
+  filter: drop-shadow(0 18px 28px rgba(7, 11, 26, 0.35));
+  animation: lobby-figure-in 620ms var(--ease-soft) both;
+}
+
+.lobby-serin {
+  z-index: 1;
+  width: min(38%, 150px);
+  margin-left: -28px;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 22px rgba(7, 11, 26, 0.3));
+  animation: lobby-figure-in 620ms var(--ease-soft) 120ms both;
+}
+
+.lobby-speech-bubble {
+  position: relative;
+  z-index: 3;
+  width: min(100%, 340px);
+  margin: 0 auto 168px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--shadow-medium);
+  text-align: center;
+  animation: lobby-bubble-in 480ms var(--ease-soft) 180ms both;
+}
+
+.lobby-speech-bubble span {
+  color: #6f5115;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.lobby-speech-bubble p {
+  margin: 4px 0 0;
+  color: var(--royal-900);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.lobby-today-strip {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.lobby-today-strip button {
+  min-height: 100px;
+  padding: 13px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  text-align: left;
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(18px);
+}
+
+.lobby-today-strip strong,
+.lobby-today-strip span {
+  display: block;
+}
+
+.lobby-today-strip strong {
+  margin-top: 8px;
+  color: var(--royal-900);
+  font-size: 20px;
+}
+
+.lobby-today-strip span {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.lobby-exp-card {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding: 13px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+}
+
+.lobby-exp-card span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.lobby-next-line {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lobby-room-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 4px 2px 2px;
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+  transition: opacity 420ms var(--ease-soft), transform 420ms var(--ease-soft);
+}
+
+.lobby-room-pills.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.lobby-room-pills button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-full);
+  color: var(--royal-900);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-small);
+  font-size: 13px;
+  font-weight: 800;
+  backdrop-filter: blur(14px);
+  transition: transform 160ms var(--ease-soft);
+}
+
+.lobby-room-pills button:active {
+  transform: scale(0.96);
+}
+
+@keyframes lobby-scene-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes lobby-figure-in {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lobby-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 데스크톱: 폰 프레임을 그냥 늘리지 않고 Scene + Today 패널을 좌우로 배치 */
+@media (min-width: 980px) {
+  .palace-lobby {
+    grid-template-columns: 1.3fr 0.9fr;
+    grid-template-areas:
+      "scene today"
+      "pills pills";
+    align-items: start;
+  }
+
+  .palace-lobby-scene {
+    grid-area: scene;
+    min-height: 520px;
+  }
+
+  .lobby-today-strip {
+    grid-area: today;
+    grid-template-columns: 1fr;
+  }
+
+  .lobby-room-pills {
+    grid-area: pills;
+    justify-content: flex-start;
+  }
+}
+
 .home-hero-mobile {
   position: relative;
   overflow: hidden;
