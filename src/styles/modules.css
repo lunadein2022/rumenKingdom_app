@@ -182,6 +182,18 @@
   background: rgba(255, 255, 255, 0.48);
 }
 
+.chat-bubble-group {
+  display: grid;
+  gap: 6px;
+}
+
+.chat-inline-confirm {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: 4px;
+}
+
 .chat-bubble {
   width: fit-content;
   max-width: 82%;
@@ -1272,37 +1284,53 @@
   font-size: 13px;
 }
 
+/* Castle 방은 카드가 아니라 화면 대부분을 채우는 full-screen room scene입니다. */
 .castle-room-card {
   position: relative;
-  min-height: 392px;
+  min-height: 58vh;
   overflow: hidden;
   border-radius: 30px;
-  background: #fff;
+  background-size: cover;
+  background-position: center;
   box-shadow: var(--shadow-floating);
 }
 
-.castle-room-card img {
-  width: 100%;
-  height: 220px;
-  object-fit: cover;
+.castle-room-card-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  background: linear-gradient(180deg, rgba(16, 25, 54, 0) 38%, rgba(16, 25, 54, 0.82) 100%);
 }
 
 .castle-room-copy {
   display: grid;
   gap: 8px;
-  padding: 14px;
+  width: 100%;
+  padding: 22px;
+}
+
+.castle-room-copy span {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .castle-room-copy h2 {
   margin: 0;
-  color: var(--royal-900);
-  font-size: 24px;
+  color: #fff;
+  font-size: 26px;
 }
 
 .castle-room-copy p {
   margin: 0;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.86);
   font-size: 13px;
+}
+
+.castle-room-copy .ds-button {
+  justify-self: start;
+  margin-top: 4px;
 }
 
 .castle-room-stats {
@@ -1314,8 +1342,9 @@
 .castle-room-stats span {
   padding: 5px 8px;
   border-radius: var(--radius-full);
-  color: var(--royal-800);
-  background: rgba(65, 105, 225, 0.08);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
   font-size: 11px;
   font-weight: 900;
 }
@@ -1347,8 +1376,38 @@
 
 .library-toolbar {
   display: grid;
-  grid-template-columns: 1fr 100px;
+  grid-template-columns: 1fr;
   gap: 8px;
+}
+
+.library-tabs {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.library-tabs button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(111, 143, 242, 0.16);
+  border-radius: var(--radius-full);
+  color: var(--royal-800);
+  background: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.library-tabs button.active {
+  color: #fff;
+  background: var(--royal-600);
+}
+
+.library-section article p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .library-toolbar input,
@@ -1434,77 +1493,103 @@
   font-size: 12px;
 }
 
-.garden-page {
-  display: grid;
-  gap: 12px;
-}
-
-.garden-scene {
+/* 정원: 카드 목록이 아니라 화면 전체를 채우는 몰입형 배경 Scene입니다.
+   세린 멘트도 카드가 아니라 말풍선 오버레이로만 뜹니다. */
+.garden-scene-full {
   position: relative;
-  min-height: calc(100dvh - 190px);
+  min-height: calc(100dvh - 160px);
   overflow: hidden;
   border-radius: 30px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(16, 25, 54, 0.2)),
-    url("/assets/garden.webp") center / cover;
   box-shadow: var(--shadow-floating);
 }
 
-.garden-copy {
-  position: relative;
+.garden-scene-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.garden-scene-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(16, 25, 54, 0.12) 0%, rgba(16, 25, 54, 0.04) 40%, rgba(16, 25, 54, 0.4) 100%);
+}
+
+.garden-princess-full {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 1;
+  width: min(60%, 360px);
+  max-height: 88%;
+  object-fit: contain;
+  object-position: bottom center;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 20px 30px rgba(16, 25, 54, 0.35));
+}
+
+.garden-copy-overlay {
+  position: absolute;
+  top: 22px;
+  left: 22px;
   z-index: 2;
-  padding: 18px;
+  max-width: 320px;
   color: #fff;
   text-shadow: 0 2px 18px rgba(16, 25, 54, 0.45);
 }
 
-.garden-copy span {
+.garden-copy-overlay span {
   font-size: 12px;
   font-weight: 900;
 }
 
-.garden-copy h1 {
-  max-width: 310px;
+.garden-copy-overlay h1 {
   margin: 8px 0 0;
-  font-size: 29px;
+  font-size: 27px;
 }
 
-.garden-copy p {
-  max-width: 320px;
-  margin: 8px 0 0;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.garden-princess {
+.garden-speech-bubble {
   position: absolute;
-  right: -12px;
-  bottom: -4px;
-  z-index: 1;
-  width: min(72%, 280px);
-  max-height: 82%;
-  object-fit: contain;
-  object-position: bottom right;
-}
-
-.garden-serin-note {
-  display: grid;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--glass-border);
+  left: 22px;
+  bottom: 78px;
+  z-index: 2;
+  max-width: min(78%, 340px);
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: var(--radius-xl);
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-medium);
 }
 
-.garden-serin-note strong {
+.garden-speech-bubble strong {
+  display: block;
+  margin-bottom: 3px;
   color: var(--royal-900);
+  font-size: 12px;
 }
 
-.garden-serin-note p {
+.garden-speech-bubble p {
   margin: 0;
   color: var(--text-secondary);
   font-size: 13px;
+}
+
+.garden-back-button {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-full);
+  color: #fff;
+  background: rgba(16, 25, 54, 0.42);
+  backdrop-filter: blur(10px);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .princess-domain-page {

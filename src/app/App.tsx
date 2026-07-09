@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   CalendarEvent,
   CalendarEventInput,
@@ -29,13 +29,18 @@ import {
   deleteEvent,
   getEventsByDay,
 } from "../features/calendar/services/calendarService";
+import { CastlePage } from "../features/castle/pages/CastlePage";
 import { useCastle } from "../features/castle/hooks/useCastle";
 import { useCastleRooms } from "../features/castle/hooks/useCastleRooms";
 import { GardenPage } from "../features/garden/pages/GardenPage";
 import { LibraryPage } from "../features/library/pages/LibraryPage";
 import { PrincessPage } from "../features/princess/pages/PrincessPage";
 import { cancelAction, confirmAction } from "../features/serin/services/serinActionExecutor";
-import { sendMessage as sendSerinDomainMessage } from "../features/serin/services/serinService";
+import {
+  getOrCreateConversation,
+  saveMessage,
+  sendMessage as sendSerinDomainMessage,
+} from "../features/serin/services/serinService";
 import { saveMemory } from "../features/serin/services/serinMemoryService";
 
 // 짧은 긍정/부정 답변으로 직전 pendingAction을 이어서 처리하기 위한 감지기.
@@ -146,10 +151,22 @@ export function App() {
   const [pendingSerinAction, setPendingSerinAction] = useState<SerinAction | null>(null);
   const [serinMemories, setSerinMemories] = useState<SerinMemory[]>(initialSerinMemories);
   const [selectedDate, setSelectedDate] = useState("2026-07-09");
-  const { addCastleExp } = useCastle();
+  // TODO(Alpha 이후): 지금은 세린 대화가 새로고침 시 전부 사라지는 세션 한정 mock
+  // 구조입니다. saveMessage/getMessages는 이미 호출되고 있지만 실제로는 아무것도
+  // 저장하지 않는 스텁입니다. Supabase 연동 시 이 conversationId로 실제 메시지 기록을
+  // 읽고 쓰도록 교체하고, 앱 시작 시 getMessages 결과로 messages 초기값을 채워야 합니다.
+  const conversationId = useMemo(() => "mock-serin-conversation", []);
+  const { castleState, addCastleExp } = useCastle();
   const castleRooms = useCastleRooms(snapshot.rooms);
   const progress = useMemo(() => buildProgress(quests, progressBase), [quests, progressBase]);
   const appData = { ...snapshot, quests, questHistory, events, serinMessages: messages, progress, rooms: castleRooms.rooms };
+
+  useEffect(() => {
+    // 대화방을 실제로 만들어두는 흐름입니다. 지금은 mock이라 아무 것도 영속화되지
+    // 않지만, Supabase 연동 시 이 자리에서 받은 conversationId로 앞으로의
+    // saveMessage/getMessages 호출을 교체하면 됩니다.
+    void getOrCreateConversation("mock-user");
+  }, []);
 
   function completeQuest(id: string) {
     const result = completeQuestDomain(quests, questHistory, id, progress);
@@ -191,10 +208,12 @@ export function App() {
   async function sendSerinMessage(content: string) {
     const now = new Date().toISOString();
     const recentHistory = messages.slice(-8).map((item) => ({ sender: item.sender, content: item.content }));
-    setMessages((current) => [
-      ...current,
-      { id: `m-${now}-p`, sender: "princess", content, createdAt: now, messageType: "text" },
-    ]);
+    const princessMessage: SerinMessage = { id: `m-${now}-p`, sender: "princess", content, createdAt: now, messageType: "text" };
+    setMessages((current) => [...current, princessMessage]);
+    // 지금은 mock(아무것도 저장하지 않는 스텁)이지만, 실제 흐름(전송 시점에 메시지를
+    // 기록)은 이미 연결해두었습니다. Supabase 연동 시 아래 두 saveMessage 호출만
+    // 실제 저장으로 바뀌면 됩니다.
+    void saveMessage({ conversationId, ...princessMessage });
 
     // 직전에 세린이 확인을 물어본 상태(pendingAction)에서 "응", "그래", "당연하지", "부탁해",
     // "등록해" 같은 짧은 답변이 오면, 새로 의도를 해석하지 않고 그 pendingAction을 바로 이어서
@@ -221,26 +240,22 @@ export function App() {
           : `공주님, ${scheduleQuery.label} 일정은 ${dayEvents
               .map((event) => `${event.startAt.slice(11, 16)} ${event.title}`)
               .join(", ")}(이)가 있어요. 시간 맞춰 챙겨드릴게요.`;
-      setMessages((current) => [
-        ...current,
-        {
-          id: `m-${Date.now()}-schedule`,
-          sender: "serin",
-          content: reply,
-          createdAt: new Date().toISOString(),
-          messageType: "text",
-        },
-      ]);
+      const scheduleMessage: SerinMessage = {
+        id: `m-${Date.now()}-schedule`,
+        sender: "serin",
+        content: reply,
+        createdAt: new Date().toISOString(),
+        messageType: "text",
+      };
+      setMessages((current) => [...current, scheduleMessage]);
+      void saveMessage({ conversationId, ...scheduleMessage });
       return;
     }
 
     setSerinStatus("thinking");
 
     try {
-      const result = await sendSerinDomainMessage(
-        { conversationId: "mock-serin-conversation", content },
-        recentHistory,
-      );
+      const result = await sendSerinDomainMessage({ conversationId, content }, recentHistory);
       if (content.includes("기억")) {
         setSerinMemories((current) =>
           saveMemory(current, {
@@ -254,17 +269,16 @@ export function App() {
 
       setPendingSerinAction(result.action);
       setSerinStatus(result.status);
-      setMessages((current) => [
-        ...current,
-        {
-          id: `m-${Date.now()}-s`,
-          sender: "serin",
-          content: result.reply,
-          createdAt: new Date().toISOString(),
-          messageType: result.action ? "confirmation" : "text",
-          metadata: result.action ? { actionId: result.action.id, intent: result.action.intent } : undefined,
-        },
-      ]);
+      const serinMessage: SerinMessage = {
+        id: `m-${Date.now()}-s`,
+        sender: "serin",
+        content: result.reply,
+        createdAt: new Date().toISOString(),
+        messageType: result.action ? "confirmation" : "text",
+        metadata: result.action ? { actionId: result.action.id, intent: result.action.intent } : undefined,
+      };
+      setMessages((current) => [...current, serinMessage]);
+      void saveMessage({ conversationId, ...serinMessage });
       window.setTimeout(() => setSerinStatus("idle"), 420);
     } catch {
       setSerinStatus("error");
@@ -342,15 +356,15 @@ export function App() {
   }
 
   return (
-    <div className="mobile-app-shell">
-      <main className="mobile-app-main">
-        {activeView === "home" && (
-          <HomeScene
-            data={appData}
-            activeView={activeView}
+    <div className="app-shell">
+      <main className="app-main">
+        {activeView === "home" && <HomeScene data={appData} onNavigate={setActiveView} />}
+        {activeView === "castle" && (
+          <CastlePage
+            rooms={castleRooms.rooms}
+            castleState={castleState}
             onNavigate={setActiveView}
             onVisitRoom={castleRooms.visitRoom}
-            onCompleteQuest={completeQuest}
           />
         )}
         {activeView === "library" && (
@@ -361,7 +375,7 @@ export function App() {
           />
         )}
         {activeView === "garden" && (
-          <GardenPage serin={snapshot.serin} onBackToCastle={() => setActiveView("home")} />
+          <GardenPage serin={snapshot.serin} onBackToCastle={() => setActiveView("castle")} />
         )}
         {activeView === "quests" && (
           <QuestScreen
@@ -380,6 +394,7 @@ export function App() {
             onSelectDate={setSelectedDate}
             onCompleteEvent={(id) => setEvents((current) => completeEvent(current, id))}
             onCancelEvent={(id) => setEvents((current) => deleteEvent(current, id))}
+            onCreateEvent={createCalendarEvent}
           />
         )}
         {activeView === "serin" && (

@@ -1,7 +1,6 @@
 import type { PrincessProfile, SerinMessage, SerinProfile } from "../../../app/types";
 import { Badge } from "../../../components/design-system/Badge";
 import { SerinChatThread } from "./SerinChatThread";
-import { SerinConfirmationCard } from "./SerinConfirmationCard";
 import { SerinInputBar } from "./SerinInputBar";
 import { SerinMemoryPanel } from "./SerinMemoryPanel";
 import { SerinQuickActions } from "./SerinQuickActions";
@@ -54,14 +53,12 @@ export function SerinPage({
       </div>
 
       <div className="serin-main">
-        <SerinChatThread messages={messages} />
-        {pendingAction && (
-          <SerinConfirmationCard
-            action={pendingAction}
-            onConfirm={onConfirmAction}
-            onCancel={onCancelAction}
-          />
-        )}
+        <SerinChatThread
+          messages={messages}
+          pendingAction={pendingAction}
+          onConfirmAction={onConfirmAction}
+          onCancelAction={onCancelAction}
+        />
         <SerinQuickActions onAction={onSendMessage} />
         <SerinInputBar onSend={onSendMessage} onAttach={onAttach} />
       </div>

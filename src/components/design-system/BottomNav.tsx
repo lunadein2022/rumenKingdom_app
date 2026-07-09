@@ -1,10 +1,13 @@
 import type { ViewKey } from "../../app/types";
 
+// 기본 Nav: 로비 / Quest / 세린 / Calendar / Castle. Library는 핵심 검색·기록
+// 기능이라 Castle 내부 Fast Travel과 별도로 여기에도 둡니다.
 const navItems: Array<{ key: ViewKey; label: string; icon: string }> = [
-  { key: "home", label: "왕궁", icon: "🏰" },
+  { key: "home", label: "로비", icon: "🏠" },
   { key: "quests", label: "Quest", icon: "◆" },
   { key: "serin", label: "세린", icon: "✦" },
   { key: "calendar", label: "일정", icon: "□" },
+  { key: "castle", label: "Castle", icon: "🏰" },
   { key: "library", label: "도서관", icon: "📚" },
 ];
 

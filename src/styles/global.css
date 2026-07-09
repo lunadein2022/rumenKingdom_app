@@ -46,9 +46,12 @@ p {
   line-height: 1.55;
 }
 
-.mobile-app-shell {
+/* Princess OS는 desktop-first responsive web app입니다. 기본값은 1280~1440px대
+   데스크톱 웹사이트 구조이고, 좁은 화면(모바일)에서만 아래 @media (max-width)
+   구간에서 1열 전체폭으로 접힙니다. */
+.app-shell {
   position: relative;
-  width: min(100%, 430px);
+  width: min(92%, 1360px);
   min-height: 100dvh;
   margin: 0 auto;
   overflow-x: hidden;
@@ -56,11 +59,25 @@ p {
     linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(241, 244, 255, 0.8)),
     var(--bg-soft);
   box-shadow: 0 0 0 1px rgba(111, 143, 242, 0.08), var(--shadow-large);
+  border-radius: 34px;
 }
 
-.mobile-app-main {
+.app-main {
   min-height: 100dvh;
-  padding: 12px 12px calc(92px + env(safe-area-inset-bottom));
+  padding: 28px 32px calc(104px + env(safe-area-inset-bottom));
+}
+
+/* 모바일: 데스크톱 프레임을 접어 전체폭 1열로 표시합니다. */
+@media (max-width: 760px) {
+  .app-shell {
+    width: 100%;
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .app-main {
+    padding: 12px 12px calc(92px + env(safe-area-inset-bottom));
+  }
 }
 
 .screen-stack {
@@ -98,9 +115,8 @@ p {
     padding: 24px 0;
   }
 
-  .mobile-app-shell {
+  .app-shell {
     min-height: calc(100dvh - 48px);
-    border-radius: 34px;
     overflow: hidden;
   }
 }
