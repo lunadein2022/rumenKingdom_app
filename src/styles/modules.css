@@ -1536,3 +1536,361 @@
   font-size: 13px;
   font-weight: 900;
 }
+
+/* Alpha place-based structure */
+.lobby-page {
+  min-height: calc(100dvh - 96px);
+  display: grid;
+  gap: 12px;
+}
+
+.lobby-scene {
+  position: relative;
+  min-height: min(620px, calc(100dvh - 128px));
+  overflow: hidden;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(16, 25, 54, 0.12), rgba(16, 25, 54, 0.58)),
+    url("/assets/palace-main.png") center / cover;
+  box-shadow: var(--shadow-floating);
+}
+
+.lobby-copy {
+  position: relative;
+  z-index: 3;
+  padding: 18px;
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(16, 25, 54, 0.48);
+}
+
+.lobby-copy span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.lobby-copy h1 {
+  max-width: 320px;
+  margin: 7px 0 6px;
+  font-size: 31px;
+}
+
+.lobby-copy p {
+  max-width: 310px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.lobby-characters {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 2;
+  height: 68%;
+}
+
+.lobby-princess,
+.lobby-serin {
+  position: absolute;
+  bottom: -6px;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 18px 28px rgba(16, 25, 54, 0.28));
+}
+
+.lobby-princess {
+  left: 4px;
+  width: min(62%, 270px);
+  max-height: 100%;
+}
+
+.lobby-serin {
+  right: -6px;
+  width: min(47%, 205px);
+  max-height: 90%;
+}
+
+.lobby-briefing {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lobby-briefing article {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(16px);
+}
+
+.lobby-briefing strong,
+.lobby-briefing span {
+  display: block;
+}
+
+.lobby-briefing strong {
+  color: var(--royal-900);
+  font-size: 17px;
+}
+
+.lobby-briefing span {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.castle-domain-page {
+  min-height: calc(100dvh - 96px);
+  align-content: start;
+}
+
+.castle-top-bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(18px);
+}
+
+.castle-top-bar h1 {
+  margin: 5px 0 2px;
+  color: var(--royal-900);
+  font-size: 24px;
+}
+
+.castle-top-bar p,
+.castle-top-bar strong {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.castle-room-scene {
+  position: relative;
+  min-height: min(590px, calc(100dvh - 252px));
+  overflow: hidden;
+  border-radius: 30px;
+  box-shadow: var(--shadow-floating);
+}
+
+.castle-room-scene-copy {
+  position: absolute;
+  inset: auto 12px 12px;
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px);
+}
+
+.castle-room-scene-copy h2 {
+  margin: 0;
+  color: var(--royal-900);
+  font-size: 24px;
+}
+
+.castle-room-scene-copy p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.library-page {
+  min-height: calc(100dvh - 96px);
+  align-content: start;
+  padding: 14px;
+  overflow: hidden;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(16, 25, 54, 0.58), rgba(16, 25, 54, 0.26)),
+    url("/assets/library.png") center / cover;
+  box-shadow: var(--shadow-floating);
+}
+
+.library-hero {
+  min-height: auto;
+  padding: 4px 2px 8px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.library-section {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(18px);
+}
+
+.garden-page {
+  min-height: calc(100dvh - 96px);
+}
+
+.garden-scene {
+  min-height: min(690px, calc(100dvh - 150px));
+}
+
+.throne-growth-links {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.throne-growth-links button {
+  min-height: 44px;
+  border: 1px solid rgba(216, 183, 106, 0.34);
+  border-radius: var(--radius-lg);
+  color: #6f5115;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-small);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+@media (min-width: 768px) {
+  .lobby-page,
+  .castle-domain-page,
+  .calendar-domain-page,
+  .quest-domain-screen,
+  .serin-domain-page,
+  .library-page,
+  .garden-page,
+  .princess-domain-page,
+  .progress-domain-page {
+    min-height: calc(100dvh - 104px);
+  }
+
+  .lobby-page {
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+    align-items: stretch;
+  }
+
+  .lobby-scene {
+    min-height: calc(100dvh - 104px);
+  }
+
+  .lobby-briefing,
+  .lobby-actions {
+    position: static;
+    align-self: end;
+  }
+
+  .lobby-briefing {
+    grid-template-columns: 1fr;
+  }
+
+  .castle-room-scene {
+    min-height: calc(100dvh - 278px);
+  }
+
+  .library-page {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+  }
+
+  .library-hero {
+    grid-column: 1 / -1;
+  }
+
+  .serin-domain-page {
+    grid-template-columns: 360px minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr auto;
+    align-items: stretch;
+  }
+
+  .serin-header,
+  .serin-status-orb,
+  .quick-actions,
+  .serin-memory-panel,
+  .serin-confirmation-card {
+    grid-column: 1;
+  }
+
+  .serin-thread,
+  .serin-input-bar {
+    grid-column: 2;
+  }
+
+  .serin-thread {
+    grid-row: 1 / 4;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .serin-input-bar {
+    position: static;
+    grid-row: 4;
+  }
+
+  .calendar-domain-page {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    align-items: start;
+  }
+
+  .calendar-domain-hero,
+  .calendar-view-tabs {
+    grid-column: 1 / -1;
+  }
+
+  .quest-list.rpg,
+  .module-grid,
+  .growth-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .castle-room-scene {
+    min-height: calc(100dvh - 236px);
+  }
+
+  .castle-room-scene-copy {
+    max-width: 520px;
+  }
+
+  .lobby-princess {
+    width: min(46%, 420px);
+  }
+
+  .lobby-serin {
+    width: min(34%, 300px);
+  }
+
+  .progress-domain-page,
+  .princess-domain-page {
+    grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
+    align-items: start;
+  }
+
+  .progress-hero,
+  .princess-domain-hero {
+    min-height: 520px;
+  }
+}
+
+@media (max-width: 767px) {
+  .throne-growth-links {
+    grid-template-columns: 1fr;
+  }
+}

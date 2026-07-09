@@ -12,7 +12,7 @@ import type {
   UserProgress,
   ViewKey,
 } from "./types";
-import { BottomNav } from "../components/design-system/BottomNav";
+import { BottomNav, primaryNavItems } from "../components/design-system/BottomNav";
 import { HomeScene } from "../components/home/HomeScene";
 import { ProgressScreen } from "../components/modules/ProgressScreen";
 import { QuestScreen } from "../components/modules/QuestScreen";
@@ -28,15 +28,15 @@ import {
   createEvent,
   deleteEvent,
 } from "../features/calendar/services/calendarService";
-import { CastlePage } from "../features/castle/pages/CastlePage";
 import { useCastle } from "../features/castle/hooks/useCastle";
 import { useCastleRooms } from "../features/castle/hooks/useCastleRooms";
+import { CastlePage } from "../features/castle/pages/CastlePage";
 import { GardenPage } from "../features/garden/pages/GardenPage";
 import { LibraryPage } from "../features/library/pages/LibraryPage";
 import { PrincessPage } from "../features/princess/pages/PrincessPage";
 import { cancelAction, confirmAction } from "../features/serin/services/serinActionExecutor";
-import { sendMessage as sendSerinDomainMessage } from "../features/serin/services/serinService";
 import { saveMemory } from "../features/serin/services/serinMemoryService";
+import { sendMessage as sendSerinDomainMessage } from "../features/serin/services/serinService";
 
 function buildProgress(quests: Quest[], base: UserProgress): UserProgress {
   return {
@@ -52,7 +52,7 @@ function createQuestFromSerinAction(action: SerinAction): Quest {
     id: `q-serin-${Date.now()}`,
     type: payload.type ?? "side",
     title: payload.title ?? action.title,
-    description: payload.description ?? "세린이 대화에서 정리한 Quest입니다.",
+    description: payload.description ?? "세린의 대화에서 정리한 Quest입니다.",
     status: "pending",
     category: payload.category ?? "growth",
     priority: payload.priority ?? "medium",
@@ -69,11 +69,19 @@ const initialSerinMemories: SerinMemory[] = [
   {
     id: "memory-001",
     memoryType: "routine",
-    content: "공주님은 오전에 중요한 업무를 먼저 끝낼 때 집중도가 높습니다.",
+    content: "공주님은 오전에 중요한 업무를 먼저 배치할 때 집중도가 높습니다.",
     importance: "high",
     source: "system",
     createdAt: "2026-07-09T09:00:00+09:00",
   },
+];
+
+const desktopNavItems = [
+  ...primaryNavItems,
+  { key: "library" as ViewKey, label: "도서관", icon: "▤" },
+  { key: "garden" as ViewKey, label: "정원", icon: "✧" },
+  { key: "progress" as ViewKey, label: "성장", icon: "▲" },
+  { key: "profile" as ViewKey, label: "공주", icon: "♛" },
 ];
 
 export function App() {
@@ -89,9 +97,10 @@ export function App() {
   const [pendingSerinAction, setPendingSerinAction] = useState<SerinAction | null>(null);
   const [serinMemories, setSerinMemories] = useState<SerinMemory[]>(initialSerinMemories);
   const [selectedDate, setSelectedDate] = useState("2026-07-09");
-  const { castleState, addCastleExp } = useCastle();
-  const castleRooms = useCastleRooms(snapshot.rooms);
+
   const progress = useMemo(() => buildProgress(quests, progressBase), [quests, progressBase]);
+  const { castleState, addCastleExp } = useCastle();
+  const castleRooms = useCastleRooms(snapshot.rooms, progress.level);
   const appData = { ...snapshot, quests, questHistory, events, serinMessages: messages, progress, rooms: castleRooms.rooms };
 
   function completeQuest(id: string) {
@@ -140,7 +149,7 @@ export function App() {
     ]);
 
     try {
-      const result = await sendSerinDomainMessage({ conversationId: "mock-serin-conversation", content });
+      const result = await sendSerinDomainMessage({ conversationId: "serin-conversation-default", content });
       if (content.includes("기억")) {
         setSerinMemories((current) =>
           saveMemory(current, {
@@ -173,7 +182,7 @@ export function App() {
         {
           id: `m-${Date.now()}-error`,
           sender: "serin",
-          content: "죄송해요, 공주님. 지금은 처리하지 못했습니다. 잠시 후 다시 시도해볼게요.",
+          content: "죄송합니다, 공주님. 지금은 요청을 처리하지 못했습니다. 잠시 후 다시 시도해볼게요.",
           createdAt: new Date().toISOString(),
           messageType: "error",
         },
@@ -218,7 +227,7 @@ export function App() {
       {
         id: `m-${Date.now()}-cancelled`,
         sender: "serin",
-        content: "알겠습니다, 공주님. 이 요청은 실행하지 않겠습니다.",
+        content: "알겠습니다. 공주님의 이 요청은 실행하지 않겠습니다.",
         createdAt: new Date().toISOString(),
         messageType: "system_notice",
       },
@@ -228,9 +237,9 @@ export function App() {
   function handleAttach(type: "image" | "document" | "audio") {
     const message =
       type === "image"
-        ? "사진 첨부를 준비했습니다. 명함이면 연락처 추출로 이어갈 수 있어요."
+        ? "사진 첨부를 준비했습니다. 명함이라면 연락처 추출로 이어갈 수 있어요."
         : type === "document"
-          ? "파일 첨부를 준비했습니다. 문서 요약은 Library Domain과 연결 예정입니다."
+          ? "파일 첨부를 준비했습니다. 문서 요약은 Library Domain과 연결될 예정입니다."
           : "음성 입력을 준비했습니다. 실제 음성 인식 연결 지점은 TODO로 남겨두었습니다.";
     setMessages((current) => [
       ...current,
@@ -239,8 +248,30 @@ export function App() {
   }
 
   return (
-    <div className="mobile-app-shell">
-      <main className="mobile-app-main">
+    <div className="personal-os-shell">
+      <header className="personal-os-topbar">
+        <div>
+          <span>Princess OS Alpha</span>
+          <strong>루멘 왕국 개인 운영체제</strong>
+        </div>
+        <small>Desktop First · Responsive · PWA Ready</small>
+      </header>
+
+      <aside className="personal-os-sidebar" aria-label="Princess OS desktop navigation">
+        {desktopNavItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={activeView === item.key ? "active" : ""}
+            onClick={() => setActiveView(item.key)}
+          >
+            <span>{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </aside>
+
+      <main className="personal-os-main">
         {activeView === "home" && <HomeScene data={appData} activeView={activeView} onNavigate={setActiveView} />}
         {activeView === "castle" && (
           <CastlePage
@@ -252,12 +283,7 @@ export function App() {
           />
         )}
         {activeView === "library" && (
-          <LibraryPage
-            quests={quests}
-            history={questHistory}
-            events={events}
-            messages={messages}
-          />
+          <LibraryPage quests={quests} history={questHistory} events={events} messages={messages} />
         )}
         {activeView === "garden" && (
           <GardenPage serin={snapshot.serin} onBackToCastle={() => setActiveView("castle")} />

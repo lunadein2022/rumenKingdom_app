@@ -1,5 +1,5 @@
 import type { AppMockData } from "../app/types";
-import { mockCastleRooms } from "./mockCastle";
+import { getMockCastleRooms } from "./mockCastle";
 import { mockCalendarEvents } from "./mockHome";
 import { mockAchievements, mockInventory } from "./mockInventory";
 import { mockPrincess, mockTitles } from "./mockPrincess";
@@ -24,7 +24,7 @@ export function getPrincessOsSnapshot(): AppMockData {
     questHistory: mockQuestHistory,
     events: mockCalendarEvents,
     serinMessages: mockSerinMessages,
-    rooms: mockCastleRooms,
+    rooms: getMockCastleRooms(progress.level),
     achievements: mockAchievements,
     inventory: mockInventory,
   };

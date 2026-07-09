@@ -2,7 +2,7 @@
 
 ## Sprint Scope
 
-This sprint reorganized Update 013-031 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, but replaces explanation-card placeholders with usable Home, Castle, Quest, Calendar, Serin, and Progress interactions.
+This sprint reorganized Update 013-033 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, removes preview/showcase UI, and restores Princess OS as a place-based Alpha app rather than a dashboard.
 
 ## Final Folder Structure
 
@@ -87,20 +87,18 @@ Design system:
 
 Home:
 
-- `PalaceRoomSection.tsx`
 - `HomeScene.tsx`
 
-Modules:
+Active feature pages:
 
-- `PrincessCharacter.tsx`
-- `QuestScreen.tsx`
-- `SerinScreen.tsx`
-- `ProgressScreen.tsx`
-- `QuestPreview.tsx`
-- `ProgressSummary.tsx`
-- `CastlePreview.tsx`
-- `AchievementPreview.tsx`
-- `InventoryPreview.tsx`
+- `features/calendar/pages/CalendarPage.tsx`
+- `features/castle/pages/CastlePage.tsx`
+- `features/garden/pages/GardenPage.tsx`
+- `features/library/pages/LibraryPage.tsx`
+- `features/princess/pages/PrincessPage.tsx`
+- `features/serin/components/SerinPage.tsx`
+- `components/modules/QuestScreen.tsx`
+- `components/modules/ProgressScreen.tsx`
 
 ## MockData Structure
 
@@ -172,6 +170,23 @@ Princess now starts moving from a weak profile page into `src/features/princess/
 - Supabase-ready `princess_profiles`, `princess_stats`, `princess_equipment`, and `princess_diary`
 - Garden is a non-productivity rest scene with garden image and princess presence
 - Kingdom Library is the archive for completed quests, past events, Serin records, diary, and contacts
+
+## Alpha Structure Cleanup
+
+- Removed unused preview/showcase components from the active source tree.
+- Home is now a palace lobby scene with only briefing, today's schedule count, today's quest count, level, princess, and Serin.
+- Castle is now a room movement hub: fast travel plus arrow carousel, each room shown as a full scene.
+- Kingdom Library is an independent archive page instead of routing to Serin.
+- Garden is an independent rest page with full-screen garden background, princess presence, and Serin healing copy only.
+- Supabase policies are dropped before creation so `schema.sql` can be rerun without duplicate-policy errors.
+
+## Regression Fixes
+
+- App Shell is now Desktop First: 1440px-oriented responsive Personal OS layout with desktop sidebar, tablet collapse, and mobile BottomNav.
+- Castle room unlock state is derived from user level through `deriveRoomUnlockState()` and refreshed through `checkRoomUnlocks()`.
+- The Throne Room is accessible in Alpha at the current mock level and links to Growth, Achievement/Reward, and Princess Character surfaces.
+- `netlify/functions/serin-chat.js` is restored and `serinService.sendMessage()` calls `/.netlify/functions/serin-chat` first.
+- Mock Serin replies are now fallback-only through `fallbackSerinResponse()` when the API call fails.
 
 ## Time Navigation Principle
 

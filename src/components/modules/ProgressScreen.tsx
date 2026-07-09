@@ -10,13 +10,13 @@ interface ProgressScreenProps {
 
 export function ProgressScreen({ data, onOpenProfile }: ProgressScreenProps) {
   return (
-    <section className="screen-stack">
+    <section className="screen-stack progress-domain-page">
       <header className="progress-hero">
         <img src="/assets/princess-full-transparent.png" alt="공주 전신" />
         <div>
           <Badge tone="gold">{data.princess.activeTitle}</Badge>
           <h1>Princess Growth</h1>
-          <p>퀘스트, 업적, 보상은 모두 공주의 성장으로 연결됩니다.</p>
+          <p>Quest, 업적, 보상은 모두 공주의 성장으로 연결됩니다.</p>
         </div>
       </header>
 
@@ -29,7 +29,7 @@ export function ProgressScreen({ data, onOpenProfile }: ProgressScreenProps) {
       </section>
 
       <section className="growth-grid">
-        <article><strong>{data.progress.completedQuests}</strong><span>완료 퀘스트</span></article>
+        <article><strong>{data.progress.completedQuests}</strong><span>완료 Quest</span></article>
         <article><strong>{data.progress.pendingRewards}</strong><span>대기 보상</span></article>
         <article><strong>{data.progress.streakDays}일</strong><span>연속 수행</span></article>
         <article><strong>{data.inventory.length}</strong><span>아이템</span></article>

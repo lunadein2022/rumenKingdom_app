@@ -1,9 +1,6 @@
 import type { AppMockData, ViewKey } from "../../app/types";
 import { getEventsByDay, getUpcomingEvents } from "../../features/calendar/services/calendarService";
-import { Badge } from "../design-system/Badge";
 import { Button } from "../design-system/Button";
-import { ProgressBar } from "../design-system/ProgressBar";
-import { PalaceRoomSection } from "./PalaceRoomSection";
 
 interface HomeSceneProps {
   data: AppMockData;
@@ -13,72 +10,46 @@ interface HomeSceneProps {
 
 export function HomeScene({ data, onNavigate }: HomeSceneProps) {
   const todayEvents = getEventsByDay(data.events, "2026-07-09");
+  const todayQuests = data.quests.filter((quest) => quest.dueDate === "2026-07-09" && quest.status !== "completed");
   const nextEvent = getUpcomingEvents(data.events)[0];
-  const serinLine = nextEvent
-    ? `세린이 ${nextEvent.startAt.slice(11, 16)} ${nextEvent.title} 일정을 준비하고 있습니다.`
-    : data.serin.greetingText;
+  const briefing = nextEvent
+    ? `${nextEvent.startAt.slice(11, 16)} ${nextEvent.title} 일정이 있습니다.`
+    : "오늘은 세린과 함께 조용히 하루를 정리하면 좋겠습니다.";
 
   return (
-    <section className="home-screen">
-      <header className="home-hero-mobile">
-        <div className="home-hero-bg" />
-        <div className="home-copy">
-          <div className="home-kicker">
-            <span>좋은 아침입니다</span>
-            <span>루멘 왕성 · 로비</span>
-          </div>
+    <section className="lobby-page">
+      <div className="lobby-scene">
+        <div className="lobby-copy">
+          <span>루멘 왕성 · 로비</span>
           <h1>공주님, 오늘의 왕궁이 열렸습니다.</h1>
-          <p>{serinLine}</p>
+          <p>{briefing}</p>
         </div>
 
-        <div className="home-character-row">
-          <div className="home-character princess">
-            <span>공주 · 주인공</span>
-            <img src="/assets/princess-full-transparent.png" alt="공주 전신" />
-          </div>
-          <div className="home-character serin">
-            <span>세린 · AI 보좌관</span>
-            <img src="/assets/serin-full-transparent.png" alt="세린 전신" />
-          </div>
+        <div className="lobby-characters">
+          <img className="lobby-princess" src="/assets/princess-full-transparent.png" alt="공주 전신" />
+          <img className="lobby-serin" src="/assets/serin-full-transparent.png" alt="세린 전신" />
         </div>
-      </header>
+      </div>
 
-      <section className="home-stat-grid" aria-label="오늘 요약">
-        <button type="button" onClick={() => onNavigate("quests")}>
-          <Badge tone="royal">Quest</Badge>
-          <strong>{data.progress.todayCompletedQuests}/{data.progress.todayTotalQuests}</strong>
-          <span>오늘 Quest</span>
-        </button>
-        <button type="button" onClick={() => onNavigate("calendar")}>
-          <Badge tone="royal">Calendar</Badge>
+      <section className="lobby-briefing">
+        <article>
           <strong>{todayEvents.length}</strong>
           <span>오늘 일정</span>
-        </button>
-        <button type="button" onClick={() => onNavigate("castle")}>
-          <Badge tone="gold">Castle</Badge>
-          <strong>{data.rooms.filter((room) => room.isUnlocked).length}</strong>
-          <span>열린 방</span>
-        </button>
+        </article>
+        <article>
+          <strong>{todayQuests.length}</strong>
+          <span>진행 Quest</span>
+        </article>
+        <article>
+          <strong>Lv.{data.progress.level}</strong>
+          <span>공주 성장</span>
+        </article>
       </section>
 
-      <section className="home-progress-card">
-        <div>
-          <strong>Princess EXP</strong>
-          <span>{data.progress.currentExp.toLocaleString()} / {data.progress.requiredExp.toLocaleString()}</span>
-        </div>
-        <ProgressBar value={data.progress.expRate} label="Princess EXP" />
+      <section className="lobby-actions">
+        <Button onClick={() => onNavigate("castle")}>왕성 이동</Button>
+        <Button variant="glass" onClick={() => onNavigate("serin")}>세린 호출</Button>
       </section>
-
-      <section className="home-action-row">
-        <Button onClick={() => onNavigate("castle")}>왕성 탐험</Button>
-        <Button variant="glass" onClick={() => onNavigate("serin")}>세린에게 묻기</Button>
-      </section>
-
-      <section className="mobile-section-heading">
-        <h2>로비 주변</h2>
-        <p>Home은 로비입니다. 전체 지도와 방 이동은 Castle Domain에서 관리합니다.</p>
-      </section>
-      <PalaceRoomSection rooms={data.rooms} onNavigate={onNavigate} />
     </section>
   );
 }

@@ -4,7 +4,7 @@ import { supabaseTables } from "./schemaMap";
 export async function listCastleRooms(userId: string) {
   const supabase = requireSupabase();
 
-  // TODO: replace mockCastleRooms and PalaceRoomSection stats with castle_rooms data.
+  // TODO: replace mockCastleRooms and room scene stats with castle_rooms data.
   return supabase
     .from(supabaseTables.castleRooms)
     .select("*")

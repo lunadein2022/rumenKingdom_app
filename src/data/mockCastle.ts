@@ -1,6 +1,6 @@
 import type { CastleRoom } from "../features/castle/types/castle.types";
 
-export const mockCastleRooms: CastleRoom[] = [
+export const baseCastleRooms: CastleRoom[] = [
   {
     key: "lobby",
     name: "로비",
@@ -25,25 +25,25 @@ export const mockCastleRooms: CastleRoom[] = [
     description: "공주의 레벨, EXP, 칭호, 업적, 보상을 확인하는 성장 시스템의 중심입니다.",
     image: "/assets/throne.png",
     route: "progress",
-    unlockLevel: 10,
+    unlockLevel: 7,
     roomLevel: 1,
     isUnlocked: false,
     isDiscovered: true,
     visitedCount: 2,
-    stats: ["Lv.10", "Rewards", "Titles"],
+    stats: ["Growth", "Rewards", "Titles"],
     decorations: ["royal_banner"],
   },
   {
     key: "library",
     name: "왕국 도서관",
     subtitle: "Library",
-    role: "기록, 완료 Quest, Diary, 연락처 보관",
-    description: "완료된 Quest, 지난 일정, 다이어리, 연락처, AI 요약이 보관되는 기억의 공간입니다.",
+    role: "기록, 완료 Quest, Diary, 인연록 보관",
+    description: "완료된 Quest, 지난 일정, 다이어리, 인연록, AI 요약을 보관하는 기억의 공간입니다.",
     image: "/assets/library.png",
     route: "library",
     unlockLevel: 4,
     roomLevel: 2,
-    isUnlocked: true,
+    isUnlocked: false,
     isDiscovered: true,
     visitedCount: 12,
     stats: ["History", "Diary", "Search"],
@@ -53,13 +53,13 @@ export const mockCastleRooms: CastleRoom[] = [
     key: "office",
     name: "집무실",
     subtitle: "Office",
-    role: "Calendar, 회의, 프로젝트, 업무 Quest",
-    description: "회의와 프로젝트, 메인 Quest를 다루는 생산성 공간입니다.",
+    role: "Calendar, 프로젝트, 메인 Quest",
+    description: "회의, 프로젝트, 메인 Quest를 다루는 생산성 중심 공간입니다.",
     image: "/assets/office.png",
     route: "quests",
     unlockLevel: 6,
     roomLevel: 2,
-    isUnlocked: true,
+    isUnlocked: false,
     isDiscovered: true,
     visitedCount: 17,
     stats: ["Meetings", "Projects", "Focus"],
@@ -70,12 +70,12 @@ export const mockCastleRooms: CastleRoom[] = [
     name: "왕궁 정원",
     subtitle: "Garden",
     role: "휴식과 감정 회복",
-    description: "바람과 꽃, 세린의 부드러운 멘트가 있는 비생산 공간입니다.",
+    description: "바람과 꽃, 세린의 부드러운 멘트가 있는 비생산성 휴식 공간입니다.",
     image: "/assets/garden.png",
     route: "garden",
     unlockLevel: 2,
     roomLevel: 4,
-    isUnlocked: true,
+    isUnlocked: false,
     isDiscovered: true,
     visitedCount: 21,
     stats: ["Rest", "Mood", "BGM"],
@@ -86,7 +86,7 @@ export const mockCastleRooms: CastleRoom[] = [
     name: "공주의 침실",
     subtitle: "Bedroom",
     role: "Diary, 회고, 내일 목표",
-    description: "오늘 일정, 완료 Quest, 세린과의 대화를 모아 다이어리 초안을 만드는 공간입니다.",
+    description: "오늘의 일정, 완료 Quest, 세린과의 대화를 모아 다이어리 초안을 만드는 공간입니다.",
     image: "/assets/bedroom.png",
     route: "calendar",
     unlockLevel: 8,
@@ -99,7 +99,7 @@ export const mockCastleRooms: CastleRoom[] = [
   },
   {
     key: "tower",
-    name: "동쪽 탑",
+    name: "서쪽 탑",
     subtitle: "Tower",
     role: "Special Event, Hidden Quest, Story",
     description: "숨겨진 이야기와 높은 레벨의 특별 이벤트가 열리는 공간입니다.",
@@ -130,3 +130,17 @@ export const mockCastleRooms: CastleRoom[] = [
     decorations: [],
   },
 ];
+
+export function deriveRoomUnlockState(room: CastleRoom, userLevel: number): CastleRoom {
+  return {
+    ...room,
+    isUnlocked: userLevel >= room.unlockLevel,
+    isDiscovered: room.isDiscovered || userLevel >= Math.max(1, room.unlockLevel - 1),
+  };
+}
+
+export function getMockCastleRooms(userLevel: number) {
+  return baseCastleRooms.map((room) => deriveRoomUnlockState(room, userLevel));
+}
+
+export const mockCastleRooms = getMockCastleRooms(7);

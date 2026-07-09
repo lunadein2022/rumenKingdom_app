@@ -42,7 +42,7 @@ export function SerinPage({
         <div>
           <Badge tone="gold">{princess.activeTitle}</Badge>
           <h1>세린과 대화</h1>
-          <p>{serin.name}은 공주님의 하루를 실제 기능으로 연결하는 AI 메이드입니다.</p>
+          <p>{serin.name}은 공주님의 하루를 실제 기능과 연결하는 AI 메이드입니다.</p>
         </div>
         <div className="chat-avatar serin">
           <img src="/assets/serin-bust-transparent.png" alt="세린" />

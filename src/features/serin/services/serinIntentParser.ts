@@ -30,7 +30,7 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
       entities: {
         contact: {
           name: "새 연락처",
-          memo: "첨부 이미지 또는 대화에서 추출할 연락처입니다.",
+          memo: "첨부 이미지 또는 대화에서 추출한 연락처입니다.",
           source: "serin",
         },
       },
@@ -75,7 +75,7 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
       entities: {
         diary: {
           title: "오늘의 공주 다이어리",
-          content: "오늘 일정과 완료한 Quest를 바탕으로 다이어리 초안을 준비합니다.",
+          content: "오늘 일정과 완료 Quest를 바탕으로 다이어리 초안을 준비합니다.",
         },
       },
       needsConfirmation: true,
@@ -83,10 +83,14 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
   }
 
   if (hasAny(message, ["보상", "칭호", "레벨"])) {
+    return { intent: "reward.claim", confidence: 0.7, entities: {}, needsConfirmation: false };
+  }
+
+  if (hasAny(message, ["찾아줘", "기록", "지난번", "도서관"])) {
     return {
-      intent: "reward.claim",
-      confidence: 0.7,
-      entities: {},
+      intent: "library.search",
+      confidence: 0.66,
+      entities: { query: message },
       needsConfirmation: false,
     };
   }

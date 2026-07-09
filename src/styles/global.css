@@ -5,6 +5,7 @@
 html,
 body,
 #root {
+  min-width: 320px;
   min-height: 100%;
 }
 
@@ -14,7 +15,8 @@ body {
   color: var(--text-primary);
   font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   background:
-    radial-gradient(circle at 18% 0%, rgba(111, 143, 242, 0.22), transparent 30%),
+    radial-gradient(circle at 12% 0%, rgba(111, 143, 242, 0.2), transparent 32%),
+    radial-gradient(circle at 88% 8%, rgba(216, 183, 106, 0.12), transparent 26%),
     linear-gradient(180deg, #f7f8fd, #e8edff);
 }
 
@@ -46,21 +48,102 @@ p {
   line-height: 1.55;
 }
 
-.mobile-app-shell {
+.personal-os-shell {
   position: relative;
-  width: min(100%, 430px);
+  display: grid;
+  grid-template-areas:
+    "topbar topbar"
+    "sidebar main";
+  grid-template-columns: 236px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 18px;
+  width: 100%;
   min-height: 100dvh;
-  margin: 0 auto;
+  padding: 18px;
   overflow-x: hidden;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(241, 244, 255, 0.8)),
-    var(--bg-soft);
-  box-shadow: 0 0 0 1px rgba(111, 143, 242, 0.08), var(--shadow-large);
 }
 
-.mobile-app-main {
-  min-height: 100dvh;
-  padding: 12px 12px calc(92px + env(safe-area-inset-bottom));
+.personal-os-topbar {
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 68px;
+  padding: 14px 18px;
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(22px);
+}
+
+.personal-os-topbar span,
+.personal-os-topbar small {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.personal-os-topbar strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--royal-900);
+  font-size: 20px;
+}
+
+.personal-os-sidebar {
+  position: sticky;
+  top: 104px;
+  grid-area: sidebar;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  height: calc(100dvh - 122px);
+  padding: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(22px);
+}
+
+.personal-os-sidebar button {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: center;
+  min-height: 46px;
+  border: 0;
+  border-radius: 18px;
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: left;
+}
+
+.personal-os-sidebar button span:first-child {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 14px;
+  background: rgba(65, 105, 225, 0.08);
+}
+
+.personal-os-sidebar button.active {
+  color: var(--royal-900);
+  background: rgba(65, 105, 225, 0.12);
+}
+
+.personal-os-main {
+  grid-area: main;
+  width: 100%;
+  max-width: 1440px;
+  min-width: 0;
+  min-height: calc(100dvh - 104px);
+  margin: 0 auto;
 }
 
 .screen-stack {
@@ -70,9 +153,9 @@ p {
 
 .screen-header {
   padding: 18px;
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   background: var(--glass-surface);
-  border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-small);
   backdrop-filter: blur(20px);
 }
@@ -93,14 +176,42 @@ p {
   font-size: 13px;
 }
 
-@media (min-width: 760px) {
-  body {
-    padding: 24px 0;
+@media (max-width: 1279px) {
+  .personal-os-shell {
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px;
   }
 
-  .mobile-app-shell {
-    min-height: calc(100dvh - 48px);
-    border-radius: 34px;
-    overflow: hidden;
+  .personal-os-sidebar {
+    top: 96px;
+    height: calc(100dvh - 110px);
+  }
+
+  .personal-os-sidebar button {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .personal-os-sidebar button span:last-child {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 767px) {
+  .personal-os-shell {
+    display: block;
+    min-height: 100dvh;
+    padding: 10px 10px calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .personal-os-topbar,
+  .personal-os-sidebar {
+    display: none;
+  }
+
+  .personal-os-main {
+    min-height: 100dvh;
   }
 }

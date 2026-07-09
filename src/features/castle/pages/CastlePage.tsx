@@ -1,9 +1,6 @@
 import { useState } from "react";
-import { Badge } from "../../../components/design-system/Badge";
 import type { ViewKey } from "../../../app/types";
 import { CastleCarousel } from "../components/CastleCarousel";
-import { CastleProgressCard } from "../components/CastleProgressCard";
-import { RoomUpgradeCard } from "../components/RoomUpgradeCard";
 import type { CastleRoom, CastleRoomKey, CastleState } from "../types/castle.types";
 
 interface CastlePageProps {
@@ -14,7 +11,7 @@ interface CastlePageProps {
   onUpgradeRoom: (key: CastleRoomKey) => void;
 }
 
-export function CastlePage({ rooms, state, onNavigate, onVisitRoom, onUpgradeRoom }: CastlePageProps) {
+export function CastlePage({ rooms, state, onNavigate, onVisitRoom }: CastlePageProps) {
   const [activeRoomKey, setActiveRoomKey] = useState<CastleRoomKey>("lobby");
   const activeRoom = rooms.find((room) => room.key === activeRoomKey) ?? rooms[0];
 
@@ -24,11 +21,13 @@ export function CastlePage({ rooms, state, onNavigate, onVisitRoom, onUpgradeRoo
   }
 
   return (
-    <section className="castle-domain-page">
-      <header className="castle-hero">
-        <Badge tone="gold">Castle Domain</Badge>
-        <h1>루멘 왕성</h1>
-        <p>왕성은 메뉴가 아니라 Princess OS의 지도입니다. 방을 선택해 기능이 있는 장소로 이동하세요.</p>
+    <section className="castle-domain-page alpha">
+      <header className="castle-top-bar">
+        <div>
+          <span>Castle Lv.{state.castleLevel}</span>
+          <strong>루멘 왕성</strong>
+        </div>
+        <small>{state.castleExp}/{state.requiredExp} EXP</small>
       </header>
 
       <nav className="castle-fast-travel" aria-label="Castle fast travel">
@@ -37,7 +36,6 @@ export function CastlePage({ rooms, state, onNavigate, onVisitRoom, onUpgradeRoo
             key={room.key}
             type="button"
             className={room.key === activeRoomKey ? "active" : ""}
-            disabled={!room.isUnlocked}
             onClick={() => setActiveRoomKey(room.key)}
           >
             {room.name}
@@ -45,14 +43,20 @@ export function CastlePage({ rooms, state, onNavigate, onVisitRoom, onUpgradeRoo
         ))}
       </nav>
 
-      <CastleProgressCard state={state} />
       <CastleCarousel
         rooms={rooms}
-        activeRoomKey={activeRoomKey}
+        activeRoomKey={activeRoom.key}
         onSelectRoom={setActiveRoomKey}
         onEnterRoom={enterRoom}
       />
-      <RoomUpgradeCard room={activeRoom} onUpgrade={() => onUpgradeRoom(activeRoom.key)} />
+
+      {activeRoom.key === "throne" && (
+        <section className="throne-growth-links" aria-label="Throne growth shortcuts">
+          <button type="button" onClick={() => onNavigate("progress")}>성장 현황</button>
+          <button type="button" onClick={() => onNavigate("progress")}>업적 / 보상</button>
+          <button type="button" onClick={() => onNavigate("profile")}>공주 캐릭터</button>
+        </section>
+      )}
     </section>
   );
 }

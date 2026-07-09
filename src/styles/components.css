@@ -115,8 +115,9 @@
   bottom: 0;
   z-index: 40;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   width: min(100%, 430px);
+  max-width: 430px;
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   border-top: 1px solid rgba(111, 143, 242, 0.16);
   background: rgba(255, 255, 255, 0.88);
@@ -125,10 +126,17 @@
   backdrop-filter: blur(24px);
 }
 
+@media (min-width: 768px) {
+  .bottom-nav {
+    display: none;
+  }
+}
+
 .bottom-nav button {
   display: grid;
   gap: 3px;
   justify-items: center;
+  min-width: 0;
   min-height: 54px;
   border: 0;
   border-radius: var(--radius-lg);
@@ -136,6 +144,13 @@
   background: transparent;
   font-size: 11px;
   font-weight: 800;
+}
+
+.bottom-nav button span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bottom-nav button span:first-child {
