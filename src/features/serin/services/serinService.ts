@@ -1,6 +1,6 @@
 import { executeIntent } from "./serinActionExecutor";
 import { parseIntent } from "./serinIntentParser";
-import type { SerinExecutionResult, SerinServiceMessageInput } from "../types/serin.types";
+import type { SerinExecutionResult, SerinIntent, SerinServiceMessageInput } from "../types/serin.types";
 
 export interface SerinHistoryItem {
   sender: "princess" | "serin";
@@ -22,34 +22,40 @@ export async function saveMessage(_message: unknown) {
   return true;
 }
 
-// 구조화된 액션(퀘스트/일정 생성 등)은 로컬 파서가 감지합니다. 확인 카드에 필요한
-// 정보(제목, 날짜, payload)는 여기서 결정론적으로 만들어야 버튼을 눌렀을 때 실제로
-// 무엇이 등록되는지 신뢰할 수 있습니다.
-function buildLocalResult(input: SerinServiceMessageInput): SerinExecutionResult {
-  const parsed = parseIntent(input.content, input.attachments);
+// 구조화된 액션(퀘스트/일정/프로젝트/다이어리/인연 등)은 로컬 파서가 감지합니다.
+// 확인 카드에 필요한 정보(제목, 날짜, payload)는 여기서 결정론적으로 만들어야
+// 버튼을 눌렀을 때 실제로 무엇이 등록되는지 신뢰할 수 있습니다.
+function buildLocalResult(input: SerinServiceMessageInput): { intent: SerinIntent; result: SerinExecutionResult } {
+  const parsed = parseIntent(input.content, input.attachments, input.mainQuestTitles ?? []);
   const action = parsed.needsConfirmation ? executeIntent(parsed) : null;
 
   if (parsed.intent === "memory.save") {
     return {
-      action: null,
-      reply: "기억해둘게요, 공주님. 다음부터 이 내용을 참고해서 챙기겠습니다.",
-      status: "speaking",
+      intent: parsed.intent,
+      result: {
+        action: null,
+        reply: "기억해둘게요, 공주님. 다음부터 이 내용을 참고해서 챙기겠습니다.",
+        status: "speaking",
+      },
+    };
+  }
+
+  if (parsed.intent === "library.search") {
+    return {
+      intent: parsed.intent,
+      result: {
+        action: null,
+        reply: "공주님, 그 기록은 왕국도서관에서 함께 확인해볼게요. 도서관으로 이동해서 검색해드릴까요?",
+        status: "speaking",
+      },
     };
   }
 
   if (action) {
-    return {
-      action,
-      reply: action.summary,
-      status: "speaking",
-    };
+    return { intent: parsed.intent, result: { action, reply: action.summary, status: "speaking" } };
   }
 
-  return {
-    action: null,
-    reply: pickFallbackReply(),
-    status: "speaking",
-  };
+  return { intent: parsed.intent, result: { action: null, reply: pickFallbackReply(), status: "speaking" } };
 }
 
 // Netlify AI 함수 호출이 실패했을 때만 쓰이는 마지막 대비용 문장입니다. 매번 같은
@@ -66,19 +72,20 @@ function pickFallbackReply() {
 }
 
 /**
- * 세린의 실제 대화 응답. 구조화된 액션(퀘스트/일정 생성 등)이 감지되면 그 확인 카드
- * 문구를 그대로 쓰고, 일반 대화일 때만 Netlify Function(/.netlify/functions/serin-chat)의
- * 실제 Claude 응답을 사용합니다. 함수 호출이 실패했을 때만 로컬 mock 문장으로 대체합니다.
+ * 세린의 실제 대화 응답. 구조화된 액션(퀘스트/일정/프로젝트/다이어리/인연 등)이
+ * 감지되면 그 확인 카드 문구를 그대로 쓰고, 정말 순수 잡담(chat.general)일 때만
+ * Netlify Function(/.netlify/functions/serin-chat)의 실제 Claude 응답을 사용합니다.
+ * 함수 호출이 실패했을 때만 로컬 mock 문장으로 대체합니다.
  */
 export async function sendMessage(
   input: SerinServiceMessageInput,
   history: SerinHistoryItem[] = [],
 ): Promise<SerinExecutionResult> {
-  const localResult = buildLocalResult(input);
+  const { intent, result: localResult } = buildLocalResult(input);
 
-  // 확인이 필요한 구조화된 작업(퀘스트/일정 등)은 카드 문구가 곧 실행 내용이므로
-  // AI 자유 응답으로 덮어쓰지 않습니다.
-  if (localResult.action) {
+  // 구조화된 의도로 이미 확정된 응답(액션이 있거나, memory.save/library.search처럼
+  // 결정론적으로 답이 정해진 경우)은 AI 자유 응답으로 덮어쓰지 않습니다.
+  if (localResult.action || intent !== "chat.general") {
     return localResult;
   }
 

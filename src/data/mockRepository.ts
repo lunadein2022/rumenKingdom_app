@@ -1,11 +1,14 @@
 import type { AppMockData } from "../app/types";
 import { USE_MOCK_DATA } from "./dataMode";
 import { mockCastleRooms } from "./mockCastle";
+import { mockDiaryEntries } from "./mockDiary";
 import { mockCalendarEvents } from "./mockHome";
 import { mockAchievements, mockInventory } from "./mockInventory";
+import { mockMainQuests } from "./mockMainQuests";
 import { mockPrincess, mockTitles } from "./mockPrincess";
 import { buildMockProgress } from "./mockProgress";
 import { mockQuestHistory, mockQuests } from "./mockQuests";
+import { mockContacts } from "./mockRelationships";
 import { mockSerin, mockSerinMessages } from "./mockSerin";
 
 export function getPrincessOsSnapshot(): AppMockData {
@@ -33,10 +36,13 @@ export function getPrincessOsSnapshot(): AppMockData {
     titles: mockTitles,
     quests: mockQuests,
     questHistory: mockQuestHistory,
+    mainQuests: mockMainQuests,
     events: mockCalendarEvents,
     serinMessages: mockSerinMessages,
     rooms: mockCastleRooms,
     achievements: mockAchievements,
     inventory: mockInventory,
+    contacts: mockContacts,
+    diaryEntries: mockDiaryEntries,
   };
 }

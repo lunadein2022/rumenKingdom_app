@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import type {
   CalendarEvent,
   CalendarEventInput,
+  DiaryEntry,
+  MainQuest,
   Quest,
   QuestCompletionEvent,
   QuestHistoryEntry,
+  RelationshipContact,
   SerinAction,
   SerinMemory,
   SerinMessage,
@@ -14,12 +17,12 @@ import type {
 } from "./types";
 import { BottomNav } from "../components/design-system/BottomNav";
 import { HomeScene } from "../components/home/HomeScene";
-import { ProgressScreen } from "../components/modules/ProgressScreen";
 import { QuestScreen } from "../components/modules/QuestScreen";
 import { SerinScreen } from "../components/modules/SerinScreen";
 import { buildMockProgress } from "../data/mockProgress";
 import { getPrincessOsSnapshot } from "../data/mockRepository";
 import { completeQuestDomain, createQuestFromCalendarEvent, questTypeMeta } from "../domain/questDomain";
+import { addMainQuestUpdate, createMainQuestFromSerinDraft, toggleMainQuestChapter } from "../domain/mainQuestDomain";
 import { CalendarPage } from "../features/calendar/pages/CalendarPage";
 import {
   applyLinkedQuestId,
@@ -30,11 +33,13 @@ import {
   getEventsByDay,
 } from "../features/calendar/services/calendarService";
 import { CastlePage } from "../features/castle/pages/CastlePage";
-import { useCastle } from "../features/castle/hooks/useCastle";
 import { useCastleRooms } from "../features/castle/hooks/useCastleRooms";
+import { BedroomPage } from "../features/bedroom/pages/BedroomPage";
 import { GardenPage } from "../features/garden/pages/GardenPage";
 import { LibraryPage } from "../features/library/pages/LibraryPage";
-import { PrincessPage } from "../features/princess/pages/PrincessPage";
+import { OfficePage } from "../features/office/pages/OfficePage";
+import { RelationshipPage } from "../features/relationship/pages/RelationshipPage";
+import { ThronePage } from "../features/throne/pages/ThronePage";
 import { cancelAction, confirmAction } from "../features/serin/services/serinActionExecutor";
 import {
   getOrCreateConversation,
@@ -42,6 +47,8 @@ import {
   sendMessage as sendSerinDomainMessage,
 } from "../features/serin/services/serinService";
 import { saveMemory } from "../features/serin/services/serinMemoryService";
+
+const TODAY = "2026-07-09";
 
 // 짧은 긍정/부정 답변으로 직전 pendingAction을 이어서 처리하기 위한 감지기.
 // "응", "그래", "당연하지", "부탁해", "등록해", "일정에 넣어" 같은 표현을 포함합니다.
@@ -89,11 +96,20 @@ function buildConfirmedReply(action: SerinAction): string {
   if (action.intent === "calendar.create") {
     return `네, 공주님. '${action.title}' 일정을 등록해두었습니다. 시간에 맞춰 알려드릴게요.`;
   }
+  if (action.intent === "project.create") {
+    return `네, 공주님. '${action.title}'을(를) 새 메인퀘스트로 집무실에 등록해두었습니다.`;
+  }
+  if (action.intent === "project.update") {
+    return `네, 공주님. '${action.title}' 프로젝트에 업데이트를 기록해두었습니다.`;
+  }
   if (action.intent === "memory.save") {
     return "기억해둘게요, 공주님. 다음부터 이 내용을 참고해서 챙기겠습니다.";
   }
   if (action.intent === "diary.create" || action.intent === "diary.summarize") {
-    return "네, 공주님. 다이어리 초안을 정리해 왕국도서관에 담아두었습니다.";
+    return "네, 공주님. 다이어리 초안을 정리해 침실에 담아두었습니다.";
+  }
+  if (action.intent === "contact.extract") {
+    return `네, 공주님. '${action.title}'을(를) 인연록에 저장해두었습니다.`;
   }
   return `네, 공주님. '${action.title}' 요청을 처리해두었습니다.`;
 }
@@ -110,18 +126,34 @@ function createQuestFromSerinAction(action: SerinAction): Quest {
   const payload = action.payload.quest ?? {};
   return {
     id: `q-serin-${Date.now()}`,
-    type: payload.type ?? "side",
+    type: payload.type ?? "daily",
     title: payload.title ?? action.title,
     description: payload.description ?? "세린이 대화에서 정리한 Quest입니다.",
     status: "pending",
     category: payload.category ?? "growth",
     priority: payload.priority ?? "medium",
     progress: payload.progress ?? 0,
-    expReward: payload.expReward ?? questTypeMeta.side.baseExp,
+    mainQuestId: payload.mainQuestId,
+    expReward: payload.expReward ?? questTypeMeta.daily.baseExp,
     goldReward: payload.goldReward ?? 8,
-    dueDate: payload.dueDate ?? "2026-07-09",
+    dueDate: payload.dueDate ?? TODAY,
     rewardClaimed: false,
     source: "serin",
+  };
+}
+
+function createContactFromSerinAction(action: SerinAction): RelationshipContact {
+  const payload = action.payload.contact ?? {};
+  return {
+    id: `rel-serin-${Date.now()}`,
+    name: payload.name ?? action.title,
+    affinity: payload.affinity ?? 3,
+    organization: payload.organization,
+    position: payload.position,
+    phone: payload.phone,
+    email: payload.email,
+    memo: payload.memo,
+    relatedMainQuestIds: payload.relatedMainQuestIds ?? [],
   };
 }
 
@@ -141,6 +173,9 @@ export function App() {
   const [activeView, setActiveView] = useState<ViewKey>("home");
   const [quests, setQuests] = useState<Quest[]>(snapshot.quests);
   const [questHistory, setQuestHistory] = useState<QuestHistoryEntry[]>(snapshot.questHistory);
+  const [mainQuests, setMainQuests] = useState<MainQuest[]>(snapshot.mainQuests);
+  const [contacts, setContacts] = useState<RelationshipContact[]>(snapshot.contacts);
+  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>(snapshot.diaryEntries);
   const [completionEvents, setCompletionEvents] = useState<QuestCompletionEvent[]>([]);
   const [progressBase, setProgressBase] = useState<UserProgress>(snapshot.progress);
   const [events, setEvents] = useState<CalendarEvent[]>(snapshot.events);
@@ -150,16 +185,28 @@ export function App() {
   const [serinStatus, setSerinStatus] = useState<SerinStatus>("idle");
   const [pendingSerinAction, setPendingSerinAction] = useState<SerinAction | null>(null);
   const [serinMemories, setSerinMemories] = useState<SerinMemory[]>(initialSerinMemories);
-  const [selectedDate, setSelectedDate] = useState("2026-07-09");
+  const [selectedDate, setSelectedDate] = useState(TODAY);
   // TODO(Alpha 이후): 지금은 세린 대화가 새로고침 시 전부 사라지는 세션 한정 mock
   // 구조입니다. saveMessage/getMessages는 이미 호출되고 있지만 실제로는 아무것도
   // 저장하지 않는 스텁입니다. Supabase 연동 시 이 conversationId로 실제 메시지 기록을
   // 읽고 쓰도록 교체하고, 앱 시작 시 getMessages 결과로 messages 초기값을 채워야 합니다.
   const conversationId = useMemo(() => "mock-serin-conversation", []);
-  const { castleState, addCastleExp } = useCastle();
+  // Castle은 해금 시스템이 없는 순수 공간 이동 허브입니다. castleRooms는 방 목록과
+  // "지금 어느 방에 있는지"(currentRoomKey, 미니맵 하이라이트용)만 관리합니다.
   const castleRooms = useCastleRooms(snapshot.rooms);
   const progress = useMemo(() => buildProgress(quests, progressBase), [quests, progressBase]);
-  const appData = { ...snapshot, quests, questHistory, events, serinMessages: messages, progress, rooms: castleRooms.rooms };
+  const appData = {
+    ...snapshot,
+    quests,
+    questHistory,
+    mainQuests,
+    contacts,
+    diaryEntries,
+    events,
+    serinMessages: messages,
+    progress,
+    rooms: castleRooms.rooms,
+  };
 
   useEffect(() => {
     // 대화방을 실제로 만들어두는 흐름입니다. 지금은 mock이라 아무 것도 영속화되지
@@ -170,12 +217,10 @@ export function App() {
 
   function completeQuest(id: string) {
     const result = completeQuestDomain(quests, questHistory, id, progress);
-    const quest = quests.find((item) => item.id === id);
     setQuests(result.quests);
     setQuestHistory(result.history);
     setCompletionEvents(result.events);
     setProgressBase(result.progress);
-    if (quest) addCastleExp(Math.max(10, Math.round(quest.expReward * 0.4)));
   }
 
   function cycleQuest(id: string) {
@@ -203,6 +248,33 @@ export function App() {
     const quest = createQuestFromCalendarEvent(event);
     setQuests((current) => [quest, ...current]);
     setEvents((current) => applyLinkedQuestId([event, ...current], event.id, quest.id));
+  }
+
+  function toggleMainQuestChapterHandler(mainQuestId: string, chapterId: string) {
+    setMainQuests((current) => current.map((mq) => (mq.id === mainQuestId ? toggleMainQuestChapter(mq, chapterId) : mq)));
+  }
+
+  function addMainQuestUpdateHandler(mainQuestId: string, content: string) {
+    setMainQuests((current) => current.map((mq) => (mq.id === mainQuestId ? addMainQuestUpdate(mq, content, "princess") : mq)));
+  }
+
+  function saveDiaryEntry(content: string, moodEmoji: string, moodLabel: string) {
+    const todayEvents = getEventsByDay(events, TODAY);
+    const todayCompleted = quests.filter((quest) => quest.status === "completed" && quest.dueDate === TODAY);
+    const entry: DiaryEntry = {
+      id: `diary-${Date.now()}`,
+      date: TODAY,
+      moodEmoji,
+      moodLabel,
+      content,
+      // TODO: Replace with real AI summary call. 지금은 오늘 데이터를 바탕으로 한
+      // 간단한 mock 요약입니다.
+      aiSummary: `오늘은 일정 ${todayEvents.length}건, 완료한 퀘스트 ${todayCompleted.length}개와 함께 "${moodLabel}"한 하루였습니다.`,
+      linkedEventTitles: todayEvents.map((event) => event.title),
+      linkedQuestTitles: todayCompleted.map((quest) => quest.title),
+      linkedMainQuestUpdates: mainQuests.flatMap((mq) => mq.updates.filter((update) => update.date.slice(0, 10) === TODAY).map((update) => update.content)),
+    };
+    setDiaryEntries((current) => [entry, ...current]);
   }
 
   async function sendSerinMessage(content: string) {
@@ -255,7 +327,10 @@ export function App() {
     setSerinStatus("thinking");
 
     try {
-      const result = await sendSerinDomainMessage({ conversationId, content }, recentHistory);
+      const result = await sendSerinDomainMessage(
+        { conversationId, content, mainQuestTitles: mainQuests.map((mq) => mq.title) },
+        recentHistory,
+      );
       if (content.includes("기억")) {
         setSerinMemories((current) =>
           saveMemory(current, {
@@ -307,6 +382,20 @@ export function App() {
     if (pendingSerinAction.intent === "quest.create") {
       setQuests((current) => [createQuestFromSerinAction(pendingSerinAction), ...current]);
     }
+    if (pendingSerinAction.intent === "project.create") {
+      setMainQuests((current) => [createMainQuestFromSerinDraft(pendingSerinAction.title), ...current]);
+    }
+    if (pendingSerinAction.intent === "project.update" && pendingSerinAction.payload.mainQuestUpdate) {
+      const { mainQuestId, content } = pendingSerinAction.payload.mainQuestUpdate;
+      // mainQuestId 자리에는 (아직 실제 검색 UI가 없어) 프로젝트 제목이 들어옵니다.
+      // id 또는 title 어느 쪽으로 와도 매칭되도록 둘 다 확인합니다.
+      setMainQuests((current) =>
+        current.map((mq) => (mq.id === mainQuestId || mq.title === mainQuestId ? addMainQuestUpdate(mq, content, "serin") : mq)),
+      );
+    }
+    if (pendingSerinAction.intent === "contact.extract") {
+      setContacts((current) => [createContactFromSerinAction(pendingSerinAction), ...current]);
+    }
     if (pendingSerinAction.intent === "memory.save" && pendingSerinAction.payload.memory) {
       setSerinMemories((current) => saveMemory(current, pendingSerinAction.payload.memory!));
     }
@@ -345,7 +434,7 @@ export function App() {
   function handleAttach(type: "image" | "document" | "audio") {
     const message =
       type === "image"
-        ? "공주님, 사진을 확인했습니다. 명함이면 연락처로 정리해드릴게요."
+        ? "공주님, 사진을 확인했습니다. 명함이면 인연록으로 정리해드릴게요."
         : type === "document"
           ? "공주님, 파일을 확인했습니다. 필요한 내용은 왕국도서관에 정리해두겠습니다."
           : "공주님, 음성 입력은 곧 지원해드릴 수 있도록 준비하고 있어요. 지금은 글로 말씀해주시면 바로 도와드릴게요.";
@@ -355,31 +444,67 @@ export function App() {
     ]);
   }
 
+  const todayEvents = getEventsByDay(events, TODAY);
+  const todayCompletedQuests = quests.filter((quest) => quest.status === "completed" && quest.dueDate === TODAY);
+  const mainQuestUpdatesToday = mainQuests.flatMap((mainQuest) =>
+    mainQuest.updates.filter((update) => update.date.slice(0, 10) === TODAY).map((update) => ({ mainQuest, content: update.content })),
+  );
+
   return (
     <div className="app-shell">
       <main className="app-main">
-        {activeView === "home" && <HomeScene data={appData} onNavigate={setActiveView} />}
-        {activeView === "castle" && (
-          <CastlePage
+        {activeView === "home" && (
+          <HomeScene
+            data={appData}
             rooms={castleRooms.rooms}
-            castleState={castleState}
+            currentRoomKey={castleRooms.currentRoomKey}
             onNavigate={setActiveView}
-            onVisitRoom={castleRooms.visitRoom}
+            onCompleteQuest={completeQuest}
+          />
+        )}
+        {activeView === "castle" && (
+          <CastlePage rooms={castleRooms.rooms} onNavigate={setActiveView} onVisitRoom={castleRooms.visitRoom} />
+        )}
+        {activeView === "office" && (
+          <OfficePage
+            mainQuests={mainQuests}
+            quests={quests}
+            events={events}
+            contacts={contacts}
+            onToggleChapter={toggleMainQuestChapterHandler}
+            onAddUpdate={addMainQuestUpdateHandler}
           />
         )}
         {activeView === "library" && (
           <LibraryPage
             quests={quests}
+            questHistory={questHistory}
             events={events}
             memories={serinMemories}
+            mainQuests={mainQuests}
+            contacts={contacts}
+            diaryEntries={diaryEntries}
+          />
+        )}
+        {activeView === "bedroom" && (
+          <BedroomPage
+            serin={snapshot.serin}
+            diaryEntries={diaryEntries}
+            todayEvents={todayEvents}
+            todayCompletedQuests={todayCompletedQuests}
+            mainQuestUpdatesToday={mainQuestUpdatesToday}
+            onSaveDiary={saveDiaryEntry}
           />
         )}
         {activeView === "garden" && (
           <GardenPage serin={snapshot.serin} onBackToCastle={() => setActiveView("castle")} />
         )}
+        {activeView === "throne" && <ThronePage data={appData} />}
+        {activeView === "relationship" && <RelationshipPage contacts={contacts} mainQuests={mainQuests} />}
         {activeView === "quests" && (
           <QuestScreen
             quests={quests}
+            mainQuests={mainQuests}
             history={questHistory}
             progress={progress}
             completionEvents={completionEvents}
@@ -411,8 +536,6 @@ export function App() {
             onAttach={handleAttach}
           />
         )}
-        {activeView === "progress" && <ProgressScreen data={appData} onOpenProfile={() => setActiveView("profile")} />}
-        {activeView === "profile" && <PrincessPage data={appData} />}
       </main>
 
       <BottomNav activeView={activeView} onChange={setActiveView} />

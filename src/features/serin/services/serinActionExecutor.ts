@@ -31,6 +31,35 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
     };
   }
 
+  if (parsedIntent.intent === "project.create") {
+    const title = parsedIntent.entities.title as string;
+    return {
+      id: actionId,
+      intent: "project.create",
+      title,
+      summary: `공주님, '${title}'을(를) 새 메인퀘스트(프로젝트)로 집무실에 등록해드릴까요?`,
+      confirmLabel: "프로젝트 생성",
+      payload: {
+        mainQuest: { title },
+      },
+    };
+  }
+
+  if (parsedIntent.intent === "project.update") {
+    const mainQuestTitle = parsedIntent.entities.mainQuestTitle as string;
+    const content = parsedIntent.entities.content as string;
+    return {
+      id: actionId,
+      intent: "project.update",
+      title: mainQuestTitle,
+      summary: `공주님, '${mainQuestTitle}' 프로젝트에 이 내용을 업데이트 로그로 남겨드릴까요?`,
+      confirmLabel: "업데이트 기록",
+      payload: {
+        mainQuestUpdate: { mainQuestId: mainQuestTitle, content },
+      },
+    };
+  }
+
   if (parsedIntent.intent === "quest.create") {
     const quest = parsedIntent.entities.quest as { title?: string; dueDate?: string };
     return {
@@ -43,10 +72,10 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
         quest: {
           title: quest.title ?? "새 Quest",
           description: "세린이 대화에서 정리한 Quest입니다.",
-          type: "side",
+          type: "daily",
           priority: "medium",
           progress: 0,
-          expReward: questTypeMeta.side.baseExp,
+          expReward: questTypeMeta.daily.baseExp,
           goldReward: 8,
           dueDate: quest.dueDate ?? "2026-07-09",
           rewardClaimed: false,
@@ -77,8 +106,8 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
       id: actionId,
       intent: "contact.extract",
       title: "새 연락처",
-      summary: "공주님, 첨부 이미지나 대화에서 찾은 연락처를 왕국도서관에 저장해드릴까요?",
-      confirmLabel: "연락처 저장",
+      summary: "공주님, 첨부 이미지나 대화에서 찾은 연락처를 인연록에 저장해드릴까요?",
+      confirmLabel: "인연록에 저장",
       payload: {
         contact: {
           name: "새 연락처",

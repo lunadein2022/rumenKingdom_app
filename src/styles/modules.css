@@ -1651,3 +1651,821 @@
   font-size: 15px;
   font-weight: 800;
 }
+
+/* =====================================================================
+   Office — 메인퀘스트(=프로젝트) 관리 공간.
+   ===================================================================== */
+.office-domain-page {
+  display: grid;
+  gap: 14px;
+}
+
+.office-hero {
+  padding: 16px;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(65, 105, 225, 0.1)),
+    url("/assets/office.webp") center / cover;
+  box-shadow: var(--shadow-medium);
+}
+
+.office-hero h1 {
+  color: var(--royal-900);
+}
+
+.office-main-quest-list {
+  display: grid;
+  gap: 10px;
+}
+
+.office-main-quest-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+  text-align: left;
+}
+
+.office-main-quest-card.active {
+  border-color: rgba(65, 105, 225, 0.4);
+  box-shadow: var(--shadow-medium);
+}
+
+.office-main-quest-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.office-main-quest-card-head strong {
+  color: var(--royal-900);
+  font-size: 15px;
+}
+
+.office-main-quest-card > span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.office-main-quest-detail {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-medium);
+}
+
+.office-main-quest-detail > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.office-main-quest-detail h2 {
+  margin: 8px 0 4px;
+  color: var(--royal-900);
+  font-size: 20px;
+}
+
+.office-detail-stat {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.office-detail-stat strong {
+  display: block;
+  color: var(--royal-900);
+  font-size: 13px;
+}
+
+.office-detail-stat span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.office-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.office-detail-grid h3 {
+  margin: 0 0 8px;
+  color: var(--royal-800);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.office-detail-grid p {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.office-chapter-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.office-chapter-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: rgba(65, 105, 225, 0.06);
+  border: 0;
+  border-radius: var(--radius-lg);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.office-chapter-list button.done {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.office-chapter-check {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1px solid rgba(65, 105, 225, 0.4);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+
+.office-update-log {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.office-update-log h3 {
+  margin: 0;
+  color: var(--royal-800);
+  font-size: 13px;
+}
+
+.office-update-input {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.office-update-input input {
+  min-width: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 9px 12px;
+  font-size: 13px;
+}
+
+.office-update-log ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.office-update-log li span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.office-update-log li p {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .office-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================================
+   Bedroom — 다이어리. Full-screen 배경 + 세린 말풍선 + 자동 요약 + 작성 패널.
+   ===================================================================== */
+.bedroom-scene-full {
+  position: relative;
+  min-height: calc(100dvh - 160px);
+  overflow: hidden;
+  border-radius: 30px;
+  box-shadow: var(--shadow-floating);
+}
+
+.bedroom-scene-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.bedroom-scene-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(16, 25, 54, 0.15), rgba(16, 25, 54, 0.55));
+}
+
+.bedroom-princess-full {
+  position: absolute;
+  left: 8%;
+  bottom: 0;
+  z-index: 1;
+  width: min(38%, 260px);
+  max-height: 82%;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 18px 26px rgba(16, 25, 54, 0.35));
+}
+
+.bedroom-copy-overlay {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  z-index: 2;
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(16, 25, 54, 0.45);
+}
+
+.bedroom-copy-overlay span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.bedroom-copy-overlay h1 {
+  margin: 8px 0 0;
+  font-size: 25px;
+}
+
+.bedroom-speech-bubble {
+  position: absolute;
+  left: 8%;
+  bottom: 46%;
+  z-index: 2;
+  max-width: 280px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-medium);
+}
+
+.bedroom-speech-bubble strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--royal-900);
+  font-size: 12px;
+}
+
+.bedroom-speech-bubble p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.bedroom-diary-panel {
+  position: relative;
+  z-index: 2;
+  margin-left: auto;
+  width: min(50%, 420px);
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.bedroom-auto-summary,
+.bedroom-write-panel,
+.bedroom-ai-summary {
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-medium);
+}
+
+.bedroom-auto-summary h2,
+.bedroom-write-panel h2,
+.bedroom-ai-summary h2 {
+  margin: 0 0 10px;
+  color: var(--royal-900);
+  font-size: 15px;
+}
+
+.bedroom-auto-summary h3 {
+  margin: 8px 0 4px;
+  color: var(--royal-800);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.bedroom-auto-summary p {
+  margin: 0 0 3px;
+  font-size: 12px;
+}
+
+.bedroom-mood-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.bedroom-mood-row button {
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+  background: rgba(65, 105, 225, 0.06);
+  font-size: 12px;
+}
+
+.bedroom-mood-row button.active {
+  background: var(--royal-600);
+  color: #fff;
+}
+
+.bedroom-write-panel textarea {
+  width: 100%;
+  min-height: 90px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.bedroom-ai-summary p {
+  margin: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .bedroom-scene-full {
+    min-height: auto;
+    padding-bottom: 20px;
+  }
+
+  .bedroom-princess-full {
+    display: none;
+  }
+
+  .bedroom-speech-bubble {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    margin: 90px 16px 0;
+    max-width: none;
+  }
+
+  .bedroom-diary-panel {
+    width: auto;
+    margin-left: 0;
+  }
+}
+
+/* =====================================================================
+   Relationship — 인연록. 왕국도서관과 별도인 독립 도메인.
+   ===================================================================== */
+.relationship-domain-page {
+  display: grid;
+  gap: 14px;
+}
+
+.relationship-hero {
+  padding: 16px;
+  border-radius: 28px;
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-small);
+}
+
+.relationship-hero h1 {
+  color: var(--royal-900);
+}
+
+.relationship-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.relationship-list {
+  display: grid;
+  gap: 8px;
+}
+
+.relationship-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-surface);
+  text-align: left;
+}
+
+.relationship-list-item.active {
+  border-color: rgba(65, 105, 225, 0.4);
+  background: rgba(65, 105, 225, 0.08);
+}
+
+.relationship-list-item span {
+  color: var(--gold-500);
+  font-size: 11px;
+}
+
+.relationship-detail {
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-medium);
+}
+
+.relationship-detail > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.relationship-detail h2 {
+  margin: 0;
+  color: var(--royal-900);
+}
+
+.relationship-detail dl {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+.relationship-detail dl div {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.relationship-detail dt {
+  color: var(--text-secondary);
+  font-weight: 800;
+}
+
+.relationship-detail dd {
+  margin: 0;
+}
+
+.relationship-detail h3 {
+  margin: 10px 0 6px;
+  color: var(--royal-800);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.relationship-ai-summary {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  background: rgba(216, 183, 106, 0.14);
+}
+
+@media (max-width: 760px) {
+  .relationship-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================================
+   Throne — 성장 화면. 해금 시스템 없이 레벨/EXP/칭호/업적/누적 통계만.
+   ===================================================================== */
+.throne-domain-page {
+  display: grid;
+  gap: 14px;
+}
+
+.throne-hero {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: end;
+  min-height: 260px;
+  overflow: hidden;
+  padding: 16px;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(65, 105, 225, 0.12)),
+    url("/assets/throne.webp") center / cover;
+  box-shadow: var(--shadow-floating);
+}
+
+.throne-hero img {
+  width: 150px;
+  max-height: 250px;
+  object-fit: contain;
+}
+
+.throne-hero h1 {
+  margin: 8px 0 4px;
+  color: var(--royal-900);
+  font-size: 26px;
+}
+
+.throne-exp-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+}
+
+.throne-exp-card strong {
+  color: var(--royal-900);
+  font-size: 20px;
+}
+
+.throne-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.throne-stat-grid article {
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  text-align: center;
+}
+
+.throne-stat-grid strong {
+  display: block;
+  color: var(--royal-900);
+  font-size: 20px;
+}
+
+.throne-stat-grid span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.throne-titles,
+.throne-achievements,
+.throne-stat-list,
+.throne-equipment-list {
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+}
+
+.throne-title-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.throne-title-row span {
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 800;
+  background: rgba(65, 105, 225, 0.08);
+  color: var(--text-secondary);
+}
+
+.throne-title-row span.unlocked {
+  background: rgba(216, 183, 106, 0.2);
+  color: #6f5115;
+}
+
+.throne-title-row span.equipped {
+  background: var(--royal-600);
+  color: #fff;
+}
+
+.throne-achievements article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.throne-achievements article:last-child {
+  border-bottom: 0;
+}
+
+.throne-achievements strong {
+  display: block;
+  font-size: 13px;
+  color: var(--royal-900);
+}
+
+.throne-achievements span {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.throne-achievements em {
+  font-style: normal;
+  color: var(--gold-500);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.throne-achievements article.unlocked strong {
+  color: var(--royal-900);
+}
+
+.throne-stat-list,
+.throne-equipment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.throne-stat-list article,
+.throne-equipment-list article {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .throne-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .throne-hero img {
+    display: none;
+  }
+
+  .throne-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* =====================================================================
+   Library v2 — Notion 스타일 검색 → 필터(폴더) → 목록 → 상세.
+   ===================================================================== */
+.library-page-v2 {
+  display: grid;
+  gap: 14px;
+}
+
+.library-search-bar input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-surface);
+  font-size: 13px;
+}
+
+.library-notion-layout {
+  display: grid;
+  grid-template-columns: 200px 260px 1fr;
+  gap: 14px;
+  align-items: start;
+  min-height: 420px;
+}
+
+.library-folder-nav {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+}
+
+.library-folder-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: var(--radius-lg);
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.library-folder-nav button.active {
+  background: rgba(65, 105, 225, 0.1);
+  color: var(--royal-800);
+  font-weight: 800;
+}
+
+.library-folder-nav button em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.library-entry-list {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.library-entry-list button {
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  border-radius: var(--radius-lg);
+  border: 0;
+  background: rgba(65, 105, 225, 0.04);
+  text-align: left;
+}
+
+.library-entry-list button.active {
+  background: rgba(65, 105, 225, 0.14);
+}
+
+.library-entry-list button strong {
+  font-size: 12px;
+  color: var(--royal-900);
+}
+
+.library-entry-list button span {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.library-entry-detail {
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+}
+
+.library-entry-detail h2 {
+  margin: 0 0 4px;
+  color: var(--royal-900);
+  font-size: 17px;
+}
+
+.library-entry-detail > span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.library-entry-detail p {
+  margin-top: 10px;
+  white-space: pre-wrap;
+  font-size: 13px;
+}
+
+@media (max-width: 980px) {
+  .library-notion-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .library-folder-nav {
+    display: flex;
+    overflow-x: auto;
+    gap: 6px;
+  }
+
+  .library-folder-nav button {
+    flex: 0 0 auto;
+  }
+}

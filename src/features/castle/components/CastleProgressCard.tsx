@@ -1,21 +1,3 @@
-import { ProgressBar } from "../../../components/design-system/ProgressBar";
-import type { CastleState } from "../types/castle.types";
-
-interface CastleProgressCardProps {
-  state: CastleState;
-}
-
-export function CastleProgressCard({ state }: CastleProgressCardProps) {
-  const rate = Math.round((state.castleExp / state.requiredExp) * 100);
-
-  return (
-    <section className="castle-progress-card">
-      <div>
-        <strong>Castle Lv.{state.castleLevel}</strong>
-        <span>{state.castleExp} / {state.requiredExp} Castle EXP</span>
-      </div>
-      <ProgressBar value={rate} label="Castle EXP" />
-      <small>{state.season} · {state.timeOfDay} · {state.castleTheme}</small>
-    </section>
-  );
-}
+// Castle 자체의 레벨/EXP 카드는 v2에서 제외되었습니다(해금 시스템 제외).
+// 성장 표시는 Throne(왕좌의 방)에서만 합니다. 참조 방지를 위한 빈 모듈입니다.
+export {};

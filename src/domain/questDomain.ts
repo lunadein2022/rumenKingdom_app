@@ -8,12 +8,13 @@ import type {
 } from "../app/types";
 import { buildMockProgress } from "../data/mockProgress";
 
+// 메인퀘스트(=프로젝트)는 이 파일이 아니라 domain/mainQuestDomain.ts가 다룹니다.
+// 여기서는 실행형 퀘스트(서브/일일/반복/스토리)만 다룹니다.
 export const questTypeMeta: Record<QuestType, { icon: string; label: string; baseExp: number }> = {
-  main: { icon: "👑", label: "메인", baseExp: 300 },
   side: { icon: "⭐", label: "서브", baseExp: 80 },
   daily: { icon: "☀", label: "일일", baseExp: 20 },
   routine: { icon: "🔄", label: "반복", baseExp: 40 },
-  story: { icon: "📖", label: "스토리", baseExp: 500 },
+  story: { icon: "📖", label: "스토리", baseExp: 200 },
 };
 
 export const questCompletionFlow: QuestCompletionEvent[] = [
@@ -22,8 +23,7 @@ export const questCompletionFlow: QuestCompletionEvent[] = [
   { type: "exp", label: "EXP 획득" },
   { type: "reward", label: "보상 획득" },
   { type: "level", label: "레벨 계산" },
-  { type: "castle", label: "Castle 업데이트" },
-  { type: "achievement", label: "Achievement 확인" },
+  { type: "title", label: "칭호 확인" },
   { type: "notification", label: "Notification" },
   { type: "history", label: "왕국도서관 저장" },
 ];
@@ -100,7 +100,7 @@ export function completeQuestDomain(
   };
 }
 
-export function createQuestFromSerinDraft(title: string): Quest {
+export function createQuestFromSerinDraft(title: string, mainQuestId?: string): Quest {
   const now = new Date().toISOString();
   // TODO:
   // Replace with Supabase Query and AI intent parser.
@@ -113,6 +113,7 @@ export function createQuestFromSerinDraft(title: string): Quest {
     category: "routine",
     priority: "medium",
     progress: 0,
+    mainQuestId,
     expReward: questTypeMeta.daily.baseExp,
     goldReward: 4,
     dueDate: now.slice(0, 10),
@@ -126,7 +127,7 @@ export function createQuestFromCalendarEvent(event: CalendarEvent): Quest {
   // Replace with Supabase Query and calendar-to-quest transaction.
   return {
     id: `q-calendar-${Date.now()}`,
-    type: event.category === "routine" ? "routine" : event.category === "quest" ? "side" : "daily",
+    type: event.category === "routine" ? "routine" : "daily",
     title: event.title,
     description: `${event.location ?? "루멘 왕성"} 일정에서 생성된 Quest입니다.`,
     status: "pending",

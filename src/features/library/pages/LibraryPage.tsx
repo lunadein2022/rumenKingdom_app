@@ -1,149 +1,152 @@
 import { useMemo, useState } from "react";
-import type { CalendarEvent, Quest, SerinMemory } from "../../../app/types";
+import type {
+  CalendarEvent,
+  DiaryEntry,
+  MainQuest,
+  Quest,
+  QuestHistoryEntry,
+  RelationshipContact,
+  SerinMemory,
+} from "../../../app/types";
 import { Badge } from "../../../components/design-system/Badge";
 
 interface LibraryPageProps {
   quests: Quest[];
+  questHistory: QuestHistoryEntry[];
   events: CalendarEvent[];
   memories: SerinMemory[];
+  mainQuests: MainQuest[];
+  contacts: RelationshipContact[];
+  diaryEntries: DiaryEntry[];
 }
 
-type LibraryTab = "quests" | "events" | "diary" | "relationships" | "memory" | "chronicle";
+type LibraryFolder = "diary" | "meeting" | "project" | "aiSummary" | "questHistory" | "calendarHistory" | "memory" | "relationship";
 
-const tabs: Array<{ key: LibraryTab; label: string }> = [
-  { key: "quests", label: "완료 Quest" },
-  { key: "events", label: "지난 일정" },
+interface LibraryEntry {
+  id: string;
+  title: string;
+  meta: string;
+  body: string;
+}
+
+const folders: Array<{ key: LibraryFolder; label: string }> = [
   { key: "diary", label: "Diary" },
-  { key: "relationships", label: "인연록" },
+  { key: "meeting", label: "Meeting" },
+  { key: "project", label: "Project" },
+  { key: "aiSummary", label: "AI Summary" },
+  { key: "questHistory", label: "Quest History" },
+  { key: "calendarHistory", label: "Calendar History" },
   { key: "memory", label: "Memory" },
-  { key: "chronicle", label: "왕실연대기" },
+  { key: "relationship", label: "Relationship" },
 ];
 
-// Diary/인연록/왕실연대기는 아직 전용 도메인/mock 데이터가 없어서, 탭 구조를
-// 보여주기 위한 최소 mock list입니다. 실제 데이터 연결 전까지 이 배열만 채워두면 됩니다.
-interface DiaryEntry {
-  id: string;
-  date: string;
-  title: string;
-  mood: string;
-  excerpt: string;
-}
+const TODAY = "2026-07-09";
 
-const mockDiaryEntries: DiaryEntry[] = [
-  {
-    id: "diary-001",
-    date: "2026-07-08",
-    title: "차분했던 하루",
-    mood: "평온",
-    excerpt: "오늘은 계획한 일정을 무리 없이 마쳤다. 세린이 중간중간 챙겨준 덕분에 여유가 있었다.",
-  },
-  {
-    id: "diary-002",
-    date: "2026-07-05",
-    title: "바빴던 하루",
-    mood: "피곤",
-    excerpt: "회의가 연달아 있어서 정신없었지만, 저녁에는 정원에서 잠깐 쉴 수 있었다.",
-  },
-];
-
-interface RelationshipEntry {
-  id: string;
-  name: string;
-  relation: string;
-  lastContact: string;
-  note: string;
-}
-
-const mockRelationshipEntries: RelationshipEntry[] = [
-  {
-    id: "rel-001",
-    name: "레오나 공작",
-    relation: "정치적 동맹",
-    lastContact: "2026-07-02",
-    note: "왕국 회의에서 자주 마주치는 인물. 신중하게 대할 것.",
-  },
-  {
-    id: "rel-002",
-    name: "이든 경",
-    relation: "호위 기사",
-    lastContact: "2026-07-09",
-    note: "가장 신뢰하는 호위. 정원 산책에도 종종 동행.",
-  },
-];
-
-interface ChronicleEntry {
-  id: string;
-  date: string;
-  title: string;
-  description: string;
-}
-
-const mockChronicleEntries: ChronicleEntry[] = [
-  {
-    id: "chr-001",
-    date: "2026-07-01",
-    title: "루멘 왕성 입성",
-    description: "공주가 루멘 왕성에서 새로운 하루를 시작함.",
-  },
-  {
-    id: "chr-002",
-    date: "2026-07-09",
-    title: "세린과의 여정 시작",
-    description: "AI 메이드 세린과 함께 왕국의 일정과 Quest를 정리하기 시작함.",
-  },
-];
-
-export function LibraryPage({ quests, events, memories }: LibraryPageProps) {
-  const [tab, setTab] = useState<LibraryTab>("quests");
+// Library = 기록 보관소. Notion처럼 검색 → 필터(폴더) → 목록 → 상세 구조입니다.
+// 스크롤 카드 나열이 아니라, 왼쪽 폴더에서 카테고리를 고르고 오른쪽에서
+// 목록/상세를 확인하는 구조입니다.
+export function LibraryPage({ quests, questHistory, events, memories, mainQuests, contacts, diaryEntries }: LibraryPageProps) {
+  const [folder, setFolder] = useState<LibraryFolder>("diary");
   const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const keyword = query.trim().toLowerCase();
 
-  const completedQuests = useMemo(
-    () =>
-      quests
-        .filter((quest) => quest.status === "completed")
-        .filter((quest) => !keyword || quest.title.toLowerCase().includes(keyword)),
-    [quests, keyword],
-  );
+  const entriesByFolder: Record<LibraryFolder, LibraryEntry[]> = useMemo(() => {
+    const diary: LibraryEntry[] = diaryEntries.map((entry) => ({
+      id: entry.id,
+      title: `${entry.date} · ${entry.moodLabel} ${entry.moodEmoji}`,
+      meta: entry.date,
+      body: entry.aiSummary ? `${entry.content}\n\nAI 요약: ${entry.aiSummary}` : entry.content,
+    }));
 
-  const pastEvents = useMemo(
-    () =>
-      events
-        .filter((event) => event.status === "completed" || event.startAt.slice(0, 10) <= "2026-07-09")
-        .filter((event) => !keyword || event.title.toLowerCase().includes(keyword))
-        .sort((a, b) => b.startAt.localeCompare(a.startAt)),
-    [events, keyword],
-  );
+    const meeting: LibraryEntry[] = events
+      .filter((event) => event.category === "meeting")
+      .map((event) => ({
+        id: event.id,
+        title: event.title,
+        meta: `${event.startAt.slice(0, 10)} ${event.startAt.slice(11, 16)}`,
+        body: event.description,
+      }));
 
-  const filteredMemories = useMemo(
-    () => memories.filter((memory) => !keyword || memory.content.toLowerCase().includes(keyword)),
-    [memories, keyword],
-  );
+    const project: LibraryEntry[] = mainQuests.map((mainQuest) => ({
+      id: mainQuest.id,
+      title: mainQuest.title,
+      meta: `${mainQuest.progress}% · ${mainQuest.status === "completed" ? "완료" : mainQuest.status === "onHold" ? "보류" : "진행 중"}`,
+      body: mainQuest.description,
+    }));
 
-  const filteredDiary = useMemo(
-    () => mockDiaryEntries.filter((entry) => !keyword || entry.title.toLowerCase().includes(keyword)),
-    [keyword],
-  );
+    const aiSummary: LibraryEntry[] = [
+      ...diaryEntries
+        .filter((entry) => entry.aiSummary)
+        .map((entry) => ({ id: `diary-${entry.id}`, title: `다이어리 요약 · ${entry.date}`, meta: "AI", body: entry.aiSummary! })),
+      ...contacts
+        .filter((contact) => contact.aiSummary)
+        .map((contact) => ({ id: `contact-${contact.id}`, title: `${contact.name} 대화 요약`, meta: "AI", body: contact.aiSummary! })),
+      ...mainQuests.flatMap((mainQuest) =>
+        mainQuest.updates
+          .filter((update) => update.author === "serin")
+          .map((update) => ({
+            id: `mqu-${update.id}`,
+            title: `${mainQuest.title} 업데이트 요약`,
+            meta: update.date.slice(0, 10),
+            body: update.content,
+          })),
+      ),
+    ];
 
-  const filteredRelationships = useMemo(
-    () => mockRelationshipEntries.filter((entry) => !keyword || entry.name.toLowerCase().includes(keyword)),
-    [keyword],
-  );
+    const questHistoryEntries: LibraryEntry[] = questHistory.map((item) => ({
+      id: item.id,
+      title: item.note,
+      meta: item.completedAt.slice(0, 10),
+      body: `EXP +${item.rewardExp}${item.rewardItem ? ` · ${item.rewardItem}` : ""}`,
+    }));
 
-  const filteredChronicle = useMemo(
-    () => mockChronicleEntries.filter((entry) => !keyword || entry.title.toLowerCase().includes(keyword)),
-    [keyword],
+    const calendarHistory: LibraryEntry[] = events
+      .filter((event) => event.startAt.slice(0, 10) < TODAY || event.status === "completed")
+      .sort((a, b) => b.startAt.localeCompare(a.startAt))
+      .map((event) => ({
+        id: event.id,
+        title: event.title,
+        meta: event.startAt.slice(0, 10),
+        body: `${event.location ?? "루멘 왕성"} · ${event.description}`,
+      }));
+
+    const memory: LibraryEntry[] = memories.map((item) => ({
+      id: item.id,
+      title: item.memoryType,
+      meta: item.importance,
+      body: item.content,
+    }));
+
+    const relationship: LibraryEntry[] = contacts.map((contact) => ({
+      id: contact.id,
+      title: contact.name,
+      meta: contact.organization ?? "",
+      body: contact.memo ?? "",
+    }));
+
+    return { diary, meeting, project, aiSummary, questHistory: questHistoryEntries, calendarHistory, memory, relationship };
+  }, [contacts, diaryEntries, events, mainQuests, memories, questHistory, quests]);
+
+  const visibleEntries = entriesByFolder[folder].filter(
+    (entry) => !keyword || entry.title.toLowerCase().includes(keyword) || entry.body.toLowerCase().includes(keyword),
   );
+  const selected = visibleEntries.find((entry) => entry.id === selectedId) ?? visibleEntries[0] ?? null;
+
+  function selectFolder(next: LibraryFolder) {
+    setFolder(next);
+    setSelectedId(null);
+  }
 
   return (
-    <section className="library-page">
+    <section className="library-page-v2">
       <header className="library-hero">
         <Badge tone="royal">Kingdom Library</Badge>
         <h1>왕국 도서관</h1>
-        <p>완료된 Quest, 지난 일정, 다이어리, 인연록, 세린 기억, 왕실연대기가 저장되는 Princess OS의 보관소입니다.</p>
+        <p>Diary, Meeting, Project, AI Summary, Quest History, Calendar History, Memory, Relationship이 보관되는 기록 보관소입니다.</p>
       </header>
 
-      <div className="library-toolbar">
+      <div className="library-search-bar">
         <input
           type="search"
           placeholder="도서관 전체 검색"
@@ -153,139 +156,51 @@ export function LibraryPage({ quests, events, memories }: LibraryPageProps) {
         />
       </div>
 
-      <nav className="library-tabs" aria-label="도서관 카테고리">
-        {tabs.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={item.key === tab ? "active" : ""}
-            onClick={() => setTab(item.key)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
+      <div className="library-notion-layout">
+        <nav className="library-folder-nav" aria-label="도서관 폴더">
+          {folders.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className={item.key === folder ? "active" : ""}
+              onClick={() => selectFolder(item.key)}
+            >
+              <span>{item.label}</span>
+              <em>{entriesByFolder[item.key].length}</em>
+            </button>
+          ))}
+        </nav>
 
-      {tab === "quests" && (
-        <section className="library-section">
-          <div className="library-section-head">
-            <h2>완료 Quest</h2>
-            <span>{completedQuests.length}개</span>
-          </div>
-          {completedQuests.length === 0 ? (
-            <p>이 조건에 맞는 완료 Quest가 없습니다.</p>
+        <div className="library-entry-list">
+          {visibleEntries.length === 0 ? (
+            <p className="small-copy">이 조건에 맞는 기록이 없습니다.</p>
           ) : (
-            completedQuests.map((quest) => (
-              <article key={quest.id}>
-                <strong>{quest.title}</strong>
-                <span>{(quest.completedAt ?? quest.dueDate).slice(0, 10)} · EXP +{quest.expReward}</span>
-              </article>
-            ))
-          )}
-        </section>
-      )}
-
-      {tab === "events" && (
-        <section className="library-section">
-          <div className="library-section-head">
-            <h2>지난 일정</h2>
-            <span>{pastEvents.length}개</span>
-          </div>
-          {pastEvents.length === 0 ? (
-            <p>지난 일정이 없습니다.</p>
-          ) : (
-            pastEvents.map((event) => (
-              <article key={event.id}>
-                <strong>{event.title}</strong>
-                <span>{event.startAt.slice(0, 10)} · {event.location ?? "루멘 왕성"}</span>
-              </article>
-            ))
-          )}
-        </section>
-      )}
-
-      {tab === "diary" && (
-        <section className="library-section">
-          <div className="library-section-head">
-            <h2>Diary</h2>
-            <span>{filteredDiary.length}개</span>
-          </div>
-          <p className="small-copy">임시 mock 데이터입니다. 실제 Diary 저장 흐름은 아직 연결되지 않았습니다.</p>
-          {filteredDiary.length === 0 ? (
-            <p>이 조건에 맞는 Diary가 없습니다.</p>
-          ) : (
-            filteredDiary.map((entry) => (
-              <article key={entry.id}>
+            visibleEntries.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                className={entry.id === selected?.id ? "active" : ""}
+                onClick={() => setSelectedId(entry.id)}
+              >
                 <strong>{entry.title}</strong>
-                <span>{entry.date} · {entry.mood}</span>
-                <p>{entry.excerpt}</p>
-              </article>
+                <span>{entry.meta}</span>
+              </button>
             ))
           )}
-        </section>
-      )}
+        </div>
 
-      {tab === "relationships" && (
-        <section className="library-section">
-          <div className="library-section-head">
-            <h2>인연록</h2>
-            <span>{filteredRelationships.length}개</span>
-          </div>
-          <p className="small-copy">임시 mock 데이터입니다. 실제 연락처/인연록 저장 흐름은 아직 연결되지 않았습니다.</p>
-          {filteredRelationships.length === 0 ? (
-            <p>이 조건에 맞는 인연이 없습니다.</p>
+        <div className="library-entry-detail">
+          {selected ? (
+            <>
+              <h2>{selected.title}</h2>
+              <span>{selected.meta}</span>
+              <p>{selected.body || "내용이 없습니다."}</p>
+            </>
           ) : (
-            filteredRelationships.map((entry) => (
-              <article key={entry.id}>
-                <strong>{entry.name}</strong>
-                <span>{entry.relation} · 최근 연락 {entry.lastContact}</span>
-                <p>{entry.note}</p>
-              </article>
-            ))
+            <p className="small-copy">왼쪽에서 기록을 선택하세요.</p>
           )}
-        </section>
-      )}
-
-      {tab === "memory" && (
-        <section className="library-section">
-          <div className="library-section-head">
-            <h2>세린 기억</h2>
-            <span>{filteredMemories.length}개</span>
-          </div>
-          <p className="small-copy">화면 대화는 새로고침하면 사라지지만, 세린이 "기억해줘"로 저장한 내용은 여기 남습니다.</p>
-          {filteredMemories.length === 0 ? (
-            <p>이 조건에 맞는 세린 기억이 없습니다.</p>
-          ) : (
-            filteredMemories.map((memory) => (
-              <article key={memory.id}>
-                <strong>{memory.memoryType}</strong>
-                <span>{memory.content}</span>
-              </article>
-            ))
-          )}
-        </section>
-      )}
-
-      {tab === "chronicle" && (
-        <section className="library-section">
-          <div className="library-section-head">
-            <h2>왕실연대기</h2>
-            <span>{filteredChronicle.length}개</span>
-          </div>
-          <p className="small-copy">임시 mock 데이터입니다. 실제 이벤트 기반 연대기 생성은 아직 연결되지 않았습니다.</p>
-          {filteredChronicle.length === 0 ? (
-            <p>이 조건에 맞는 기록이 없습니다.</p>
-          ) : (
-            filteredChronicle.map((entry) => (
-              <article key={entry.id}>
-                <strong>{entry.title}</strong>
-                <span>{entry.date}</span>
-                <p>{entry.description}</p>
-              </article>
-            ))
-          )}
-        </section>
-      )}
+        </div>
+      </div>
     </section>
   );
 }

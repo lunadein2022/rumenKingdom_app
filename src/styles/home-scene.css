@@ -1,134 +1,511 @@
-.home-screen {
-  display: grid;
-  gap: 14px;
-}
-
 /* =====================================================================
-   Home = 왕궁 로비. Castle(방 이동 허브)과는 분리된 최소 구성입니다.
-   공주+세린, 오늘 브리핑, 오늘 일정/Quest 최소 카운트, Castle 이동 버튼만 있습니다.
+   Home = 왕궁 로비. HUD 기반 UI 원칙:
+   - 화면의 주인공은 배경(Scene)이고, UI는 그 위에 뜨는 Glass Overlay입니다.
+   - 큰 흰 카드로 화면을 가리지 않습니다.
+   - 공주+세린은 항상 Scene 안에 존재합니다.
+   - 우측에는 왕궁 지도(미니맵)와 진행 중 메인퀘스트 패널이 떠 있습니다.
    ===================================================================== */
-.palace-lobby-simple {
-  display: grid;
-  gap: 14px;
-}
-
-.palace-lobby-simple-scene {
+.palace-hud-scene {
   position: relative;
+  min-height: min(78vh, 680px);
   overflow: hidden;
-  min-height: min(60vh, 480px);
-  padding: 18px;
   border-radius: 30px;
-  background-size: cover;
-  background-position: center;
   box-shadow: var(--shadow-floating);
 }
 
-.palace-lobby-simple-scene::after {
+.palace-hud-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.palace-hud-backdrop::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(7, 11, 26, 0.5));
+  background: linear-gradient(
+    180deg,
+    rgba(16, 25, 54, 0.4) 0%,
+    rgba(16, 25, 54, 0.08) 28%,
+    rgba(16, 25, 54, 0.1) 60%,
+    rgba(16, 25, 54, 0.5) 100%
+  );
 }
 
-.palace-lobby-simple-figures {
+/* ---------------------------------------------------------------------
+   상단 HUD 바 — 레벨/EXP, 재화, 우편함/설정. 얇고 반투명합니다.
+   --------------------------------------------------------------------- */
+.home-hud-bar {
   position: absolute;
-  left: 0;
-  right: 0;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(16, 25, 54, 0.42);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.home-hud-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.home-hud-level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.home-hud-level-badge {
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.home-hud-exp-track {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  min-width: 40px;
+  max-width: 220px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+
+.home-hud-exp-fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  background: linear-gradient(90deg, #ffd76a, #ffb020);
+}
+
+.home-hud-exp-label {
+  font-size: 11px;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.home-hud-currency {
+  display: flex;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.home-hud-icons {
+  display: flex;
+  gap: 8px;
+}
+
+.home-hud-icons button {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 13px;
+}
+
+.home-hud-icons em {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #ff5d5d;
+  color: #fff;
+  font-size: 9px;
+  font-style: normal;
+  display: grid;
+  place-items: center;
+}
+
+/* ---------------------------------------------------------------------
+   Character Presence — 공주+세린은 항상 Scene 안에 존재합니다.
+   --------------------------------------------------------------------- */
+.palace-hud-figures {
+  position: absolute;
+  left: 50%;
   bottom: 0;
   z-index: 1;
   display: flex;
-  justify-content: center;
   align-items: flex-end;
+  justify-content: center;
+  transform: translateX(-50%);
 }
 
-.palace-lobby-simple-figures img:first-child {
+.palace-hud-figures img:first-child {
   z-index: 2;
-  width: min(40%, 220px);
+  width: min(30%, 300px);
   object-fit: contain;
-  filter: drop-shadow(0 18px 28px rgba(7, 11, 26, 0.35));
+  filter: drop-shadow(0 20px 30px rgba(7, 11, 26, 0.4));
 }
 
-.palace-lobby-simple-figures img:last-child {
+.palace-hud-figures img:last-child {
   z-index: 1;
-  width: min(28%, 150px);
-  margin-left: -24px;
+  width: min(20%, 190px);
+  margin-left: -20px;
   object-fit: contain;
-  filter: drop-shadow(0 14px 22px rgba(7, 11, 26, 0.3));
+  filter: drop-shadow(0 16px 24px rgba(7, 11, 26, 0.35));
 }
 
-.palace-lobby-simple-bubble {
-  position: relative;
-  z-index: 3;
-  width: min(100%, 360px);
-  margin: 0 auto 190px;
+/* ---------------------------------------------------------------------
+   좌/우 Floating Panel Rail — Glass HUD. 흰 카드가 아니라 반투명 오버레이.
+   --------------------------------------------------------------------- */
+.home-left-rail,
+.home-right-rail {
+  position: absolute;
+  top: 76px;
+  bottom: 74px;
+  z-index: 5;
+  width: min(27%, 300px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.home-left-rail {
+  left: 16px;
+}
+
+.home-right-rail {
+  right: 16px;
+}
+
+.home-hud-panel {
+  flex: 0 0 auto;
   padding: 14px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--shadow-medium);
-  text-align: center;
+  border-radius: 20px;
+  background: rgba(16, 25, 54, 0.4);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  box-shadow: 0 12px 30px rgba(7, 11, 26, 0.25);
 }
 
-.palace-lobby-simple-bubble span {
-  color: #6f5115;
+.home-hud-panel h2 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.home-hud-panel p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+}
+
+.home-hud-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.home-hud-panel-head h2 {
+  margin: 0;
+}
+
+.home-hud-panel-head button {
+  background: none;
+  border: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+}
+
+.home-hud-panel-head span {
   font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 800;
+}
+
+.home-hud-empty {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
+.home-briefing-counts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.home-briefing-counts button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  text-align: left;
+}
+
+.home-briefing-counts button span {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.home-briefing-counts button strong {
+  font-size: 13px;
   font-weight: 900;
 }
 
-.palace-lobby-simple-bubble p {
-  margin: 4px 0 0;
-  color: var(--royal-900);
-  font-size: 14px;
-  font-weight: 700;
+.home-schedule-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
 }
 
-.palace-lobby-simple-strip {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
+.home-schedule-list li {
+  display: flex;
   align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.home-schedule-list time {
+  color: #ffd76a;
+  font-weight: 900;
+  font-size: 11px;
+  min-width: 44px;
+}
+
+.home-quest-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.home-quest-checklist button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: 0;
+  color: #fff;
+  font-size: 12px;
+  padding: 4px 0;
+  text-align: left;
+}
+
+.home-quest-checklist button.done {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.home-quest-checkbox {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+
+/* ---------------------------------------------------------------------
+   Mini Map — 왕궁 지도. 실제 지도가 아니라 단순화한 6방 구조입니다.
+   해금 시스템이 없으므로 모든 노드가 항상 이동 가능합니다.
+   --------------------------------------------------------------------- */
+.castle-minimap-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 34px);
+  gap: 6px;
+}
+
+.castle-minimap-node {
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 4px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.castle-minimap-node.current {
+  background: rgba(216, 183, 106, 0.35);
+  border-color: rgba(216, 183, 106, 0.6);
+  color: #fff8e6;
+}
+
+.castle-minimap-slot.empty {
+  visibility: hidden;
+}
+
+.minimap-throne {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.minimap-library {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.minimap-lobby {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.minimap-office {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.minimap-garden {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.minimap-bedroom {
+  grid-column: 3;
+  grid-row: 3;
+}
+
+/* ---------------------------------------------------------------------
+   Quest Tracker — 진행 중 메인퀘스트(프로젝트). 체크박스형 카드가 아니라
+   간결한 진행률 바 목록입니다.
+   --------------------------------------------------------------------- */
+.main-quest-tracker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
   gap: 10px;
 }
 
-.lobby-mini-count {
-  display: grid;
-  gap: 2px;
-  padding: 12px 14px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
+.main-quest-tracker-list strong {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 4px;
 }
 
-.lobby-mini-count strong {
-  color: var(--royal-900);
-  font-size: 18px;
+.main-quest-tracker-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
 }
 
-.lobby-mini-count span {
-  color: var(--text-secondary);
+.main-quest-tracker-bar div {
+  height: 100%;
+  background: linear-gradient(90deg, #8fb0ff, #4169e1);
+}
+
+.main-quest-tracker-list span {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.main-quest-tracker-more {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
   font-size: 11px;
   font-weight: 800;
 }
 
-.lobby-enter-castle {
-  min-height: 48px;
-  padding: 0 18px;
+.home-castle-enter {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 5;
+  min-height: 44px;
+  padding: 0 20px;
   border: 0;
-  border-radius: var(--radius-full);
+  border-radius: 999px;
   color: #fff;
   background: var(--royal-600);
   box-shadow: var(--shadow-medium);
   font-size: 13px;
   font-weight: 900;
-  white-space: nowrap;
 }
 
-@media (max-width: 640px) {
-  .palace-lobby-simple-strip {
-    grid-template-columns: 1fr 1fr;
+/* 좁은 화면: 절대배치 오버레이가 서로 눌리는 것을 막기 위해 세로 스택으로
+   전환합니다. Scene 배경은 유지하되, 패널은 배경 위 일반 흐름으로 쌓입니다. */
+@media (max-width: 980px) {
+  .palace-hud-scene {
+    min-height: auto;
+    padding: 72px 12px 90px;
   }
 
-  .lobby-enter-castle {
-    grid-column: 1 / -1;
+  .home-hud-bar {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .palace-hud-figures {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    margin: 8px 0;
+  }
+
+  .home-left-rail,
+  .home-right-rail {
+    position: relative;
+    top: auto;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    margin-top: 8px;
+  }
+
+  .home-castle-enter {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    display: block;
+    margin: 12px auto 0;
   }
 }

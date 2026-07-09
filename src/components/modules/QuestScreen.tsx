@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { Quest, QuestCompletionEvent, QuestHistoryEntry, QuestType, UserProgress } from "../../app/types";
+import type { MainQuest, Quest, QuestCompletionEvent, QuestHistoryEntry, QuestType, UserProgress } from "../../app/types";
 import { questTypeMeta } from "../../domain/questDomain";
 import { Badge } from "../design-system/Badge";
 import { Button } from "../design-system/Button";
@@ -7,6 +7,7 @@ import { ProgressBar } from "../design-system/ProgressBar";
 
 interface QuestScreenProps {
   quests: Quest[];
+  mainQuests: MainQuest[];
   history: QuestHistoryEntry[];
   progress: UserProgress;
   completionEvents: QuestCompletionEvent[];
@@ -16,7 +17,9 @@ interface QuestScreenProps {
 
 type QuestTimeScope = "past" | "current" | "future" | "all";
 
-const questTabs: QuestType[] = ["main", "side", "daily", "routine", "story"];
+// 메인퀘스트(=프로젝트)는 Office가 관리합니다. 이 화면은 실행형 퀘스트
+// (서브/일일/반복/스토리)만 실행(체크/완료)하는 공간입니다.
+const questTabs: QuestType[] = ["daily", "routine", "side", "story"];
 const timeTabs: Array<{ key: QuestTimeScope; label: string }> = [
   { key: "past", label: "이전" },
   { key: "current", label: "현재" },
@@ -40,15 +43,17 @@ function inScope(quest: Quest, scope: QuestTimeScope) {
 
 export function QuestScreen({
   quests,
+  mainQuests,
   history,
   progress,
   completionEvents,
   onCompleteQuest,
   onCycleQuest,
 }: QuestScreenProps) {
-  const [activeType, setActiveType] = useState<QuestType>("main");
+  const [activeType, setActiveType] = useState<QuestType>("daily");
   const [timeScope, setTimeScope] = useState<QuestTimeScope>("current");
   const [showHistory, setShowHistory] = useState(false);
+  const mainQuestTitle = useMemo(() => new Map(mainQuests.map((mq) => [mq.id, mq.title])), [mainQuests]);
   const visibleQuests = useMemo(
     () =>
       quests
@@ -64,7 +69,7 @@ export function QuestScreen({
       <header className="quest-domain-hero">
         <Badge tone="gold">Quest Domain</Badge>
         <h1>왕실 Quest</h1>
-        <p>Quest는 Princess OS의 성장, Castle EXP, 보상, 기록을 움직이는 중심 도메인입니다.</p>
+        <p>메인퀘스트(프로젝트)는 집무실에서 관리하고, 여기서는 서브·일일·반복·스토리 퀘스트를 실행합니다.</p>
         <div className="quest-hero-stats">
           <div><strong>{progress.todayProgress}%</strong><span>오늘 진행률</span></div>
           <div><strong>Lv.{progress.level}</strong><span>레벨</span></div>
@@ -120,7 +125,9 @@ export function QuestScreen({
               </div>
               <h2>{quest.title}</h2>
               <p>{quest.description}</p>
-              {quest.chapter && <span className="quest-chapter">{quest.chapter}</span>}
+              {quest.mainQuestId && mainQuestTitle.get(quest.mainQuestId) && (
+                <span className="quest-chapter">{mainQuestTitle.get(quest.mainQuestId)}</span>
+              )}
               <div className="quest-meta-row">
                 <span>보상 {quest.rewardItem ?? `${quest.goldReward} Gold`}</span>
                 <span>마감 {quest.dueDate}</span>

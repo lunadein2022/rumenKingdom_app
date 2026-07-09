@@ -12,13 +12,39 @@ function extractTitle(message: string) {
     .trim() || "새 요청";
 }
 
-export function parseIntent(message: string, attachments: SerinAttachment[] = []): SerinParsedIntent {
+// 세린은 AI 비서로서 대화를 7가지 의도(Conversation/Calendar/Todo/Project/Diary/
+// Relationship/Search)로 자동 분류합니다. mainQuestTitles를 넘기면, 이미 있는
+// 프로젝트 이름이 언급될 때 project.create 대신 project.update로 분류합니다.
+export function parseIntent(
+  message: string,
+  attachments: SerinAttachment[] = [],
+  mainQuestTitles: string[] = [],
+): SerinParsedIntent {
   const calendarIntent = parseCalendarIntent(message);
   if (calendarIntent) {
     return {
       intent: "calendar.create",
       confidence: calendarIntent.confidence,
       entities: { calendar: calendarIntent },
+      needsConfirmation: true,
+    };
+  }
+
+  const matchedProject = mainQuestTitles.find((title) => message.includes(title));
+  if (matchedProject && hasAny(message, ["완료", "진행", "업데이트", "끝냈", "마쳤", "시작했"])) {
+    return {
+      intent: "project.update",
+      confidence: 0.8,
+      entities: { mainQuestTitle: matchedProject, content: message },
+      needsConfirmation: true,
+    };
+  }
+
+  if (hasAny(message, ["프로젝트 시작", "새 프로젝트", "프로젝트를 시작", "메인퀘스트 시작"])) {
+    return {
+      intent: "project.create",
+      confidence: 0.78,
+      entities: { title: extractTitle(message) },
       needsConfirmation: true,
     };
   }
@@ -31,7 +57,6 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
         contact: {
           name: "새 연락처",
           memo: "첨부 이미지 또는 대화에서 추출할 연락처입니다.",
-          source: "serin",
         },
       },
       needsConfirmation: true,
@@ -82,11 +107,11 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
     };
   }
 
-  if (hasAny(message, ["보상", "칭호", "레벨"])) {
+  if (hasAny(message, ["찾아줘", "검색해줘", "검색", "어디있", "언제였", "찾아봐"])) {
     return {
-      intent: "reward.claim",
+      intent: "library.search",
       confidence: 0.7,
-      entities: {},
+      entities: { query: message },
       needsConfirmation: false,
     };
   }
