@@ -29,7 +29,7 @@ export function PrincessPresencePanel({
         </div>
         <Button onClick={onOpenProfile}>공주 프로필</Button>
       </div>
-      <img src="/assets/princess-full.png" alt="공주 전신" />
+      <img src="/assets/princess-full.webp" alt="공주 전신" />
     </GlassPanel>
   );
 }

@@ -22,7 +22,7 @@ export function LiveSerinPanel({ serin, onAskSerin }: LiveSerinPanelProps) {
         </div>
         <Button variant="glass" onClick={onAskSerin}>세린에게 맡기기</Button>
       </div>
-      <img src="/assets/serin-full.png" alt="세린 전신" />
+      <img src="/assets/serin-full.webp" alt="세린 전신" />
     </GlassPanel>
   );
 }

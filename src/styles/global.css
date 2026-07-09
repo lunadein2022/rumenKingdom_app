@@ -104,14 +104,3 @@ p {
     overflow: hidden;
   }
 }
-
-/* 데스크톱: 폰 프레임에 갇히지 않고 화면을 넓게 사용 */
-@media (min-width: 980px) {
-  .mobile-app-shell {
-    width: min(94%, 1240px);
-  }
-
-  .mobile-app-main {
-    padding: 20px 28px calc(100px + env(safe-area-inset-bottom));
-  }
-}

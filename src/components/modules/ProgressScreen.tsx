@@ -12,7 +12,7 @@ export function ProgressScreen({ data, onOpenProfile }: ProgressScreenProps) {
   return (
     <section className="screen-stack">
       <header className="progress-hero">
-        <img src="/assets/princess-full-transparent.png" alt="공주 전신" />
+        <img src="/assets/princess-full-transparent.webp" alt="공주 전신" />
         <div>
           <Badge tone="gold">{data.princess.activeTitle}</Badge>
           <h1>Princess Growth</h1>

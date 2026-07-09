@@ -12,7 +12,7 @@ export function PrincessCharacter({ data }: PrincessCharacterProps) {
     <section className="module-grid princess-module">
       <aside className="princess-visual-panel">
         <Badge tone="gold">{data.princess.activeTitle}</Badge>
-        <img src="/assets/princess-full-transparent.png" alt="공주 전신" />
+        <img src="/assets/princess-full-transparent.webp" alt="공주 전신" />
       </aside>
 
       <div className="module-stack">
@@ -66,7 +66,7 @@ export function PrincessCharacter({ data }: PrincessCharacterProps) {
         </Card>
 
         <Card className="relationship-card">
-          <img src="/assets/serin-bust-transparent.png" alt="세린" />
+          <img src="/assets/serin-bust-transparent.webp" alt="세린" />
           <div>
             <h3>세린과의 관계</h3>
             <p>

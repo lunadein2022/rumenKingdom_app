@@ -3,463 +3,430 @@
   gap: 14px;
 }
 
-/* ===== Palace Lobby (Home = Castle) =====
-   앱을 열면 메뉴가 아니라 왕궁 로비가 먼저 보입니다.
-   공주/세린 등장 -> 인사 말풍선 -> 0.5~1초 뒤 장소 선택 Pill이 Fade+Slide로 등장. */
-.palace-lobby {
-  display: grid;
-  gap: 14px;
-  transition: opacity 260ms var(--ease-soft), transform 260ms var(--ease-soft);
-}
-
-.palace-lobby.leaving {
-  opacity: 0;
-  transform: scale(1.03);
-}
-
-.palace-lobby-scene {
+/* =====================================================================
+   Palace HUD Scene (Home = Castle 로비)
+   장소는 카드가 아니라 화면 전체를 채우는 Scene입니다. HUD(상태/퀘스트/대사)는
+   가장자리(좌상단/우상단/우측/좌하단)에만 얇게 떠 있고, 중앙 Scene은 항상
+   화면의 70~80% 이상 그대로 보입니다. 방 전환은 Fade + 살짝 Zoom으로 처리합니다.
+   ===================================================================== */
+.palace-hud-scene {
   position: relative;
+  min-height: calc(100dvh - 150px);
+  border-radius: 26px;
   overflow: hidden;
-  min-height: 420px;
-  padding: 18px;
-  border-radius: 30px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(7, 11, 26, 0.55)),
-    url("/assets/home-bg.png") center / cover;
   box-shadow: var(--shadow-floating);
-  animation: lobby-scene-in 520ms var(--ease-soft);
+  isolation: isolate;
+  transition: opacity 280ms var(--ease-soft), transform 280ms var(--ease-soft);
 }
 
-.palace-lobby-figures {
+.palace-hud-scene.leaving {
+  opacity: 0;
+  transform: scale(1.04);
+}
+
+.palace-hud-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  animation: hud-scene-in 560ms var(--ease-soft);
+}
+
+.palace-hud-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(7, 11, 26, 0.28) 0%, rgba(7, 11, 26, 0.06) 30%, rgba(7, 11, 26, 0.1) 70%, rgba(7, 11, 26, 0.42) 100%);
+}
+
+.palace-hud-figures {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: 6%;
+  z-index: 1;
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  gap: -24px;
+  pointer-events: none;
 }
 
-.lobby-princess {
+.hud-princess {
   z-index: 2;
-  width: min(56%, 220px);
+  width: min(46%, 210px);
   object-fit: contain;
   filter: drop-shadow(0 18px 28px rgba(7, 11, 26, 0.35));
-  animation: lobby-figure-in 620ms var(--ease-soft) both;
+  animation: hud-figure-in 620ms var(--ease-soft) both;
 }
 
-.lobby-serin {
+.hud-serin {
   z-index: 1;
-  width: min(38%, 150px);
-  margin-left: -28px;
+  width: min(32%, 145px);
+  margin-left: -22px;
   object-fit: contain;
   filter: drop-shadow(0 14px 22px rgba(7, 11, 26, 0.3));
-  animation: lobby-figure-in 620ms var(--ease-soft) 120ms both;
+  animation: hud-figure-in 620ms var(--ease-soft) 120ms both;
 }
 
-.lobby-speech-bubble {
-  position: relative;
+/* ---- 공통 HUD 코너 유닛 ---- */
+.hud-corner {
+  position: absolute;
   z-index: 3;
-  width: min(100%, 340px);
-  margin: 0 auto 168px;
-  padding: 14px 16px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: var(--shadow-medium);
-  text-align: center;
-  animation: lobby-bubble-in 480ms var(--ease-soft) 180ms both;
-}
-
-.lobby-speech-bubble span {
-  color: #6f5115;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.lobby-speech-bubble p {
-  margin: 4px 0 0;
-  color: var(--royal-900);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.lobby-today-strip {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-.lobby-today-strip button {
-  min-height: 100px;
-  padding: 13px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  text-align: left;
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
-  backdrop-filter: blur(18px);
-}
-
-.lobby-today-strip strong,
-.lobby-today-strip span {
-  display: block;
-}
-
-.lobby-today-strip strong {
-  margin-top: 8px;
-  color: var(--royal-900);
-  font-size: 20px;
-}
-
-.lobby-today-strip span {
-  margin-top: 4px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.lobby-exp-card {
-  grid-column: 1 / -1;
-  display: grid;
-  gap: 8px;
-  padding: 13px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
-}
-
-.lobby-exp-card span {
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.lobby-next-line {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.lobby-room-pills {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: center;
-  padding: 4px 2px 2px;
   opacity: 0;
-  transform: translateY(14px);
+  transform: translateY(-6px);
   pointer-events: none;
-  transition: opacity 420ms var(--ease-soft), transform 420ms var(--ease-soft);
+  transition: opacity 360ms var(--ease-soft), transform 360ms var(--ease-soft);
 }
 
-.lobby-room-pills.visible {
+.hud-corner.visible {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
 }
 
-.lobby-room-pills button {
+/* 좌상단: 공주 상태 + 시간대 */
+.hud-top-left {
+  top: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(7, 11, 26, 0.34);
+  backdrop-filter: blur(10px);
+  color: #fff;
+}
+
+.hud-time-icon {
+  font-size: 16px;
+}
+
+.hud-top-left strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.hud-top-left span {
+  display: block;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 700;
+}
+
+/* 우상단: 오늘 일정/퀘스트 카운터 */
+.hud-top-right {
+  top: 14px;
+  right: 14px;
+  display: flex;
+  gap: 6px;
+}
+
+.hud-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 56px;
+  padding: 6px 8px;
+  border-radius: 14px;
+  background: rgba(7, 11, 26, 0.34);
+  backdrop-filter: blur(10px);
+  color: #fff;
+}
+
+.hud-counter-icon {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.hud-counter strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.hud-counter span:last-child {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* 우측 Edge: Quest Tracker */
+.hud-edge.hud-right {
+  position: absolute;
+  z-index: 3;
+  top: 64px;
+  right: 14px;
+  bottom: 96px;
+  display: flex;
+  align-items: flex-start;
+  animation: hud-fade-in 420ms var(--ease-soft) both;
+}
+
+.quest-tracker-hud {
+  width: min(46vw, 176px);
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 18px;
+  background: rgba(7, 11, 26, 0.34);
+  backdrop-filter: blur(10px);
+  color: #fff;
+}
+
+.tracker-eyebrow {
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tracker-main strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.tracker-bar {
+  margin-top: 6px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.24);
+  overflow: hidden;
+}
+
+.tracker-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, #ffd76a, #ffb347);
+  transition: width 320ms var(--ease-soft);
+}
+
+.tracker-daily ul {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.tracker-item {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 42px;
-  padding: 0 14px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: var(--radius-full);
-  color: var(--royal-900);
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: var(--shadow-small);
-  font-size: 13px;
-  font-weight: 800;
-  backdrop-filter: blur(14px);
-  transition: transform 160ms var(--ease-soft);
-}
-
-.lobby-room-pills button:active {
-  transform: scale(0.96);
-}
-
-@keyframes lobby-scene-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes lobby-figure-in {
-  from {
-    opacity: 0;
-    transform: translateY(22px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes lobby-bubble-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 데스크톱: 폰 프레임을 그냥 늘리지 않고 Scene + Today 패널을 좌우로 배치 */
-@media (min-width: 980px) {
-  .palace-lobby {
-    grid-template-columns: 1.3fr 0.9fr;
-    grid-template-areas:
-      "scene today"
-      "pills pills";
-    align-items: start;
-  }
-
-  .palace-lobby-scene {
-    grid-area: scene;
-    min-height: 520px;
-  }
-
-  .lobby-today-strip {
-    grid-area: today;
-    grid-template-columns: 1fr;
-  }
-
-  .lobby-room-pills {
-    grid-area: pills;
-    justify-content: flex-start;
-  }
-}
-
-.home-hero-mobile {
-  position: relative;
-  overflow: hidden;
-  min-height: 420px;
-  padding: 18px;
-  border-radius: 30px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(7, 11, 26, 0.5)),
-    url("/assets/home-bg.png") center / cover;
-  box-shadow: var(--shadow-floating);
-}
-
-.home-hero-bg {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(65, 105, 225, 0.12), rgba(7, 11, 26, 0.42));
-  pointer-events: none;
-}
-
-.home-copy {
-  position: relative;
-  z-index: 2;
-}
-
-.home-kicker {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.home-copy h1 {
-  width: min(100%, 310px);
-  margin: 10px 0 8px;
-  color: #fff;
-  font-size: 30px;
-  line-height: 1.08;
-}
-
-.home-copy p {
-  width: min(100%, 300px);
-  margin: 0;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 13px;
-}
-
-.home-character-row {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 10px;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: 8px;
-  align-items: end;
-}
-
-.home-character {
-  position: relative;
-  min-height: 255px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.52), transparent 35%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(16, 25, 54, 0.24));
-  backdrop-filter: blur(6px);
-}
-
-.home-character.serin {
-  min-height: 225px;
-}
-
-.home-character span {
-  position: absolute;
-  left: 10px;
-  top: 10px;
-  z-index: 2;
-  padding: 6px 9px;
-  border-radius: var(--radius-full);
-  color: var(--royal-900);
-  background: rgba(255, 255, 255, 0.74);
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.home-character img {
-  position: absolute;
-  left: 50%;
-  bottom: -10px;
-  width: 132%;
-  height: 240px;
-  object-fit: contain;
-  object-position: bottom center;
-  transform: translateX(-50%);
-}
-
-.home-character.princess img {
-  height: 270px;
-}
-
-.home-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
-.home-stat-grid button,
-.home-progress-card {
-  min-height: 112px;
-  padding: 13px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
   text-align: left;
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
-  backdrop-filter: blur(18px);
+  color: #fff;
+  transition: transform 140ms var(--ease-soft), background 140ms var(--ease-soft);
 }
 
-.home-stat-grid strong,
-.home-stat-grid span,
-.home-progress-card strong,
-.home-progress-card span {
-  display: block;
+.tracker-item:active {
+  transform: scale(0.97);
 }
 
-.home-stat-grid strong {
-  margin-top: 8px;
-  color: var(--royal-900);
-  font-size: 20px;
+.tracker-item.done {
+  background: rgba(120, 220, 160, 0.22);
+  opacity: 0.8;
 }
 
-.home-stat-grid span,
-.home-progress-card span {
-  margin-top: 4px;
-  color: var(--text-secondary);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.home-progress-card {
-  display: grid;
-  gap: 12px;
-  min-height: 0;
-}
-
-.home-action-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.mobile-section-heading h2 {
-  margin: 2px 0 4px;
-  color: var(--royal-900);
-  font-size: 20px;
-}
-
-.mobile-section-heading p {
-  margin: 0;
-  font-size: 13px;
-}
-
-.palace-map-mobile {
-  display: grid;
-  gap: 10px;
-}
-
-.palace-room-mobile {
-  display: grid;
-  grid-template-columns: 104px 1fr;
-  min-height: 124px;
-  overflow: hidden;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
-}
-
-.room-image {
-  min-height: 124px;
-  background-position: center;
-  background-size: cover;
-}
-
-.room-content {
-  padding: 12px;
-}
-
-.room-content h3 {
-  margin: 8px 0 3px;
-  color: var(--royal-900);
-  font-size: 17px;
-}
-
-.room-content p {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  color: var(--text-secondary);
-  font-size: 12px;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.room-stats {
+.tracker-check {
   display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  margin: 8px 0;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1.4px solid rgba(255, 255, 255, 0.55);
+  font-size: 10px;
+  color: #7bffb0;
 }
 
-.room-stats span {
-  padding: 4px 7px;
-  border-radius: var(--radius-full);
-  color: var(--text-secondary);
-  background: rgba(16, 25, 54, 0.06);
+.tracker-item.done .tracker-check {
+  background: rgba(123, 255, 176, 0.9);
+  border-color: transparent;
+  color: #073a1c;
+}
+
+.tracker-title {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+li.celebrating .tracker-item {
+  animation: hud-quest-glow 900ms ease-out;
+}
+
+.tracker-celebrate {
+  position: relative;
+  margin: -2px 0 2px 22px;
+  animation: hud-fade-in 200ms var(--ease-soft) both;
+}
+
+.tracker-exp-pop {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 900;
+  color: #ffe08a;
+  animation: hud-exp-float 1200ms var(--ease-soft) both;
+}
+
+.tracker-serin-line {
+  margin: 2px 0 0;
   font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 좌하단: 세린 말풍선 */
+.hud-bottom-left {
+  left: 14px;
+  bottom: 78px;
+  max-width: min(72vw, 300px);
+}
+
+.hud-speech-bubble {
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-medium);
+}
+
+.hud-speech-bubble p {
+  margin: 0;
+  color: var(--royal-900);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* 하단: 장소 이동 Dock (얇은 Pill Row, 화면을 덮지 않음) */
+.hud-room-dock {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0 10px;
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 420ms var(--ease-soft), transform 420ms var(--ease-soft);
+}
+
+.hud-room-dock.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.hud-room-dock button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-full);
+  background: rgba(7, 11, 26, 0.4);
+  backdrop-filter: blur(12px);
+  color: #fff;
+  font-size: 12px;
   font-weight: 800;
+  transition: transform 140ms var(--ease-soft);
+}
+
+.hud-room-dock button:active {
+  transform: scale(0.95);
+}
+
+@keyframes hud-scene-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hud-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes hud-figure-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes hud-quest-glow {
+  0% { box-shadow: 0 0 0 rgba(255, 215, 106, 0); }
+  35% { box-shadow: 0 0 18px 4px rgba(255, 215, 106, 0.75); }
+  100% { box-shadow: 0 0 0 rgba(255, 215, 106, 0); }
+}
+
+@keyframes hud-exp-float {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@media (min-width: 980px) {
+  .palace-hud-scene {
+    min-height: calc(100dvh - 170px);
+  }
+
+  .hud-edge.hud-right {
+    top: 76px;
+    right: 22px;
+  }
+
+  .quest-tracker-hud {
+    width: min(24vw, 220px);
+  }
+
+  .hud-bottom-left {
+    left: 22px;
+    bottom: 90px;
+  }
+
+  .hud-top-left,
+  .hud-top-right {
+    top: 22px;
+  }
+
+  .hud-top-left {
+    left: 22px;
+  }
+
+  .hud-top-right {
+    right: 22px;
+  }
 }

@@ -346,7 +346,7 @@
   border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(65, 105, 225, 0.12)),
-    url("/assets/palace-main.png") center / cover;
+    url("/assets/palace-main.webp") center / cover;
   box-shadow: var(--shadow-medium);
 }
 
@@ -408,7 +408,7 @@
   border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(65, 105, 225, 0.12)),
-    url("/assets/palace-main.png") center / cover;
+    url("/assets/palace-main.webp") center / cover;
   box-shadow: var(--shadow-medium);
 }
 
@@ -478,7 +478,7 @@
   border-radius: 28px;
   background:
     linear-gradient(145deg, rgba(16, 25, 54, 0.88), rgba(31, 50, 112, 0.78)),
-    url("/assets/throne.png") center / cover;
+    url("/assets/throne.webp") center / cover;
   box-shadow: var(--shadow-floating);
 }
 
@@ -756,7 +756,7 @@
   border-radius: 28px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(65, 105, 225, 0.1)),
-    url("/assets/library.png") center / cover;
+    url("/assets/library.webp") center / cover;
   box-shadow: var(--shadow-medium);
 }
 
@@ -1147,7 +1147,7 @@
   border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(16, 25, 54, 0.88), rgba(16, 25, 54, 0.5)),
-    url("/assets/palace-main.png") center / cover;
+    url("/assets/palace-main.webp") center / cover;
   box-shadow: var(--shadow-floating);
 }
 
@@ -1352,7 +1352,7 @@
   border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(16, 25, 54, 0.84), rgba(31, 50, 112, 0.5)),
-    url("/assets/library.png") center / cover;
+    url("/assets/library.webp") center / cover;
   box-shadow: var(--shadow-floating);
 }
 
@@ -1429,7 +1429,7 @@
   border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(16, 25, 54, 0.2)),
-    url("/assets/garden.png") center / cover;
+    url("/assets/garden.webp") center / cover;
   box-shadow: var(--shadow-floating);
 }
 
@@ -1505,7 +1505,7 @@
   border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(65, 105, 225, 0.12)),
-    url("/assets/palace-main.png") center / cover;
+    url("/assets/palace-main.webp") center / cover;
   box-shadow: var(--shadow-floating);
 }
 
@@ -1543,44 +1543,9 @@
 }
 
 .princess-progress-card strong,
-.princess-fate-card h2,
-.princess-equipment-list h2 {
-  margin: 0;
+.princess-fate-card strong {
+  display: block;
   color: var(--royal-900);
-  font-size: 19px;
-}
-
-.princess-progress-card span,
-.princess-fate-card p,
-.princess-fate-card span {
-  color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
-}
-
-.princess-stat-list {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.princess-stat-list article,
-.princess-equipment-list article {
-  display: grid;
-  gap: 3px;
-  padding: 10px;
-  border-radius: var(--radius-lg);
-  background: rgba(65, 105, 225, 0.08);
-}
-
-.princess-stat-list strong,
-.princess-equipment-list strong {
-  color: var(--royal-800);
-  font-size: 12px;
-  text-transform: capitalize;
-}
-
-.princess-stat-list span,
-.princess-equipment-list span {
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 900;
 }

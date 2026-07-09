@@ -20,7 +20,7 @@ export function PrincessPage({ data }: PrincessPageProps) {
           <h1>{princess.displayName}</h1>
           <p>Princess는 프로필이 아니라 Princess OS의 플레이어 캐릭터입니다.</p>
         </div>
-        <img src="/assets/princess-full-transparent.png" alt="공주 전신" />
+        <img src="/assets/princess-full-transparent.webp" alt="공주 전신" />
       </header>
 
       <section className="princess-progress-card">

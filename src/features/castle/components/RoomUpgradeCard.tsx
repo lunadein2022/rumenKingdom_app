@@ -1,19 +1,2 @@
-import { Button } from "../../../components/design-system/Button";
-import type { CastleRoom } from "../types/castle.types";
-
-interface RoomUpgradeCardProps {
-  room: CastleRoom;
-  onUpgrade: () => void;
-}
-
-export function RoomUpgradeCard({ room, onUpgrade }: RoomUpgradeCardProps) {
-  return (
-    <section className="room-upgrade-card">
-      <div>
-        <strong>{room.name} Lv.{room.roomLevel}</strong>
-        <span>{room.decorations.length}개 장식 활성화</span>
-      </div>
-      <Button size="sm" onClick={onUpgrade}>방 성장</Button>
-    </section>
-  );
-}
+// 더 이상 사용되지 않는 화면입니다 (Castle이 Home 로비로 통합됨). 참조 방지를 위한 빈 모듈입니다.
+export {};

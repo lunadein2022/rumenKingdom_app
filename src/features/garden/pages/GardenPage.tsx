@@ -15,7 +15,7 @@ export function GardenPage({ serin, onBackToCastle }: GardenPageProps) {
           <h1>잠시 아무것도 하지 않아도 괜찮습니다.</h1>
           <p>{serin.name}이 조용히 곁을 지키고 있습니다. 이 공간에는 Quest도, 일정도, 생산성도 없습니다.</p>
         </div>
-        <img className="garden-princess" src="/assets/princess-full-transparent.png" alt="정원에 선 공주" />
+        <img className="garden-princess" src="/assets/princess-full-transparent.webp" alt="정원에 선 공주" />
       </div>
       <section className="garden-serin-note">
         <strong>세린</strong>

@@ -312,6 +312,7 @@ export function App() {
             activeView={activeView}
             onNavigate={setActiveView}
             onVisitRoom={castleRooms.visitRoom}
+            onCompleteQuest={completeQuest}
           />
         )}
         {activeView === "library" && (
