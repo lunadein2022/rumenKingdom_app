@@ -7,45 +7,19 @@ function hasAny(message: string, words: string[]) {
 
 function extractTitle(message: string) {
   return message
-    .replace(/내일|오늘|모레|다음주|까지|퀘스트|할\s?일|todo|task|일정|만들어줘|생성해줘|추가해줘|등록해줘|기억해줘|저장해줘|해야겠다|해야돼|해야해|부탁해|부탁|줄래/gi, "")
+    .replace(/내일|오늘|모레|까지|퀘스트|todo|투두|할 일|일정|만들어줘|생성해줘|추가해줘|등록해줘|기억해줘|저장해줘/g, "")
     .replace(/\s+/g, " ")
     .trim() || "새 요청";
 }
 
-// 세린은 AI 비서로서 대화를 7가지 의도(Conversation/Calendar/Todo/Project/Diary/
-// Relationship/Search)로 자동 분류합니다. mainQuestTitles를 넘기면, 이미 있는
-// 프로젝트 이름이 언급될 때 project.create 대신 project.update로 분류합니다.
-export function parseIntent(
-  message: string,
-  attachments: SerinAttachment[] = [],
-  mainQuestTitles: string[] = [],
-): SerinParsedIntent {
+export function parseIntent(message: string, attachments: SerinAttachment[] = []): SerinParsedIntent {
   const calendarIntent = parseCalendarIntent(message);
   if (calendarIntent) {
     return {
       intent: "calendar.create",
       confidence: calendarIntent.confidence,
       entities: { calendar: calendarIntent },
-      needsConfirmation: true,
-    };
-  }
-
-  const matchedProject = mainQuestTitles.find((title) => message.includes(title));
-  if (matchedProject && hasAny(message, ["완료", "진행", "업데이트", "끝냈", "마쳤", "시작했"])) {
-    return {
-      intent: "project.update",
-      confidence: 0.8,
-      entities: { mainQuestTitle: matchedProject, content: message },
-      needsConfirmation: true,
-    };
-  }
-
-  if (hasAny(message, ["프로젝트 시작", "새 프로젝트", "프로젝트를 시작", "메인퀘스트 시작"])) {
-    return {
-      intent: "project.create",
-      confidence: 0.78,
-      entities: { title: extractTitle(message) },
-      needsConfirmation: true,
+      needsConfirmation: false,
     };
   }
 
@@ -56,10 +30,11 @@ export function parseIntent(
       entities: {
         contact: {
           name: "새 연락처",
-          memo: "첨부 이미지 또는 대화에서 추출할 연락처입니다.",
+          memo: "첨부 이미지 또는 대화에서 추출한 연락처입니다.",
+          source: "serin",
         },
       },
-      needsConfirmation: true,
+      needsConfirmation: false,
     };
   }
 
@@ -79,17 +54,17 @@ export function parseIntent(
     };
   }
 
-  if (hasAny(message, ["퀘스트", "할 일", "할일", "todo", "task", "해야", "작성", "준비", "부탁", "챙겨야", "리스트", "체크리스트"])) {
+  if (hasAny(message, ["퀘스트", "todo", "투두", "할 일", "해야", "작성", "준비"])) {
     return {
       intent: "quest.create",
-      confidence: 0.76,
+      confidence: 0.78,
       entities: {
         quest: {
           title: extractTitle(message),
           dueDate: message.includes("내일") ? "2026-07-10" : "2026-07-09",
         },
       },
-      needsConfirmation: true,
+      needsConfirmation: false,
     };
   }
 
@@ -100,17 +75,21 @@ export function parseIntent(
       entities: {
         diary: {
           title: "오늘의 공주 다이어리",
-          content: "오늘 일정과 완료한 Quest를 바탕으로 다이어리 초안을 준비합니다.",
+          content: "오늘 일정과 완료 Quest를 바탕으로 다이어리 초안을 준비합니다.",
         },
       },
-      needsConfirmation: true,
+      needsConfirmation: false,
     };
   }
 
-  if (hasAny(message, ["찾아줘", "검색해줘", "검색", "어디있", "언제였", "찾아봐"])) {
+  if (hasAny(message, ["보상", "칭호", "레벨"])) {
+    return { intent: "reward.claim", confidence: 0.7, entities: {}, needsConfirmation: false };
+  }
+
+  if (hasAny(message, ["찾아줘", "기록", "지난번", "도서관"])) {
     return {
       intent: "library.search",
-      confidence: 0.7,
+      confidence: 0.66,
       entities: { query: message },
       needsConfirmation: false,
     };

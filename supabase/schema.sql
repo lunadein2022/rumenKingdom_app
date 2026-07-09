@@ -1,7 +1,5 @@
 -- Princess OS unified Supabase schema
 -- Run in Supabase Dashboard -> SQL Editor.
--- 이 파일은 여러 번 실행해도 에러가 나지 않도록, 모든 create policy 앞에
--- drop policy if exists를 두었습니다 (idempotent).
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -326,97 +324,98 @@ alter table public.relationship_book enable row level security;
 alter table public.diary_drafts enable row level security;
 
 drop policy if exists "Users manage own profile" on public.profiles;
+drop policy if exists "Users manage own princess profile" on public.princess_profiles;
+drop policy if exists "Users manage own princess stats" on public.princess_stats;
+drop policy if exists "Users manage own princess equipment" on public.princess_equipment;
+drop policy if exists "Users manage own princess diary" on public.princess_diary;
+drop policy if exists "Users manage own quests" on public.quests;
+drop policy if exists "Users manage own quest history" on public.quest_history;
+drop policy if exists "Users manage own calendar events" on public.calendar_events;
+drop policy if exists "Users manage own calendar reminders" on public.calendar_reminders;
+drop policy if exists "Users manage own progress" on public.user_progress;
+drop policy if exists "Users manage own daily completions" on public.daily_completions;
+drop policy if exists "Users manage own rooms" on public.castle_rooms;
+drop policy if exists "Users manage own castle state" on public.castle_state;
+drop policy if exists "Users manage own room decorations" on public.room_decorations;
+drop policy if exists "Anyone can view achievement catalog" on public.achievements;
+drop policy if exists "Users manage own achievements" on public.user_achievements;
+drop policy if exists "Users manage own inventory" on public.inventory_items;
+drop policy if exists "Users manage own titles" on public.user_titles;
+drop policy if exists "Users manage own Serin conversations" on public.serin_conversations;
+drop policy if exists "Users manage own Serin messages" on public.serin_messages;
+drop policy if exists "Users manage own Serin memory" on public.serin_memory;
+drop policy if exists "Users manage own contacts" on public.contacts;
+drop policy if exists "Users manage own relationship book" on public.relationship_book;
+drop policy if exists "Users manage own diary drafts" on public.diary_drafts;
+
 create policy "Users manage own profile" on public.profiles
   for all using (auth.uid() = id) with check (auth.uid() = id);
 
-drop policy if exists "Users manage own princess profile" on public.princess_profiles;
 create policy "Users manage own princess profile" on public.princess_profiles
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own princess stats" on public.princess_stats;
 create policy "Users manage own princess stats" on public.princess_stats
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own princess equipment" on public.princess_equipment;
 create policy "Users manage own princess equipment" on public.princess_equipment
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own princess diary" on public.princess_diary;
 create policy "Users manage own princess diary" on public.princess_diary
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own quests" on public.quests;
 create policy "Users manage own quests" on public.quests
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own quest history" on public.quest_history;
 create policy "Users manage own quest history" on public.quest_history
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own calendar events" on public.calendar_events;
 create policy "Users manage own calendar events" on public.calendar_events
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own calendar reminders" on public.calendar_reminders;
 create policy "Users manage own calendar reminders" on public.calendar_reminders
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own progress" on public.user_progress;
 create policy "Users manage own progress" on public.user_progress
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own daily completions" on public.daily_completions;
 create policy "Users manage own daily completions" on public.daily_completions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own rooms" on public.castle_rooms;
 create policy "Users manage own rooms" on public.castle_rooms
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own castle state" on public.castle_state;
 create policy "Users manage own castle state" on public.castle_state
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own room decorations" on public.room_decorations;
 create policy "Users manage own room decorations" on public.room_decorations
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Anyone can view achievement catalog" on public.achievements;
 create policy "Anyone can view achievement catalog" on public.achievements
   for select using (true);
 
-drop policy if exists "Users manage own achievements" on public.user_achievements;
 create policy "Users manage own achievements" on public.user_achievements
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own inventory" on public.inventory_items;
 create policy "Users manage own inventory" on public.inventory_items
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own titles" on public.user_titles;
 create policy "Users manage own titles" on public.user_titles
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own Serin conversations" on public.serin_conversations;
 create policy "Users manage own Serin conversations" on public.serin_conversations
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own Serin messages" on public.serin_messages;
 create policy "Users manage own Serin messages" on public.serin_messages
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own Serin memory" on public.serin_memory;
 create policy "Users manage own Serin memory" on public.serin_memory
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own contacts" on public.contacts;
 create policy "Users manage own contacts" on public.contacts
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own relationship book" on public.relationship_book;
 create policy "Users manage own relationship book" on public.relationship_book
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own diary drafts" on public.diary_drafts;
 create policy "Users manage own diary drafts" on public.diary_drafts
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

@@ -8,23 +8,23 @@ import type {
 } from "../app/types";
 import { buildMockProgress } from "../data/mockProgress";
 
-// 메인퀘스트(=프로젝트)는 이 파일이 아니라 domain/mainQuestDomain.ts가 다룹니다.
-// 여기서는 실행형 퀘스트(서브/일일/반복/스토리)만 다룹니다.
 export const questTypeMeta: Record<QuestType, { icon: string; label: string; baseExp: number }> = {
-  side: { icon: "⭐", label: "서브", baseExp: 80 },
+  main: { icon: "♛", label: "메인", baseExp: 300 },
+  side: { icon: "★", label: "서브", baseExp: 80 },
   daily: { icon: "☀", label: "일일", baseExp: 20 },
-  routine: { icon: "🔄", label: "반복", baseExp: 40 },
-  story: { icon: "📖", label: "스토리", baseExp: 200 },
+  routine: { icon: "↻", label: "반복", baseExp: 40 },
+  story: { icon: "▣", label: "스토리", baseExp: 500 },
 };
 
 export const questCompletionFlow: QuestCompletionEvent[] = [
-  { type: "check", label: "체크" },
+  { type: "check", label: "확인" },
   { type: "glow", label: "Glow" },
   { type: "exp", label: "EXP 획득" },
   { type: "reward", label: "보상 획득" },
   { type: "level", label: "레벨 계산" },
-  { type: "title", label: "칭호 확인" },
-  { type: "notification", label: "Notification" },
+  { type: "castle", label: "왕궁 반영" },
+  { type: "achievement", label: "업적 확인" },
+  { type: "notification", label: "알림" },
   { type: "history", label: "왕국도서관 저장" },
 ];
 
@@ -73,7 +73,7 @@ export function completeQuestDomain(
       completedAt,
       rewardExp: quest.expReward,
       rewardItem: quest.rewardItem,
-      note: `${questTypeMeta[quest.type].label} 퀘스트가 완료되어 왕국도서관으로 이동했습니다.`,
+      note: `${questTypeMeta[quest.type].label} Quest가 완료되어 왕국도서관으로 이동했습니다.`,
     },
     ...history,
   ];
@@ -100,7 +100,7 @@ export function completeQuestDomain(
   };
 }
 
-export function createQuestFromSerinDraft(title: string, mainQuestId?: string): Quest {
+export function createQuestFromSerinDraft(title: string): Quest {
   const now = new Date().toISOString();
   // TODO:
   // Replace with Supabase Query and AI intent parser.
@@ -108,12 +108,11 @@ export function createQuestFromSerinDraft(title: string, mainQuestId?: string): 
     id: `q-serin-${Date.now()}`,
     type: "daily",
     title,
-    description: "세린의 대화에서 추출한 일일 퀘스트 초안입니다.",
+    description: "세린의 대화에서 추출한 일일 Quest 초안입니다.",
     status: "pending",
     category: "routine",
     priority: "medium",
     progress: 0,
-    mainQuestId,
     expReward: questTypeMeta.daily.baseExp,
     goldReward: 4,
     dueDate: now.slice(0, 10),
@@ -127,7 +126,7 @@ export function createQuestFromCalendarEvent(event: CalendarEvent): Quest {
   // Replace with Supabase Query and calendar-to-quest transaction.
   return {
     id: `q-calendar-${Date.now()}`,
-    type: event.category === "routine" ? "routine" : "daily",
+    type: event.category === "routine" ? "routine" : event.category === "quest" ? "side" : "daily",
     title: event.title,
     description: `${event.location ?? "루멘 왕성"} 일정에서 생성된 Quest입니다.`,
     status: "pending",

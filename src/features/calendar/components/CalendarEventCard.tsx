@@ -26,7 +26,7 @@ export function CalendarEventCard({ event, onComplete, onCancel }: CalendarEvent
         <strong>{event.isAllDay ? "하루 종일" : formatTime(event.startAt)}</strong>
       </div>
       <h3>{event.title}</h3>
-      <p>{event.description || "공주의 하루에 등록된 왕실 일정입니다."}</p>
+      <p>{event.description || "공주님의 하루에 기록된 일정입니다."}</p>
       <div className="calendar-event-meta">
         <span>{event.location || "장소 미정"}</span>
         <span>{event.reminderMinutes ? `${event.reminderMinutes}분 전 알림` : "알림 없음"}</span>

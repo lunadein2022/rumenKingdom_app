@@ -1,6 +1,7 @@
 import type { PrincessProfile, SerinMessage, SerinProfile } from "../../../app/types";
 import { Badge } from "../../../components/design-system/Badge";
 import { SerinChatThread } from "./SerinChatThread";
+import { SerinConfirmationCard } from "./SerinConfirmationCard";
 import { SerinInputBar } from "./SerinInputBar";
 import { SerinMemoryPanel } from "./SerinMemoryPanel";
 import { SerinQuickActions } from "./SerinQuickActions";
@@ -34,34 +35,32 @@ export function SerinPage({
 }: SerinPageProps) {
   return (
     <section className="serin-screen serin-domain-page">
-      <div className="serin-side">
-        <header className="serin-header">
-          <div className="chat-avatar princess">
-            <img src="/assets/princess-bust-transparent.webp" alt="공주" />
-          </div>
-          <div>
-            <Badge tone="gold">{princess.activeTitle}</Badge>
-            <h1>세린과 대화</h1>
-            <p>{serin.name}은 공주님의 하루를 실제 기능으로 연결하는 AI 메이드입니다.</p>
-          </div>
-          <div className="chat-avatar serin">
-            <img src="/assets/serin-bust-transparent.webp" alt="세린" />
-          </div>
-        </header>
-        <SerinStatusOrb status={status} />
-        <SerinMemoryPanel memories={memories} />
-      </div>
+      <header className="serin-header">
+        <div className="chat-avatar princess">
+          <img src="/assets/princess-bust-transparent.png" alt="공주" />
+        </div>
+        <div>
+          <Badge tone="gold">{princess.activeTitle}</Badge>
+          <h1>세린과 대화</h1>
+          <p>{serin.name}은 공주님의 일정, Quest, 기억을 차분히 정리하는 AI 메이드입니다.</p>
+        </div>
+        <div className="chat-avatar serin">
+          <img src="/assets/serin-bust-transparent.png" alt="세린" />
+        </div>
+      </header>
 
-      <div className="serin-main">
-        <SerinChatThread
-          messages={messages}
-          pendingAction={pendingAction}
-          onConfirmAction={onConfirmAction}
-          onCancelAction={onCancelAction}
+      <SerinStatusOrb status={status} />
+      <SerinQuickActions onAction={onSendMessage} />
+      {pendingAction && (
+        <SerinConfirmationCard
+          action={pendingAction}
+          onConfirm={onConfirmAction}
+          onCancel={onCancelAction}
         />
-        <SerinQuickActions onAction={onSendMessage} />
-        <SerinInputBar onSend={onSendMessage} onAttach={onAttach} />
-      </div>
+      )}
+      <SerinMemoryPanel memories={memories} />
+      <SerinChatThread messages={messages} />
+      <SerinInputBar onSend={onSendMessage} onAttach={onAttach} />
     </section>
   );
 }

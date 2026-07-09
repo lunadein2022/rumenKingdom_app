@@ -5,28 +5,23 @@ interface GardenPageProps {
   onBackToCastle: () => void;
 }
 
-// 정원은 카드가 나열된 생산성 화면이 아니라, 화면 전체를 채우는 배경 Scene입니다.
-// 세린의 멘트도 카드가 아니라 말풍선 오버레이로만 떠 있습니다.
 export function GardenPage({ serin, onBackToCastle }: GardenPageProps) {
   return (
-    <section className="garden-scene-full">
-      <div className="garden-scene-backdrop" style={{ backgroundImage: 'url("/assets/garden.webp")' }} />
+    <section className="website-scene garden-page">
+      <div className="scene-shade garden-shade" />
+      <header className="scene-title-block garden-title">
+        <span>Garden</span>
+        <h1>왕궁정원</h1>
+        <p>이 공간에는 Quest도, 일정도 없습니다. 잠시 쉬어가세요.</p>
+      </header>
 
-      <img className="garden-princess-full" src="/assets/princess-full-transparent.webp" alt="정원에 선 공주" />
+      <img className="garden-princess" src="/assets/princess-full-transparent.png" alt="정원에 선 공주" />
 
-      <div className="garden-copy-overlay">
-        <span>왕궁 정원</span>
-        <h1>잠시 아무것도 하지 않아도 괜찮습니다.</h1>
-      </div>
-
-      <div className="garden-speech-bubble">
+      <section className="garden-serin-note">
         <strong>{serin.name}</strong>
-        <p>공주님, 오늘은 정말 수고하셨어요. 이곳에는 Quest도, 일정도, 생산성도 없습니다. 그냥 바람만 느끼셔도 됩니다.</p>
-      </div>
-
-      <button type="button" className="garden-back-button" onClick={onBackToCastle}>
-        왕성으로 돌아가기
-      </button>
+        <p>공주님, 오늘은 정말 수고하셨어요. 이곳에서는 아무것도 해내지 않아도 괜찮습니다.</p>
+        <button type="button" onClick={onBackToCastle}>왕궁 지도로</button>
+      </section>
     </section>
   );
 }

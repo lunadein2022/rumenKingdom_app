@@ -78,14 +78,14 @@ export interface CalendarLinkedQuestResult {
 }
 
 export const calendarCategoryMeta: Record<CalendarCategory, CalendarCategoryMeta> = {
-  work: { label: "Work", icon: "Pen", tone: "royal" },
-  personal: { label: "Personal", icon: "Flower", tone: "soft" },
+  work: { label: "업무", icon: "Pen", tone: "royal" },
+  personal: { label: "개인", icon: "Flower", tone: "soft" },
   quest: { label: "Quest", icon: "Scroll", tone: "gold" },
   routine: { label: "Routine", icon: "Refresh", tone: "soft" },
-  meeting: { label: "Meeting", icon: "Handshake", tone: "royal" },
-  serin: { label: "Serin", icon: "Coffee", tone: "success" },
-  rest: { label: "Rest", icon: "Bed", tone: "soft" },
-  event: { label: "Event", icon: "Party", tone: "gold" },
+  meeting: { label: "회의", icon: "Handshake", tone: "royal" },
+  serin: { label: "세린", icon: "Coffee", tone: "success" },
+  rest: { label: "휴식", icon: "Bed", tone: "soft" },
+  event: { label: "이벤트", icon: "Party", tone: "gold" },
 };
 
 export const reminderOptions = [

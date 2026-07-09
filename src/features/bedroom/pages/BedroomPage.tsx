@@ -1,102 +1,52 @@
-import { useState } from "react";
-import type { CalendarEvent, DiaryEntry, MainQuest, Quest, SerinProfile } from "../../../app/types";
-import { Button } from "../../../components/design-system/Button";
+import { useMemo, useState } from "react";
+import type { CalendarEvent, Quest } from "../../../app/types";
 
 interface BedroomPageProps {
-  serin: SerinProfile;
-  diaryEntries: DiaryEntry[];
-  todayEvents: CalendarEvent[];
-  todayCompletedQuests: Quest[];
-  mainQuestUpdatesToday: Array<{ mainQuest: MainQuest; content: string }>;
-  onSaveDiary: (content: string, moodEmoji: string, moodLabel: string) => void;
+  events: CalendarEvent[];
+  quests: Quest[];
 }
 
-const moods: Array<{ emoji: string; label: string }> = [
-  { emoji: "🙂", label: "평온" },
-  { emoji: "😊", label: "기쁨" },
-  { emoji: "😮‍💨", label: "피곤" },
-  { emoji: "😔", label: "속상" },
-];
+const today = new Date().toISOString().slice(0, 10);
 
-// Bedroom = 다이어리 공간입니다. 오늘 일정/완료 퀘스트/프로젝트 업데이트를
-// 자동으로 모아 보여주고, 느낀 점을 기록하면 AI가 요약(mock)해줍니다.
-export function BedroomPage({ serin, diaryEntries, todayEvents, todayCompletedQuests, mainQuestUpdatesToday, onSaveDiary }: BedroomPageProps) {
-  const [content, setContent] = useState("");
-  const [mood, setMood] = useState(moods[0]);
-  const latestEntry = diaryEntries[0];
+export function BedroomPage({ events, quests }: BedroomPageProps) {
+  const completedToday = quests.filter((quest) => quest.completedAt?.slice(0, 10) === today);
+  const todayEvents = events.filter((event) => event.startAt.slice(0, 10) === today);
+  const draft = useMemo(() => {
+    const eventLine = todayEvents.length > 0
+      ? `오늘 일정 ${todayEvents.length}개를 지나왔습니다.`
+      : "오늘은 일정이 많지 않아 조금 더 조용한 하루였습니다.";
+    const questLine = completedToday.length > 0
+      ? `완료한 Quest는 ${completedToday.length}개입니다.`
+      : "아직 완료한 Quest는 없지만, 하루를 정리할 시간은 충분합니다.";
+    return `${eventLine}\n${questLine}\n내일의 공주님께 남기고 싶은 말을 적어주세요.`;
+  }, [completedToday.length, todayEvents.length]);
+  const [diary, setDiary] = useState(draft);
+  const [saved, setSaved] = useState(false);
 
-  function handleSave() {
-    if (!content.trim()) return;
-    onSaveDiary(content.trim(), mood.emoji, mood.label);
-    setContent("");
+  function saveDiary() {
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 1600);
   }
 
   return (
-    <section className="bedroom-scene-full">
-      <div className="bedroom-scene-backdrop" style={{ backgroundImage: 'url("/assets/bedroom.webp")' }} />
-      <img className="bedroom-princess-full" src="/assets/princess-full-transparent.webp" alt="침실의 공주" />
+    <section className="website-scene bedroom-scene">
+      <div className="scene-shade" />
+      <header className="scene-title-block">
+        <span>Bedroom</span>
+        <h1>공주의 침실</h1>
+        <p>오늘의 일정과 완료 Quest를 바탕으로 하루를 조용히 정리합니다.</p>
+      </header>
 
-      <div className="bedroom-copy-overlay">
-        <span>공주의 침실</span>
-        <h1>오늘도 수고하셨어요.</h1>
-      </div>
-
-      <div className="bedroom-speech-bubble">
-        <strong>{serin.name}</strong>
-        <p>오늘을 기록해볼까요? 오늘 있었던 일들을 먼저 모아봤어요.</p>
-      </div>
-
-      <div className="bedroom-diary-panel">
-        <section className="bedroom-auto-summary">
-          <h2>오늘 자동 요약</h2>
-          <div>
-            <h3>오늘 일정</h3>
-            {todayEvents.length === 0 ? <p className="small-copy">오늘 일정이 없습니다.</p> : todayEvents.map((event) => <p key={event.id}>• {event.title}</p>)}
-          </div>
-          <div>
-            <h3>오늘 완료</h3>
-            {todayCompletedQuests.length === 0 ? <p className="small-copy">오늘 완료한 항목이 없습니다.</p> : todayCompletedQuests.map((quest) => <p key={quest.id}>• {quest.title}</p>)}
-          </div>
-          <div>
-            <h3>오늘 프로젝트 업데이트</h3>
-            {mainQuestUpdatesToday.length === 0 ? (
-              <p className="small-copy">오늘 등록된 프로젝트 업데이트가 없습니다.</p>
-            ) : (
-              mainQuestUpdatesToday.map((item, index) => (
-                <p key={index}>• {item.mainQuest.title} — {item.content}</p>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className="bedroom-write-panel">
-          <h2>느낀 점</h2>
-          <div className="bedroom-mood-row">
-            {moods.map((option) => (
-              <button
-                key={option.label}
-                type="button"
-                className={option.label === mood.label ? "active" : ""}
-                onClick={() => setMood(option)}
-              >
-                {option.emoji} {option.label}
-              </button>
-            ))}
-          </div>
-          <textarea
-            placeholder="오늘 하루는 어땠나요?"
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-          />
-          <Button onClick={handleSave}>일기 저장하기</Button>
-        </section>
-
-        {latestEntry?.aiSummary && (
-          <section className="bedroom-ai-summary">
-            <h2>AI 오늘 요약</h2>
-            <p>{latestEntry.aiSummary}</p>
-          </section>
-        )}
+      <div className="bedroom-diary-hud">
+        <div className="diary-summary-row">
+          <span>오늘 일정 {todayEvents.length}개</span>
+          <span>완료 Quest {completedToday.length}개</span>
+        </div>
+        <label>
+          <span>오늘의 일기</span>
+          <textarea value={diary} onChange={(event) => setDiary(event.target.value)} />
+        </label>
+        <button type="button" onClick={saveDiary}>{saved ? "저장되었습니다" : "일기 저장"}</button>
       </div>
     </section>
   );
