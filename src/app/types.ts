@@ -2,10 +2,8 @@ export type ViewKey =
   | "home"
   | "quests"
   | "calendar"
-  | "castle"
-  | "achievements"
-  | "inventory"
   | "serin"
+  | "progress"
   | "profile";
 
 export type QuestStatus = "pending" | "inProgress" | "completed";
@@ -43,6 +41,14 @@ export interface CalendarEvent {
   title: string;
   eventDate: string;
   roomKey: PalaceRoomKey;
+  time: string;
+}
+
+export interface SerinMessage {
+  id: string;
+  sender: "princess" | "serin";
+  content: string;
+  createdAt: string;
 }
 
 export interface SerinProfile {
@@ -122,6 +128,7 @@ export interface AppMockData {
   titles: UserTitle[];
   quests: Quest[];
   events: CalendarEvent[];
+  serinMessages: SerinMessage[];
   rooms: PalaceRoom[];
   achievements: Achievement[];
   inventory: InventoryItem[];

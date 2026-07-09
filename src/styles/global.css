@@ -10,12 +10,12 @@ body,
 
 body {
   margin: 0;
+  overflow-x: hidden;
   color: var(--text-primary);
   font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   background:
-    radial-gradient(circle at 20% 0%, rgba(111, 143, 242, 0.24), transparent 30%),
-    radial-gradient(circle at 88% 8%, rgba(216, 183, 106, 0.13), transparent 26%),
-    linear-gradient(180deg, #f8f9fe, #eef2ff);
+    radial-gradient(circle at 18% 0%, rgba(111, 143, 242, 0.22), transparent 30%),
+    linear-gradient(180deg, #f7f8fd, #e8edff);
 }
 
 button,
@@ -29,6 +29,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: default;
+  opacity: 0.52;
+}
+
 h1,
 h2,
 h3,
@@ -36,26 +41,51 @@ p {
   margin-top: 0;
 }
 
-h1,
-h2,
-h3 {
-  letter-spacing: 0;
-}
-
 p {
   color: var(--text-secondary);
-  line-height: 1.65;
+  line-height: 1.55;
 }
 
-.app-shell {
-  width: min(1180px, 100%);
-  min-height: 100vh;
+.mobile-app-shell {
+  position: relative;
+  width: min(100%, 430px);
+  min-height: 100dvh;
   margin: 0 auto;
-  padding: 28px 20px 110px;
+  overflow-x: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(241, 244, 255, 0.8)),
+    var(--bg-soft);
+  box-shadow: 0 0 0 1px rgba(111, 143, 242, 0.08), var(--shadow-large);
 }
 
-main {
-  margin-top: 22px;
+.mobile-app-main {
+  min-height: 100dvh;
+  padding: 12px 12px calc(92px + env(safe-area-inset-bottom));
+}
+
+.screen-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.screen-header {
+  padding: 18px;
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(20px);
+}
+
+.screen-header h1 {
+  margin: 10px 0 6px;
+  color: var(--royal-900);
+  font-size: 26px;
+}
+
+.screen-header p {
+  margin-bottom: 0;
+  font-size: 14px;
 }
 
 .small-copy {
@@ -63,8 +93,14 @@ main {
   font-size: 13px;
 }
 
-@media (max-width: 720px) {
-  .app-shell {
-    padding: 18px 12px 100px;
+@media (min-width: 760px) {
+  body {
+    padding: 24px 0;
+  }
+
+  .mobile-app-shell {
+    min-height: calc(100dvh - 48px);
+    border-radius: 34px;
+    overflow: hidden;
   }
 }

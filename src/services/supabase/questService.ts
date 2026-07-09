@@ -4,7 +4,7 @@ import { supabaseTables } from "./schemaMap";
 export async function listQuests(userId: string) {
   const supabase = requireSupabase();
 
-  // TODO: connect QuestModule and progress selectors to this query.
+  // TODO: connect QuestScreen and progress selectors to this query.
   return supabase
     .from(supabaseTables.quests)
     .select("*")

@@ -7,7 +7,7 @@ export const mockCastleRooms: PalaceRoom[] = [
     subtitle: "Garden",
     description: "루틴, 컨디션, 데일리 퀘스트를 돌보는 회복 공간입니다.",
     image: "/assets/garden.png",
-    route: "quests",
+    route: "calendar",
     stats: ["Daily 3", "Mood +2", "Routine"],
   },
   {
@@ -43,7 +43,7 @@ export const mockCastleRooms: PalaceRoom[] = [
     subtitle: "Throne",
     description: "레벨, 업적, 보상, 궁전 성장 상태를 확인하는 게임 시스템의 중심입니다.",
     image: "/assets/throne.png",
-    route: "castle",
+    route: "progress",
     stats: ["Lv.7", "Reward 3", "Castle"],
   },
 ];

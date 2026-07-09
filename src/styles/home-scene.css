@@ -1,312 +1,228 @@
-.home-scene {
+.home-screen {
+  display: grid;
+  gap: 14px;
+}
+
+.home-hero-mobile {
   position: relative;
   overflow: hidden;
-  min-height: 760px;
-  padding: 24px;
-  border-radius: var(--radius-2xl);
+  min-height: 420px;
+  padding: 18px;
+  border-radius: 30px;
   background:
-    linear-gradient(180deg, rgba(8, 14, 33, 0.08), rgba(8, 14, 33, 0.48)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(7, 11, 26, 0.5)),
     url("/assets/home-bg.png") center / cover;
   box-shadow: var(--shadow-floating);
 }
 
-.home-ambient {
+.home-hero-bg {
   position: absolute;
   inset: 0;
+  background: linear-gradient(180deg, rgba(65, 105, 225, 0.12), rgba(7, 11, 26, 0.42));
   pointer-events: none;
-  background:
-    linear-gradient(90deg, rgba(65, 105, 225, 0.24), transparent 42%),
-    linear-gradient(180deg, transparent 48%, rgba(7, 11, 26, 0.44));
 }
 
-.home-top-hud,
-.home-hero,
-.home-summary-grid,
-.system-entry-grid,
-.palace-map,
-.crystal-dock {
+.home-copy {
   position: relative;
-  z-index: 1;
-}
-
-.home-top-hud {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 18px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.62);
-  border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(22px);
-}
-
-.home-kicker,
-.home-hud-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+  z-index: 2;
 }
 
 .home-kicker {
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.home-top-hud h1 {
-  margin: 6px 0 0;
-  color: var(--royal-900);
-  font-size: clamp(26px, 4vw, 42px);
-}
-
-.home-hero {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-top: 18px;
-}
-
-.princess-presence-panel,
-.live-serin-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.72fr);
-  min-height: 430px;
-  padding: 24px;
-  overflow: hidden;
-}
-
-.princess-presence-panel h2,
-.live-serin-panel h2 {
-  margin: 10px 0;
-  color: var(--royal-900);
-  font-size: clamp(24px, 3vw, 36px);
-  line-height: 1.15;
-}
-
-.panel-label {
-  display: inline-flex;
-  width: fit-content;
-  padding: 7px 11px;
-  border-radius: var(--radius-full);
-  color: var(--royal-800);
-  background: rgba(65, 105, 225, 0.12);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.princess-presence-panel img,
-.live-serin-panel img {
-  align-self: end;
-  justify-self: center;
-  width: min(118%, 300px);
-  max-height: 420px;
-  object-fit: contain;
-}
-
-.exp-row,
-.affinity-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 10px;
-  margin: 18px 0;
-}
-
-.exp-row span,
-.affinity-row span {
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.exp-row strong,
-.affinity-row strong {
-  color: var(--royal-900);
-  font-size: 13px;
-}
-
-.home-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-top: 16px;
-  padding: 16px;
-}
-
-.home-summary-grid div {
-  display: grid;
+  display: flex;
   gap: 8px;
-  min-height: 118px;
-  padding: 14px;
-  border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.56);
-}
-
-.home-summary-grid strong {
-  color: var(--royal-900);
-  font-size: 24px;
-}
-
-.home-summary-grid span {
-  color: var(--text-secondary);
+  flex-wrap: wrap;
+  color: rgba(255, 255, 255, 0.9);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 900;
 }
 
-.system-entry-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-top: 14px;
+.home-copy h1 {
+  width: min(100%, 310px);
+  margin: 10px 0 8px;
+  color: #fff;
+  font-size: 30px;
+  line-height: 1.08;
 }
 
-.system-entry-grid button {
+.home-copy p {
+  width: min(100%, 300px);
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 13px;
+}
+
+.home-character-row {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  z-index: 1;
   display: grid;
-  gap: 6px;
-  min-height: 84px;
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.62);
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 8px;
+  align-items: end;
+}
+
+.home-character {
+  position: relative;
+  min-height: 255px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.52), transparent 35%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(16, 25, 54, 0.24));
+  backdrop-filter: blur(6px);
+}
+
+.home-character.serin {
+  min-height: 225px;
+}
+
+.home-character span {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  padding: 6px 9px;
+  border-radius: var(--radius-full);
+  color: var(--royal-900);
+  background: rgba(255, 255, 255, 0.74);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.home-character img {
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  width: 132%;
+  height: 240px;
+  object-fit: contain;
+  object-position: bottom center;
+  transform: translateX(-50%);
+}
+
+.home-character.princess img {
+  height: 270px;
+}
+
+.home-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.home-stat-grid button,
+.home-progress-card {
+  min-height: 112px;
+  padding: 13px;
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   text-align: left;
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--glass-surface);
   box-shadow: var(--shadow-small);
   backdrop-filter: blur(18px);
 }
 
-.system-entry-grid span {
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 900;
+.home-stat-grid strong,
+.home-stat-grid span,
+.home-progress-card strong,
+.home-progress-card span {
+  display: block;
 }
 
-.system-entry-grid strong {
+.home-stat-grid strong {
+  margin-top: 8px;
   color: var(--royal-900);
-  font-size: 16px;
+  font-size: 20px;
 }
 
-.palace-map {
-  display: grid;
-  gap: 16px;
-  margin-top: 20px;
+.home-stat-grid span,
+.home-progress-card span {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
 }
 
-.palace-room {
+.home-progress-card {
   display: grid;
-  grid-template-columns: minmax(210px, 0.75fr) minmax(0, 1.25fr);
-  min-height: 230px;
+  gap: 12px;
+  min-height: 0;
+}
+
+.home-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mobile-section-heading h2 {
+  margin: 2px 0 4px;
+  color: var(--royal-900);
+  font-size: 20px;
+}
+
+.mobile-section-heading p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.palace-map-mobile {
+  display: grid;
+  gap: 10px;
+}
+
+.palace-room-mobile {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  min-height: 124px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: var(--radius-2xl);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: var(--shadow-medium);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
 }
 
 .room-image {
-  min-height: 230px;
+  min-height: 124px;
   background-position: center;
   background-size: cover;
 }
 
 .room-content {
-  padding: 24px;
+  padding: 12px;
 }
 
 .room-content h3 {
-  margin: 12px 0 8px;
+  margin: 8px 0 3px;
   color: var(--royal-900);
-  font-size: 24px;
+  font-size: 17px;
+}
+
+.room-content p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .room-stats {
   display: flex;
+  gap: 5px;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 16px 0;
+  margin: 8px 0;
 }
 
 .room-stats span {
-  padding: 7px 10px;
+  padding: 4px 7px;
   border-radius: var(--radius-full);
   color: var(--text-secondary);
   background: rgba(16, 25, 54, 0.06);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
-}
-
-.crystal-dock {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(58px, 1fr));
-  gap: 8px;
-  width: min(560px, 100%);
-  margin: 22px auto 0;
-  padding: 9px;
-  border: 1px solid rgba(255, 255, 255, 0.74);
-  border-radius: var(--radius-2xl);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: var(--shadow-floating);
-  backdrop-filter: blur(24px);
-}
-
-.crystal-dock button {
-  display: grid;
-  gap: 3px;
-  justify-items: center;
-  min-height: 54px;
-  border: 0;
-  border-radius: var(--radius-lg);
-  color: var(--text-secondary);
-  background: transparent;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.crystal-dock button span:first-child {
-  font-size: 18px;
-}
-
-.crystal-dock button.active {
-  color: var(--royal-800);
-  background: rgba(65, 105, 225, 0.12);
-}
-
-@media (max-width: 960px) {
-  .home-hero,
-  .home-summary-grid,
-  .system-entry-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .palace-room {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .home-scene {
-    padding: 14px;
-  }
-
-  .home-top-hud,
-  .home-hero,
-  .home-summary-grid,
-  .system-entry-grid,
-  .crystal-dock {
-    grid-template-columns: 1fr;
-  }
-
-  .home-top-hud {
-    display: grid;
-  }
-
-  .princess-presence-panel,
-  .live-serin-panel {
-    grid-template-columns: 1fr;
-    min-height: auto;
-  }
-
-  .princess-presence-panel img,
-  .live-serin-panel img {
-    max-height: 320px;
-  }
 }

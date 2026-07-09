@@ -1,11 +1,8 @@
 import type { AppMockData, ViewKey } from "../../app/types";
 import { Badge } from "../design-system/Badge";
-import { GlassPanel } from "../design-system/GlassPanel";
-import { CrystalDock } from "./CrystalDock";
-import { HomeTopHud } from "./HomeTopHud";
-import { LiveSerinPanel } from "./LiveSerinPanel";
+import { Button } from "../design-system/Button";
+import { ProgressBar } from "../design-system/ProgressBar";
 import { PalaceRoomSection } from "./PalaceRoomSection";
-import { PrincessPresencePanel } from "./PrincessPresencePanel";
 
 interface HomeSceneProps {
   data: AppMockData;
@@ -13,61 +10,68 @@ interface HomeSceneProps {
   onNavigate: (view: ViewKey) => void;
 }
 
-export function HomeScene({ data, activeView, onNavigate }: HomeSceneProps) {
+export function HomeScene({ data, onNavigate }: HomeSceneProps) {
   return (
-    <section className="home-scene">
-      <div className="home-ambient" />
+    <section className="home-screen">
+      <header className="home-hero-mobile">
+        <div className="home-hero-bg" />
+        <div className="home-copy">
+          <div className="home-kicker">
+            <span>좋은 아침입니다</span>
+            <span>루멘 왕성</span>
+          </div>
+          <h1>공주님, 오늘의 왕궁이 열렸습니다.</h1>
+          <p>{data.serin.greetingText}</p>
+        </div>
 
-      <HomeTopHud timeLabel="좋은 아침입니다" seasonLabel="여름" progress={data.progress} />
+        <div className="home-character-row">
+          <div className="home-character princess">
+            <span>공주 · 주인공</span>
+            <img src="/assets/princess-full-transparent.png" alt="공주 전신" />
+          </div>
+          <div className="home-character serin">
+            <span>세린 · AI 보좌관</span>
+            <img src="/assets/serin-full-transparent.png" alt="세린 전신" />
+          </div>
+        </div>
+      </header>
 
-      <section className="home-hero">
-        <PrincessPresencePanel
-          princess={data.princess}
-          progress={data.progress}
-          onOpenProfile={() => onNavigate("profile")}
-        />
-        <LiveSerinPanel serin={data.serin} onAskSerin={() => onNavigate("serin")} />
-      </section>
-
-      <GlassPanel className="home-summary-grid">
-        <div>
-          <Badge tone="royal">오늘 퀘스트</Badge>
+      <section className="home-stat-grid" aria-label="오늘 요약">
+        <button type="button" onClick={() => onNavigate("quests")}>
+          <Badge tone="royal">Quest</Badge>
           <strong>{data.progress.todayCompletedQuests}/{data.progress.todayTotalQuests}</strong>
-          <span>dueDate가 오늘인 퀘스트 기준</span>
-        </div>
-        <div>
-          <Badge tone="royal">오늘 일정</Badge>
+          <span>오늘 퀘스트</span>
+        </button>
+        <button type="button" onClick={() => onNavigate("calendar")}>
+          <Badge tone="royal">Calendar</Badge>
           <strong>{data.events.length}</strong>
-          <span>왕실 캘린더 일정</span>
-        </div>
-        <div>
-          <Badge tone="gold">Princess Level</Badge>
+          <span>오늘 일정</span>
+        </button>
+        <button type="button" onClick={() => onNavigate("progress")}>
+          <Badge tone="gold">Level</Badge>
           <strong>Lv.{data.progress.level}</strong>
           <span>{data.progress.expRate}% EXP</span>
-        </div>
-        <div>
-          <Badge tone="success">Streak</Badge>
-          <strong>{data.progress.streakDays}일</strong>
-          <span>하루 1개 이상 완료한 날짜 연속</span>
-        </div>
-      </GlassPanel>
-
-      <section className="system-entry-grid" aria-label="Growth systems">
-        {[
-          { view: "profile" as ViewKey, label: "Princess", value: data.princess.activeTitle },
-          { view: "castle" as ViewKey, label: "Castle", value: `${data.rooms.length} rooms` },
-          { view: "achievements" as ViewKey, label: "Achievement", value: `${data.achievements.length} records` },
-          { view: "inventory" as ViewKey, label: "Inventory", value: `${data.inventory.length} items` },
-        ].map((entry) => (
-          <button type="button" key={entry.view} onClick={() => onNavigate(entry.view)}>
-            <span>{entry.label}</span>
-            <strong>{entry.value}</strong>
-          </button>
-        ))}
+        </button>
       </section>
 
+      <section className="home-progress-card">
+        <div>
+          <strong>Princess EXP</strong>
+          <span>{data.progress.currentExp.toLocaleString()} / {data.progress.requiredExp.toLocaleString()}</span>
+        </div>
+        <ProgressBar value={data.progress.expRate} label="Princess EXP" />
+      </section>
+
+      <section className="home-action-row">
+        <Button onClick={() => onNavigate("quests")}>오늘 퀘스트 시작</Button>
+        <Button variant="glass" onClick={() => onNavigate("serin")}>세린에게 묻기</Button>
+      </section>
+
+      <section className="mobile-section-heading">
+        <h2>왕궁 탐험</h2>
+        <p>정원, 도서관, 집무실, 침실, 왕좌의 방으로 하루를 이동합니다.</p>
+      </section>
       <PalaceRoomSection rooms={data.rooms} onNavigate={onNavigate} />
-      <CrystalDock activeView={activeView} onNavigate={onNavigate} />
     </section>
   );
 }

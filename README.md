@@ -9,6 +9,17 @@ npm install
 npm run dev
 ```
 
+## Netlify
+
+Use the project root as the deploy root.
+
+```text
+Build command: npm run build
+Publish directory: dist
+```
+
+`netlify.toml` already contains those settings.
+
 Main files:
 
 - `src/main.tsx`

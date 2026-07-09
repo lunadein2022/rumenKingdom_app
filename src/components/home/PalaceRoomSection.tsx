@@ -9,9 +9,9 @@ interface PalaceRoomSectionProps {
 
 export function PalaceRoomSection({ rooms, onNavigate }: PalaceRoomSectionProps) {
   return (
-    <section className="palace-map" aria-label="Palace rooms">
+    <section className="palace-map-mobile" aria-label="Palace rooms">
       {rooms.map((room) => (
-        <article className="palace-room" key={room.key}>
+        <article className="palace-room-mobile" key={room.key}>
           <div className="room-image" style={{ backgroundImage: `url(${room.image})` }} />
           <div className="room-content">
             <Badge tone="soft">{room.subtitle}</Badge>

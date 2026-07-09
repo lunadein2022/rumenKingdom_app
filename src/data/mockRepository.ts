@@ -5,7 +5,7 @@ import { mockAchievements, mockInventory } from "./mockInventory";
 import { mockPrincess, mockTitles } from "./mockPrincess";
 import { buildMockProgress } from "./mockProgress";
 import { mockQuests } from "./mockQuests";
-import { mockSerin } from "./mockSerin";
+import { mockSerin, mockSerinMessages } from "./mockSerin";
 
 export function getPrincessOsSnapshot(): AppMockData {
   // TODO: replace this composition with Supabase service calls and a typed view model mapper.
@@ -22,6 +22,7 @@ export function getPrincessOsSnapshot(): AppMockData {
     titles: mockTitles,
     quests: mockQuests,
     events: mockCalendarEvents,
+    serinMessages: mockSerinMessages,
     rooms: mockCastleRooms,
     achievements: mockAchievements,
     inventory: mockInventory,

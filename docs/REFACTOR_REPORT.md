@@ -2,7 +2,7 @@
 
 ## Sprint Scope
 
-This sprint did not add new product features. It reorganized Update 013-027 into a maintainable React/TypeScript app structure with a MockData layer and Supabase-ready service boundaries.
+This sprint reorganized Update 013-027 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, but replaces explanation-card placeholders with usable Home, Quest, Calendar, Serin, and Progress interactions.
 
 ## Final Folder Structure
 
@@ -54,6 +54,7 @@ princess-os-refactor/
 - App entry: `src/main.tsx`
 - App shell: `src/app/App.tsx`
 - Main Home route: `src/components/home/HomeScene.tsx`
+- Netlify build config: `netlify.toml`
 
 ## Legacy Files
 
@@ -76,19 +77,18 @@ Design system:
 
 Home:
 
-- `HomeScene.tsx`
-- `HomeTopHud.tsx`
-- `LiveSerinPanel.tsx`
-- `PrincessPresencePanel.tsx`
 - `PalaceRoomSection.tsx`
-- `CrystalDock.tsx`
+- `HomeScene.tsx`
 
 Modules:
 
 - `QuestModule.tsx`
 - `CalendarModule.tsx`
 - `PrincessCharacter.tsx`
-- `SystemModule.tsx`
+- `QuestScreen.tsx`
+- `CalendarScreen.tsx`
+- `SerinScreen.tsx`
+- `ProgressScreen.tsx`
 - `QuestPreview.tsx`
 - `ProgressSummary.tsx`
 - `CastlePreview.tsx`
@@ -124,11 +124,11 @@ Unified SQL lives in `supabase/schema.sql`.
 - Replace MockData repository with Supabase service composition.
 - Add Supabase Auth session routing.
 - Connect Serin chat API and memory tables.
+- Replace temporary generated transparent PNG cutouts with art-directed transparent character exports.
 - Add route handling once screen priorities are locked.
-- Run install/build/test after dependencies are available.
 
 ## Technical Debt
 
 - Original HTML pages are reference-only and should not receive new work.
-- The current module views preserve product boundaries but still need richer implementation after data wiring.
-- Build verification was not run because dependencies are not installed in this workspace.
+- Character cutouts were generated from existing non-transparent PNGs; final transparent source assets should replace them.
+- Build verification passed locally with `tsc -b` and `vite build`.
