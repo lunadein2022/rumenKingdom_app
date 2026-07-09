@@ -32,6 +32,31 @@ export interface QuestHistoryRow extends SupabaseRowBase {
   note: string;
 }
 
+export interface CalendarEventRow extends SupabaseRowBase {
+  user_id: string;
+  title: string;
+  description: string;
+  start_at: string;
+  end_at: string | null;
+  location: string | null;
+  category: "work" | "personal" | "quest" | "routine" | "meeting" | "serin" | "rest" | "event";
+  priority: "low" | "medium" | "high";
+  is_all_day: boolean;
+  reminder_minutes: number | null;
+  reminder_sent_at: string | null;
+  linked_quest_id: string | null;
+  status: "scheduled" | "completed" | "cancelled";
+  created_by: "user" | "serin" | "system";
+}
+
+export interface CalendarReminderRow extends SupabaseRowBase {
+  user_id: string;
+  event_id: string;
+  remind_at: string;
+  status: "pending" | "sent" | "cancelled";
+  sent_at: string | null;
+}
+
 export interface UserProgressRow extends SupabaseRowBase {
   user_id: string;
   level: number;
@@ -66,7 +91,45 @@ export interface CastleRoomRow extends SupabaseRowBase {
 
 export interface SerinMemoryRow extends SupabaseRowBase {
   user_id: string;
-  memory_type: string;
+  memory_type: "preference" | "person" | "routine" | "goal" | "constraint" | "emotion" | "work" | "personal" | "system";
   content: string;
-  importance: number;
+  importance: "low" | "medium" | "high" | "critical";
+  source: string;
+  related_entity_type: string | null;
+  related_entity_id: string | null;
+}
+
+export interface SerinConversationRow extends SupabaseRowBase {
+  user_id: string;
+  title: string;
+}
+
+export interface SerinMessageRow extends SupabaseRowBase {
+  conversation_id: string;
+  user_id: string;
+  role: "user" | "serin" | "system";
+  message_type: "text" | "confirmation" | "quest_preview" | "calendar_preview" | "contact_preview" | "diary_preview" | "memory_saved" | "system_notice" | "error";
+  content: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface ContactRow extends SupabaseRowBase {
+  user_id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  organization: string | null;
+  position: string | null;
+  memo: string | null;
+  source: "manual" | "serin" | "ocr" | "import";
+  image_url: string | null;
+  last_contacted_at: string | null;
+}
+
+export interface DiaryDraftRow extends SupabaseRowBase {
+  user_id: string;
+  title: string;
+  content: string;
+  source: "serin" | "system";
+  status: "draft" | "saved" | "discarded";
 }

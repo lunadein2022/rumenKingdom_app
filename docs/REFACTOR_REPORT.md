@@ -2,7 +2,7 @@
 
 ## Sprint Scope
 
-This sprint reorganized Update 013-028 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, but replaces explanation-card placeholders with usable Home, Quest, Calendar, Serin, and Progress interactions.
+This sprint reorganized Update 013-030 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, but replaces explanation-card placeholders with usable Home, Quest, Calendar, Serin, and Progress interactions.
 
 ## Final Folder Structure
 
@@ -17,6 +17,9 @@ princess-os-refactor/
       types.ts
     domain/
       questDomain.ts
+    features/
+      calendar/
+      serin/
     components/
       design-system/
       home/
@@ -84,11 +87,8 @@ Home:
 
 Modules:
 
-- `QuestModule.tsx`
-- `CalendarModule.tsx`
 - `PrincessCharacter.tsx`
 - `QuestScreen.tsx`
-- `CalendarScreen.tsx`
 - `SerinScreen.tsx`
 - `ProgressScreen.tsx`
 - `QuestPreview.tsx`
@@ -133,12 +133,27 @@ Quest is now treated as the central Princess OS domain rather than a todo list. 
 
 Quest Domain is the hub for Calendar, Serin, Castle, Achievement, Inventory, Diary, and Notification. The UI is a result of the domain model, not the source of truth.
 
+## Update 029 Calendar Domain
+
+Calendar now lives under `src/features/calendar/` with typed events, month/day/timeline views, reminder panel, event creation, completion/cancellation, Serin intent handoff, and Quest linking.
+
+## Update 030 Serin Domain
+
+Serin now lives under `src/features/serin/` and is treated as the AI maid interface for the whole OS, not a plain chat box. The domain includes:
+
+- Intent parser for chat, quest, calendar, diary, contact, memory, reward, and unknown intents
+- Confirmation card flow before creating Quest or Calendar data
+- Mock Serin service with TODO markers for the real AI API
+- Memory service and visible memory panel
+- Attachment action placeholders for image, document, and audio
+- Supabase-ready `serin_conversations`, `serin_messages`, `serin_memory`, `contacts`, `relationship_book`, and `diary_drafts`
+
 ## Remaining TODO
 
 - Replace MockData repository with Supabase service composition.
 - Move Quest completion into a Supabase RPC transaction.
 - Add Supabase Auth session routing.
-- Connect Serin chat API and memory tables.
+- Connect Serin chat API, streaming, OCR, voice input, and memory persistence.
 - Replace temporary generated transparent PNG cutouts with art-directed transparent character exports.
 - Add route handling once screen priorities are locked.
 

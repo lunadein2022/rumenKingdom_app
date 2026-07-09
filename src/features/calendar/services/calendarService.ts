@@ -1,0 +1,131 @@
+import type {
+  CalendarEvent,
+  CalendarEventInput,
+  CalendarLinkedQuestResult,
+} from "../types/calendar.types";
+
+function dateOnly(value: string) {
+  return value.slice(0, 10);
+}
+
+function toTime(value: string) {
+  return new Date(value).getTime();
+}
+
+export function buildCalendarEvent(input: CalendarEventInput): CalendarEvent {
+  const now = new Date().toISOString();
+  return {
+    id: `cal-${Date.now()}-${Math.round(Math.random() * 9999)}`,
+    title: input.title,
+    description: input.description ?? "",
+    startAt: input.startAt,
+    endAt: input.endAt,
+    location: input.location,
+    category: input.category,
+    priority: input.priority ?? "medium",
+    isAllDay: input.isAllDay ?? false,
+    reminderMinutes: input.reminderMinutes ?? null,
+    reminderSentAt: null,
+    linkedQuestId: input.linkedQuestId ?? null,
+    status: "scheduled",
+    createdBy: input.createdBy ?? "user",
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function getEventsByRange(events: CalendarEvent[], startDate: string, endDate: string) {
+  // TODO: Replace with Supabase Query
+  const start = toTime(`${startDate}T00:00:00`);
+  const end = toTime(`${endDate}T23:59:59`);
+  return events
+    .filter((event) => event.status !== "cancelled")
+    .filter((event) => {
+      const time = toTime(event.startAt);
+      return time >= start && time <= end;
+    })
+    .sort((a, b) => a.startAt.localeCompare(b.startAt));
+}
+
+export function getEventsByDay(events: CalendarEvent[], date: string) {
+  // TODO: Replace with Supabase Query
+  return events
+    .filter((event) => event.status !== "cancelled" && dateOnly(event.startAt) === date)
+    .sort((a, b) => a.startAt.localeCompare(b.startAt));
+}
+
+export function getUpcomingEvents(events: CalendarEvent[], nowIso = "2026-07-09T09:00:00") {
+  // TODO: Replace with Supabase Query
+  const now = toTime(nowIso);
+  return events
+    .filter((event) => event.status === "scheduled" && toTime(event.startAt) >= now)
+    .sort((a, b) => a.startAt.localeCompare(b.startAt));
+}
+
+export function getEventsForDiary(events: CalendarEvent[], date: string) {
+  // TODO: Replace with Supabase Query
+  return getEventsByDay(events, date).filter((event) => event.status !== "cancelled");
+}
+
+export function getLibraryEvents(events: CalendarEvent[]) {
+  // TODO: Replace with Supabase Query
+  return events.filter((event) => event.status === "completed" || event.status === "cancelled");
+}
+
+export function createEvent(events: CalendarEvent[], input: CalendarEventInput) {
+  // TODO: Replace with Supabase Query
+  return [buildCalendarEvent(input), ...events];
+}
+
+export function updateEvent(events: CalendarEvent[], id: string, input: Partial<CalendarEventInput>) {
+  // TODO: Replace with Supabase Query
+  const now = new Date().toISOString();
+  return events.map((event) =>
+    event.id === id
+      ? {
+          ...event,
+          ...input,
+          reminderMinutes: input.reminderMinutes === undefined ? event.reminderMinutes : input.reminderMinutes,
+          updatedAt: now,
+        }
+      : event,
+  );
+}
+
+export function deleteEvent(events: CalendarEvent[], id: string) {
+  // TODO: Replace with Supabase Query
+  const now = new Date().toISOString();
+  return events.map((event) =>
+    event.id === id ? { ...event, status: "cancelled" as const, updatedAt: now } : event,
+  );
+}
+
+export function completeEvent(events: CalendarEvent[], id: string) {
+  // TODO: Replace with Supabase Query
+  const now = new Date().toISOString();
+  return events.map((event) =>
+    event.id === id ? { ...event, status: "completed" as const, updatedAt: now } : event,
+  );
+}
+
+export function createEventWithLinkedQuest(
+  events: CalendarEvent[],
+  input: CalendarEventInput,
+): { events: CalendarEvent[]; result: CalendarLinkedQuestResult } {
+  // TODO: Replace with Supabase Query and linked quest transaction
+  const event = buildCalendarEvent({ ...input, category: input.category ?? "quest" });
+  return {
+    events: [event, ...events],
+    result: {
+      event,
+      questTitle: event.title,
+    },
+  };
+}
+
+export function applyLinkedQuestId(events: CalendarEvent[], eventId: string, questId: string) {
+  // TODO: Replace with Supabase Query
+  return events.map((event) =>
+    event.id === eventId ? { ...event, linkedQuestId: questId, updatedAt: new Date().toISOString() } : event,
+  );
+}

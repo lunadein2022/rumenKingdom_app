@@ -1,4 +1,5 @@
 import type { AppMockData, ViewKey } from "../../app/types";
+import { getEventsByDay, getUpcomingEvents } from "../../features/calendar/services/calendarService";
 import { Badge } from "../design-system/Badge";
 import { Button } from "../design-system/Button";
 import { ProgressBar } from "../design-system/ProgressBar";
@@ -11,6 +12,12 @@ interface HomeSceneProps {
 }
 
 export function HomeScene({ data, onNavigate }: HomeSceneProps) {
+  const todayEvents = getEventsByDay(data.events, "2026-07-09");
+  const nextEvent = getUpcomingEvents(data.events)[0];
+  const serinLine = nextEvent
+    ? `세린이 ${nextEvent.startAt.slice(11, 16)} ${nextEvent.title} 일정을 준비하고 있습니다.`
+    : data.serin.greetingText;
+
   return (
     <section className="home-screen">
       <header className="home-hero-mobile">
@@ -21,7 +28,7 @@ export function HomeScene({ data, onNavigate }: HomeSceneProps) {
             <span>루멘 왕성</span>
           </div>
           <h1>공주님, 오늘의 왕궁이 열렸습니다.</h1>
-          <p>{data.serin.greetingText}</p>
+          <p>{serinLine}</p>
         </div>
 
         <div className="home-character-row">
@@ -44,7 +51,7 @@ export function HomeScene({ data, onNavigate }: HomeSceneProps) {
         </button>
         <button type="button" onClick={() => onNavigate("calendar")}>
           <Badge tone="royal">Calendar</Badge>
-          <strong>{data.events.length}</strong>
+          <strong>{todayEvents.length}</strong>
           <span>오늘 일정</span>
         </button>
         <button type="button" onClick={() => onNavigate("progress")}>
@@ -63,7 +70,7 @@ export function HomeScene({ data, onNavigate }: HomeSceneProps) {
       </section>
 
       <section className="home-action-row">
-        <Button onClick={() => onNavigate("quests")}>오늘 퀘스트 시작</Button>
+        <Button onClick={() => onNavigate("quests")}>오늘 Quest 시작</Button>
         <Button variant="glass" onClick={() => onNavigate("serin")}>세린에게 묻기</Button>
       </section>
 

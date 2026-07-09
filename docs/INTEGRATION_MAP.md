@@ -4,19 +4,21 @@
 | --- | --- |
 | 013 Search Bar | Design-system pattern, pending command/search component |
 | 014 Dialog | Design-system modal boundary pending |
-| 015 Calendar Components | `CalendarModule.tsx` + `calendar_events` schema |
+| 015/029 Calendar Domain | `features/calendar/*` + `calendar_events` / `calendar_reminders` schema |
 | 016 Quest Components | `QuestModule.tsx` + `quests` schema |
 | 017 Progress System | `mockProgress.ts`, `ProgressBar.tsx`, `user_progress`, `daily_completions` |
 | 018 Home Layout | Superseded by Home Scene Ultimate |
 | 019 Home Screen v2 | `legacy/home-screen-v2.html` |
 | 020 Quest Screen | `QuestModule.tsx` |
-| 021 Calendar Screen | `CalendarModule.tsx` |
-| 022 Serin AI Screen | `SystemModule.tsx` Serin boundary + `serinService.ts` |
+| 021 Calendar Screen | Superseded by `features/calendar/pages/CalendarPage.tsx` |
+| 022 Serin AI Screen | Superseded by `features/serin/components/SerinPage.tsx` |
 | 023 Home Scene Ultimate | `HomeScene.tsx` as main Home |
-| 024 Castle Growth System | `SystemModule.tsx` Castle boundary + `castleService.ts` |
-| 025 Achievement System | `SystemModule.tsx` Achievement boundary + achievement schema |
-| 026 Inventory System | `SystemModule.tsx` Inventory boundary + inventory schema |
+| 024 Castle Growth System | `CastlePreview.tsx` + `castleService.ts` |
+| 025 Achievement System | `AchievementPreview.tsx` + achievement schema |
+| 026 Inventory System | `InventoryPreview.tsx` + inventory schema |
 | 027 Princess Character System | `PrincessCharacter.tsx` + `princessService.ts` |
 | 028 Quest Domain | `questDomain.ts`, `QuestScreen.tsx`, `quests`, `quest_history` |
+| 029 Calendar Domain | `features/calendar/*`, `calendar_events`, `calendar_reminders` |
+| 030 Serin Domain | `features/serin/*`, `serin_conversations`, `serin_messages`, `serin_memory`, `contacts`, `diary_drafts` |
 
 The refactor preserves current scope and turns concept boards into a service-ready app structure.

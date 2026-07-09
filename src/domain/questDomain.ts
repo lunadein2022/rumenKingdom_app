@@ -1,4 +1,5 @@
 import type {
+  CalendarEvent,
   Quest,
   QuestCompletionEvent,
   QuestHistoryEntry,
@@ -107,7 +108,7 @@ export function createQuestFromSerinDraft(title: string): Quest {
     id: `q-serin-${Date.now()}`,
     type: "daily",
     title,
-    description: "세린이 대화에서 추출한 일일 퀘스트 초안입니다.",
+    description: "세린의 대화에서 추출한 일일 퀘스트 초안입니다.",
     status: "pending",
     category: "routine",
     priority: "medium",
@@ -117,5 +118,25 @@ export function createQuestFromSerinDraft(title: string): Quest {
     dueDate: now.slice(0, 10),
     rewardClaimed: false,
     source: "serin",
+  };
+}
+
+export function createQuestFromCalendarEvent(event: CalendarEvent): Quest {
+  // TODO:
+  // Replace with Supabase Query and calendar-to-quest transaction.
+  return {
+    id: `q-calendar-${Date.now()}`,
+    type: event.category === "routine" ? "routine" : event.category === "quest" ? "side" : "daily",
+    title: event.title,
+    description: `${event.location ?? "루멘 왕성"} 일정에서 생성된 Quest입니다.`,
+    status: "pending",
+    category: event.category === "work" || event.category === "meeting" ? "work" : event.category === "routine" ? "routine" : "growth",
+    priority: event.priority,
+    progress: 0,
+    expReward: event.category === "quest" ? questTypeMeta.side.baseExp : questTypeMeta.daily.baseExp,
+    goldReward: event.category === "quest" ? 12 : 4,
+    dueDate: event.startAt.slice(0, 10),
+    rewardClaimed: false,
+    source: "calendar",
   };
 }

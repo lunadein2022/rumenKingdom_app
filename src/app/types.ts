@@ -1,3 +1,6 @@
+import type { CalendarEvent } from "../features/calendar/types/calendar.types";
+import type { SerinMessageType } from "../features/serin/types/serin.types";
+
 export type ViewKey =
   | "home"
   | "quests"
@@ -5,6 +8,18 @@ export type ViewKey =
   | "serin"
   | "progress"
   | "profile";
+
+export type {
+  CalendarEvent,
+  CalendarEventInput,
+  CalendarIntentDraft,
+} from "../features/calendar/types/calendar.types";
+export type {
+  SerinAction,
+  SerinMemory,
+  SerinMessageType,
+  SerinStatus,
+} from "../features/serin/types/serin.types";
 
 export type QuestStatus = "pending" | "inProgress" | "completed";
 export type QuestType = "main" | "side" | "daily" | "routine" | "story";
@@ -74,19 +89,13 @@ export interface Quest {
   source: "manual" | "serin" | "calendar" | "system";
 }
 
-export interface CalendarEvent {
-  id: string;
-  title: string;
-  eventDate: string;
-  roomKey: PalaceRoomKey;
-  time: string;
-}
-
 export interface SerinMessage {
   id: string;
   sender: "princess" | "serin";
   content: string;
   createdAt: string;
+  messageType?: SerinMessageType;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SerinProfile {

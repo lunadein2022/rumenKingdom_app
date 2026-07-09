@@ -4,6 +4,7 @@ export const supabaseTables = {
   quests: "quests",
   questHistory: "quest_history",
   calendarEvents: "calendar_events",
+  calendarReminders: "calendar_reminders",
   userProgress: "user_progress",
   dailyCompletions: "daily_completions",
   castleRooms: "castle_rooms",
@@ -12,7 +13,11 @@ export const supabaseTables = {
   inventoryItems: "inventory_items",
   userTitles: "user_titles",
   serinConversations: "serin_conversations",
+  serinMessages: "serin_messages",
   serinMemory: "serin_memory",
+  contacts: "contacts",
+  relationshipBook: "relationship_book",
+  diaryDrafts: "diary_drafts",
 } as const;
 
 export type SupabaseTableName = (typeof supabaseTables)[keyof typeof supabaseTables];
