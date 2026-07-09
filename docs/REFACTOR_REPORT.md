@@ -39,15 +39,20 @@ princess-os-refactor/
       mockInventory.ts
       mockRepository.ts
       selectors.ts
-    services/supabase/
-      client.ts
+    repositories/
+      index.ts
       types.ts
-      progressService.ts
-      questService.ts
-      princessService.ts
-      castleService.ts
-      serinService.ts
-      schemaMap.ts
+      mock/
+      supabase/
+        services/
+          client.ts
+          types.ts
+          progressService.ts
+          questService.ts
+          princessService.ts
+          castleService.ts
+          serinService.ts
+          schemaMap.ts
     styles/
       tokens.css
       global.css
@@ -82,7 +87,6 @@ Design system:
 - `Badge.tsx`
 - `ProgressBar.tsx`
 - `GlassPanel.tsx`
-- `TopAppBar.tsx`
 - `BottomNav.tsx`
 
 Home:
@@ -187,6 +191,16 @@ Princess now starts moving from a weak profile page into `src/features/princess/
 - The Throne Room is accessible in Alpha at the current mock level and links to Growth, Achievement/Reward, and Princess Character surfaces.
 - `netlify/functions/serin-chat.js` is restored and `serinService.sendMessage()` calls `/.netlify/functions/serin-chat` first.
 - Mock Serin replies are now fallback-only through `fallbackSerinResponse()` when the API call fails.
+
+## Execution Path Cleanup
+
+- `App.tsx` is now layout and route selection only.
+- Runtime state moved to `src/app/usePrincessOsApp.ts`.
+- Active path is now `UI -> Hook -> Repository -> Service`.
+- `useCalendarEvents`, `useSerinChat`, `useSerinIntent`, `useSerinMemory`, `usePrincess`, `useCastle`, and `useCastleRooms` are all used by the runtime hook.
+- `USE_MOCK` lives in `src/repositories/index.ts`; set `VITE_USE_MOCK=false` to select the Supabase repository.
+- Mock and Supabase code are separated under `src/repositories/mock` and `src/repositories/supabase`.
+- Legacy-only `TopAppBar.tsx` moved to `legacy/components/TopAppBar.tsx`.
 
 ## Time Navigation Principle
 
