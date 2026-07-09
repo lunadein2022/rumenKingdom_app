@@ -12,6 +12,21 @@ function toTime(value: string) {
   return new Date(value).getTime();
 }
 
+// "8월 19일부터 3일간 가족여행" 같은 기간 일정은 startAt~endAt 여러 날에 걸칩니다.
+// 이 함수는 특정 날짜(date, YYYY-MM-DD)가 이벤트가 걸쳐 있는 기간 안에 포함되는지
+// 확인합니다. endAt이 없거나 startAt과 같은 날이면 기존처럼 하루짜리 이벤트입니다.
+export function isDateWithinEvent(event: CalendarEvent, date: string) {
+  const startDate = dateOnly(event.startAt);
+  const endDate = event.endAt ? dateOnly(event.endAt) : startDate;
+  if (endDate <= startDate) return startDate === date;
+  return date >= startDate && date <= endDate;
+}
+
+export function isMultiDayEvent(event: CalendarEvent) {
+  if (!event.endAt) return false;
+  return dateOnly(event.endAt) > dateOnly(event.startAt);
+}
+
 export function buildCalendarEvent(input: CalendarEventInput): CalendarEvent {
   const now = new Date().toISOString();
   return {
@@ -49,8 +64,9 @@ export function getEventsByRange(events: CalendarEvent[], startDate: string, end
 
 export function getEventsByDay(events: CalendarEvent[], date: string) {
   // TODO: Replace with Supabase Query
+  // 여러 날짜에 걸친 일정(여행 등)은 시작일뿐 아니라 걸쳐 있는 모든 날에 조회되어야 합니다.
   return events
-    .filter((event) => event.status !== "cancelled" && dateOnly(event.startAt) === date)
+    .filter((event) => event.status !== "cancelled" && isDateWithinEvent(event, date))
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
 }
 

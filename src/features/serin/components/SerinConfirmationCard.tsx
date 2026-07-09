@@ -11,7 +11,7 @@ interface SerinConfirmationCardProps {
 export function SerinConfirmationCard({ action, onConfirm, onCancel }: SerinConfirmationCardProps) {
   return (
     <section className="serin-confirmation-card">
-      <Badge tone="royal">세린 확인</Badge>
+      <Badge tone="royal">Confirmation</Badge>
       <h2>{action.title}</h2>
       <p>{action.summary}</p>
       <div>

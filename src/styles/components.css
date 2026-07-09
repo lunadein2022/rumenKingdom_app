@@ -109,54 +109,111 @@
   background: linear-gradient(90deg, var(--royal-500), var(--gold-500));
 }
 
-.bottom-nav {
-  position: fixed;
-  right: 0;
-  left: 0;
-  bottom: 0;
-  z-index: 40;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  width: 100%;
-  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-  border-top: 1px solid rgba(111, 143, 242, 0.16);
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 -14px 36px rgba(16, 25, 54, 0.12);
-  backdrop-filter: blur(24px);
+/* ---------------------------------------------------------------------
+   Site Navigation — Princess OS는 모바일 앱이 아니라 게임화된 웹사이트입니다.
+   데스크톱 기본값은 상단 sticky Nav이고, 모바일에서만 하단 Compact Nav로
+   전환됩니다(아래 미디어쿼리). 로비 피드백대로 데스크톱 Nav는 얇고 여백이
+   넉넉하게, 화이트 카드가 아니라 옅은 Glass 바로 유지합니다.
+   --------------------------------------------------------------------- */
+.site-nav-top {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 56px;
+  padding: 0 32px;
+  background: rgba(16, 25, 54, 0.5);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-@media (min-width: 768px) {
-  .bottom-nav {
+.site-nav-brand {
+  flex: 0 0 auto;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  opacity: 0.9;
+}
+
+.site-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.site-nav-links button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-full);
+  color: rgba(255, 255, 255, 0.68);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.site-nav-icon {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.site-nav-links button.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.site-nav-mobile {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .site-nav-top {
     display: none;
   }
-}
 
-.bottom-nav button {
-  display: grid;
-  gap: 3px;
-  justify-items: center;
-  min-width: 0;
-  min-height: 54px;
-  border: 0;
-  border-radius: var(--radius-lg);
-  color: var(--text-secondary);
-  background: transparent;
-  font-size: 11px;
-  font-weight: 800;
-}
+  .site-nav-mobile {
+    position: fixed;
+    left: 50%;
+    bottom: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    width: 100%;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(111, 143, 242, 0.16);
+    background: rgba(16, 25, 54, 0.88);
+    box-shadow: 0 -14px 36px rgba(16, 25, 54, 0.24);
+    transform: translateX(-50%);
+    backdrop-filter: blur(24px);
+  }
 
-.bottom-nav button span {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+  .site-nav-mobile button {
+    display: grid;
+    gap: 2px;
+    justify-items: center;
+    min-height: 48px;
+    border: 0;
+    border-radius: var(--radius-lg);
+    color: rgba(255, 255, 255, 0.66);
+    background: transparent;
+    font-size: 9.5px;
+    font-weight: 800;
+  }
 
-.bottom-nav button span:first-child {
-  font-size: 18px;
-}
+  .site-nav-mobile button span:first-child {
+    font-size: 16px;
+  }
 
-.bottom-nav button.active {
-  color: var(--royal-800);
-  background: rgba(65, 105, 225, 0.12);
+  .site-nav-mobile button.active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.14);
+  }
 }

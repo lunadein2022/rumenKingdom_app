@@ -2,7 +2,7 @@
 
 ## Sprint Scope
 
-This sprint reorganized Update 013-033 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, removes preview/showcase UI, and restores Princess OS as a place-based Alpha app rather than a dashboard.
+This sprint reorganized Update 013-031 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, but replaces explanation-card placeholders with usable Home, Castle, Quest, Calendar, Serin, and Progress interactions.
 
 ## Final Folder Structure
 
@@ -39,20 +39,15 @@ princess-os-refactor/
       mockInventory.ts
       mockRepository.ts
       selectors.ts
-    repositories/
-      index.ts
+    services/supabase/
+      client.ts
       types.ts
-      mock/
-      supabase/
-        services/
-          client.ts
-          types.ts
-          progressService.ts
-          questService.ts
-          princessService.ts
-          castleService.ts
-          serinService.ts
-          schemaMap.ts
+      progressService.ts
+      questService.ts
+      princessService.ts
+      castleService.ts
+      serinService.ts
+      schemaMap.ts
     styles/
       tokens.css
       global.css
@@ -87,22 +82,25 @@ Design system:
 - `Badge.tsx`
 - `ProgressBar.tsx`
 - `GlassPanel.tsx`
+- `TopAppBar.tsx`
 - `BottomNav.tsx`
 
 Home:
 
+- `PalaceRoomSection.tsx`
 - `HomeScene.tsx`
 
-Active feature pages:
+Modules:
 
-- `features/calendar/pages/CalendarPage.tsx`
-- `features/castle/pages/CastlePage.tsx`
-- `features/garden/pages/GardenPage.tsx`
-- `features/library/pages/LibraryPage.tsx`
-- `features/princess/pages/PrincessPage.tsx`
-- `features/serin/components/SerinPage.tsx`
-- `components/modules/QuestScreen.tsx`
-- `components/modules/ProgressScreen.tsx`
+- `PrincessCharacter.tsx`
+- `QuestScreen.tsx`
+- `SerinScreen.tsx`
+- `ProgressScreen.tsx`
+- `QuestPreview.tsx`
+- `ProgressSummary.tsx`
+- `CastlePreview.tsx`
+- `AchievementPreview.tsx`
+- `InventoryPreview.tsx`
 
 ## MockData Structure
 
@@ -158,11 +156,11 @@ Serin now lives under `src/features/serin/` and is treated as the AI maid interf
 
 ## Update 031 Castle Domain
 
-Castle now lives under `src/features/castle/` and is treated as the Princess OS map, not a menu. Home remains the Lobby, while Castle provides room swipe, arrows, fast travel, room score state, and Castle EXP.
+Castle now lives under `src/features/castle/` and is treated as the Princess OS map, not a menu. Home remains the Lobby, while Castle provides room swipe, arrows, fast travel, room unlock state, room upgrade state, and Castle EXP.
 
 - Rooms: Lobby, Throne, Library, Office, Garden, Bedroom, Tower, Secret Garden
 - Movement: swipe-style selector, arrow controls, and fast travel
-- Growth: `CastleState`, room level, visited count, decorations, and score/EXP
+- Growth: `CastleState`, room level, visited count, decorations, unlock level
 - Supabase-ready `castle_rooms`, `castle_state`, and `room_decorations`
 - Castle navigation no longer duplicates room selectors: fast travel is shown once, and carousel keeps arrow movement only.
 - Kingdom Library and Garden are now independent pages instead of routing to Serin.
@@ -174,55 +172,6 @@ Princess now starts moving from a weak profile page into `src/features/princess/
 - Supabase-ready `princess_profiles`, `princess_stats`, `princess_equipment`, and `princess_diary`
 - Garden is a non-productivity rest scene with garden image and princess presence
 - Kingdom Library is the archive for completed quests, past events, Serin records, diary, and contacts
-
-## Alpha Structure Cleanup
-
-- Removed unused preview/showcase components from the active source tree.
-- Home is now a palace lobby scene with only briefing, today's schedule count, today's quest count, level, princess, and Serin.
-- Castle is now a room movement hub: fast travel plus arrow carousel, each room shown as a full scene.
-- Kingdom Library is an independent archive page instead of routing to Serin.
-- Garden is an independent rest page with full-screen garden background, princess presence, and Serin healing copy only.
-- Supabase policies are dropped before creation so `schema.sql` can be rerun without duplicate-policy errors.
-
-## Regression Fixes
-
-- App Shell is now Desktop First: 1440px-oriented responsive Personal OS layout with desktop sidebar, tablet collapse, and mobile BottomNav.
-- Castle no longer uses room locking in the active UI. Game feel is kept through score, EXP, and princess level.
-- The Throne Room is accessible in Alpha at the current mock level and links to Growth, Achievement/Reward, and Princess Character surfaces.
-- `netlify/functions/serin-chat.js` is restored and `serinService.sendMessage()` calls `/.netlify/functions/serin-chat` first.
-- Mock Serin replies are now fallback-only through `fallbackSerinResponse()` when the API call fails.
-
-## Execution Path Cleanup
-
-- `App.tsx` is now layout and route selection only.
-- Runtime state moved to `src/app/usePrincessOsApp.ts`.
-- Active path is now `UI -> Hook -> Repository -> Service`.
-- `useCalendarEvents`, `useSerinChat`, `useSerinIntent`, `useSerinMemory`, `usePrincess`, `useCastle`, and `useCastleRooms` are all used by the runtime hook.
-- `USE_MOCK` lives in `src/repositories/index.ts`; set `VITE_USE_MOCK=false` to select the Supabase repository.
-- Mock and Supabase code are separated under `src/repositories/mock` and `src/repositories/supabase`.
-- Legacy-only `TopAppBar.tsx` moved to `legacy/components/TopAppBar.tsx`.
-- Calendar event creation fields were removed from the active UI. Schedule and Quest creation now starts from Serin.
-- Kingdom Library now has a single period dropdown: Past, Current, Future, All.
-
-## Simplicity UX Pass
-
-- Removed active room locking from Castle. Game feel is now score, EXP, and princess level only.
-- Calendar month cells now show event titles directly, not just dots or hidden counts.
-- Calendar creation fields are no longer rendered; schedules are created through Serin.
-- Serin now applies recognized schedule and Quest requests directly to app state, then reports completion in chat.
-- Quest screen copy was simplified around checking status and completing items, not creating them.
-- Library filtering is a simple period dropdown to reduce navigation friction.
-
-## Update 034 Home And Serin Flow
-
-- Home now absorbs Castle as the Live Palace Lobby. The active app no longer exposes a separate Castle page.
-- The first experience is palace scene, princess, Serin greeting, then animated room pills.
-- Desktop Calendar uses a wider workspace: month view, selected-day agenda, and a Serin request form in one screen.
-- Library now has search, period filter, and tabs for completed Quest, past events, Diary, relationships, and Serin Memory.
-- Serin screen chat is session-only and starts from a fresh greeting after refresh.
-- Long-term Serin memory is separate from screen chat and persists in the local mock memory store.
-- `serinService.sendMessage()` still calls `/.netlify/functions/serin-chat`; fallback is used only when the API fails.
-- Pending actions are retained, so short replies like "응", "그래", or "퀘스트에 등록해" can execute the previous suggestion.
 
 ## Time Navigation Principle
 
@@ -236,7 +185,7 @@ Calendar, Quest, and Diary domains must support past, current, and future data. 
 - Connect Serin chat API, streaming, OCR, voice input, and memory persistence.
 - Build full Diary and Library pages on top of the new date-range services.
 - Replace temporary generated transparent PNG cutouts with art-directed transparent character exports.
-- Add route handling once screen priorities are finalized.
+- Add route handling once screen priorities are locked.
 
 ## Technical Debt
 

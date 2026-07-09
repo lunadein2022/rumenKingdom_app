@@ -57,10 +57,15 @@ export interface CalendarIntentDraft {
   title: string;
   startAt: string;
   endAt?: string;
+  isAllDay?: boolean;
+  // "8월 19일부터 3일간" 처럼 기간이 있는 일정인지 여부. Month View에서
+  // 기간형 bar로 표시할지, 단일 일정 점으로 표시할지 결정하는 데 씁니다.
+  isMultiDay?: boolean;
   category: CalendarCategory;
   confidence: number;
   needsConfirmation: boolean;
   sourceMessage: string;
+  confirmSummary?: string;
 }
 
 export interface CalendarReminder {
@@ -78,14 +83,14 @@ export interface CalendarLinkedQuestResult {
 }
 
 export const calendarCategoryMeta: Record<CalendarCategory, CalendarCategoryMeta> = {
-  work: { label: "업무", icon: "Pen", tone: "royal" },
-  personal: { label: "개인", icon: "Flower", tone: "soft" },
+  work: { label: "Work", icon: "Pen", tone: "royal" },
+  personal: { label: "Personal", icon: "Flower", tone: "soft" },
   quest: { label: "Quest", icon: "Scroll", tone: "gold" },
   routine: { label: "Routine", icon: "Refresh", tone: "soft" },
-  meeting: { label: "회의", icon: "Handshake", tone: "royal" },
-  serin: { label: "세린", icon: "Coffee", tone: "success" },
-  rest: { label: "휴식", icon: "Bed", tone: "soft" },
-  event: { label: "이벤트", icon: "Party", tone: "gold" },
+  meeting: { label: "Meeting", icon: "Handshake", tone: "royal" },
+  serin: { label: "Serin", icon: "Coffee", tone: "success" },
+  rest: { label: "Rest", icon: "Bed", tone: "soft" },
+  event: { label: "Event", icon: "Party", tone: "gold" },
 };
 
 export const reminderOptions = [

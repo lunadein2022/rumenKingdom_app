@@ -74,16 +74,63 @@
 
 .serin-screen {
   display: grid;
+  min-width: 0;
   min-height: calc(100dvh - 116px);
-  grid-template-rows: auto auto 1fr auto;
+  gap: 14px;
+}
+
+/* Serin = Princess OS의 메인 화면. 왼쪽 레일(상태/기억/행동로그/최근항목/예시문장)과
+   오른쪽 대화 칼럼으로 나뉩니다. 대화 칼럼은 "카카오톡 정도의 폭"으로 제한해,
+   화면 전체를 채우지 않고 왼쪽 레일과 나란히 자리잡습니다. */
+.serin-workspace {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.serin-rail {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 280px;
+  max-width: 320px;
+  gap: 10px;
+  align-content: start;
+}
+
+.serin-chat-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 380px;
+  max-width: 480px;
+  height: calc(100dvh - 230px);
+  min-height: 460px;
   gap: 10px;
 }
 
+/* 980px 미만(모바일/좁은 창)에서는 항상 1단 세로 스택이고, 대화 칼럼의 폭 제한도
+   풀어 화면을 가득 씁니다("확인용" 반응형). */
+@media (max-width: 979px) {
+  .serin-rail,
+  .serin-chat-column {
+    max-width: none;
+    flex-basis: 100%;
+  }
+
+  .serin-chat-column {
+    height: 62dvh;
+  }
+}
+
+/* 아바타-제목-아바타를 고정폭 grid 대신 flex-wrap으로 배치해, 폭이 아무리
+   좁아져도 글자가 한 글자씩 줄바꿈되는 대신 아바타가 아래로 밀려납니다. */
 .serin-header {
-  display: grid;
-  grid-template-columns: 56px 1fr 56px;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 10px;
   padding: 14px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
@@ -91,15 +138,22 @@
   box-shadow: var(--shadow-small);
 }
 
+.serin-header > div {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
 .serin-header h1 {
   margin: 6px 0 3px;
   color: var(--royal-900);
   font-size: 22px;
+  overflow-wrap: break-word;
 }
 
 .serin-header p {
   margin: 0;
   font-size: 12px;
+  overflow-wrap: break-word;
 }
 
 .chat-avatar {
@@ -147,6 +201,18 @@
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
   background: rgba(255, 255, 255, 0.48);
+}
+
+.chat-bubble-group {
+  display: grid;
+  gap: 6px;
+}
+
+.chat-inline-confirm {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-left: 4px;
 }
 
 .chat-bubble {
@@ -250,53 +316,12 @@
 
 .calendar-grid button {
   position: relative;
-  min-height: 82px;
+  aspect-ratio: 1;
   border: 0;
   border-radius: 14px;
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.72);
   font-weight: 900;
-}
-
-.calendar-grid-readable {
-  align-items: stretch;
-}
-
-.calendar-empty-cell {
-  min-height: 82px;
-}
-
-.calendar-grid-readable button {
-  display: grid;
-  align-content: start;
-  gap: 5px;
-  padding: 8px;
-  text-align: left;
-}
-
-.calendar-day-number {
-  font-size: 12px;
-}
-
-.calendar-day-events {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.calendar-day-events em {
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
-  padding: 3px 5px;
-  border-radius: 7px;
-  color: var(--royal-800);
-  background: rgba(65, 105, 225, 0.09);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .calendar-grid button.today {
@@ -319,6 +344,33 @@
   border-radius: 50%;
   background: var(--gold-500);
   transform: translateX(-50%);
+}
+
+/* 기간 일정("8월 19일부터 3일간")은 하루짜리 점 대신, 걸쳐 있는 날짜들 아래로
+   이어지는 바(bar)로 표시합니다. has-event의 점(::after)은 그대로 두고,
+   ::before로 바를 추가해 두 표시가 겹쳐도 자연스럽게 보이도록 합니다. */
+.calendar-grid button.multi-day::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  height: 4px;
+  background: rgba(216, 183, 106, 0.55);
+}
+
+.calendar-grid button.multi-day-start::before {
+  left: 15%;
+  border-radius: 4px 0 0 4px;
+}
+
+.calendar-grid button.multi-day-end::before {
+  right: 15%;
+  border-radius: 0 4px 4px 0;
+}
+
+.calendar-grid button.multi-day.has-event::after {
+  display: none;
 }
 
 .day-agenda {
@@ -368,7 +420,7 @@
   border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(65, 105, 225, 0.12)),
-    url("/assets/palace-main.png") center / cover;
+    url("/assets/palace-main.webp") center / cover;
   box-shadow: var(--shadow-medium);
 }
 
@@ -430,7 +482,7 @@
   border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(65, 105, 225, 0.12)),
-    url("/assets/palace-main.png") center / cover;
+    url("/assets/palace-main.webp") center / cover;
   box-shadow: var(--shadow-medium);
 }
 
@@ -494,14 +546,12 @@
 .quest-domain-hero {
   display: grid;
   gap: 12px;
-  padding: 16px;
+  padding: 20px 22px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 28px;
+  border-radius: 18px;
   background:
     linear-gradient(145deg, rgba(16, 25, 54, 0.88), rgba(31, 50, 112, 0.78)),
-    url("/assets/throne.png") center / cover;
-  box-shadow: var(--shadow-floating);
+    url("/assets/throne.webp") center / cover;
 }
 
 .quest-domain-hero h1 {
@@ -760,14 +810,27 @@
   gap: 12px;
 }
 
+.calendar-main-grid {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+/* 980px 미만에서는 월간 달력과 당일 일정을 항상 세로로 쌓습니다.
+   좁은 화면에서 두 칼럼이 나란히 눌리는 것을 막기 위한 안전장치입니다. */
+@media (min-width: 980px) {
+  .calendar-main-grid {
+    grid-template-columns: minmax(300px, 1.1fr) minmax(280px, 0.9fr);
+    align-items: start;
+  }
+}
+
 .calendar-domain-hero {
-  padding: 16px;
-  border: 1px solid var(--glass-border);
-  border-radius: 28px;
+  padding: 18px 22px;
+  border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(65, 105, 225, 0.1)),
-    url("/assets/library.png") center / cover;
-  box-shadow: var(--shadow-medium);
+    url("/assets/library.webp") center / cover;
 }
 
 .calendar-domain-hero h1 {
@@ -997,7 +1060,6 @@
 
 .serin-domain-page {
   min-height: calc(100dvh - 116px);
-  grid-template-rows: auto auto auto auto 1fr auto;
 }
 
 .serin-status-orb,
@@ -1099,23 +1161,66 @@
   font-size: 12px;
 }
 
+/* 대화창 = .serin-chat-column 안의 스크롤 영역입니다. flex:1로 남는 세로 공간을
+   모두 차지하고, 그 안에서만 overflow-y: auto로 스크롤됩니다. 새 메시지는
+   SerinChatThread의 useEffect가 항상 맨 아래로 스크롤시킵니다. */
 .serin-thread {
-  min-height: 280px;
-  max-height: 46dvh;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   scroll-behavior: smooth;
 }
 
 .serin-input-bar {
-  position: sticky;
-  bottom: calc(82px + env(safe-area-inset-bottom));
-  z-index: 5;
+  position: static;
+  flex: 0 0 auto;
   grid-template-columns: 1fr;
+}
+
+.serin-input-bar.drag-over {
+  border-color: var(--gold-500);
+  background: rgba(216, 183, 106, 0.16);
+}
+
+.serin-drop-hint {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  color: #6f5115;
+  background: rgba(216, 183, 106, 0.22);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
 }
 
 .serin-input-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
+  align-items: end;
   gap: 8px;
+}
+
+.chat-input-bar textarea {
+  min-width: 0;
+  max-height: 120px;
+  padding: 8px 10px;
+  border: 0;
+  outline: 0;
+  resize: none;
+  border-radius: var(--radius-md);
+  background: rgba(16, 25, 54, 0.05);
+  font: inherit;
+  line-height: 1.4;
+}
+
+.serin-clip-button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(111, 143, 242, 0.16);
+  border-radius: var(--radius-full);
+  background: rgba(65, 105, 225, 0.08);
+  font-size: 15px;
 }
 
 .serin-attachment-row {
@@ -1136,6 +1241,142 @@
   font-weight: 900;
 }
 
+/* 세린 행동 로그 말풍선(action_log): 일반 대화와 다르게 여러 줄 상세 내역을
+   보여주므로 살짝 더 넓고, 시스템 톤(연한 골드)으로 구분합니다. */
+.chat-bubble.serin.action-log {
+  max-width: 92%;
+  border: 1px solid rgba(216, 183, 106, 0.34);
+  background: rgba(216, 183, 106, 0.14);
+}
+
+/* 왼쪽 레일: 세린의 최근 활동(행동 로그) 타임라인 */
+.serin-action-log-panel {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(18px);
+}
+
+.serin-action-log-panel > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.serin-action-log-panel h2 {
+  margin: 0;
+  color: var(--royal-900);
+  font-size: 15px;
+}
+
+.serin-action-log-panel > div span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.serin-action-log-panel ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.serin-action-log-panel li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  background: rgba(65, 105, 225, 0.06);
+  font-size: 12px;
+}
+
+.serin-action-log-time {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.serin-action-log-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 왼쪽 레일: 최근 프로젝트 / 일정 / 인연 */
+.serin-recent-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(18px);
+}
+
+.serin-recent-panel h3 {
+  margin: 0 0 5px;
+  color: var(--royal-800);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.serin-recent-panel ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.serin-recent-panel li {
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+/* 왼쪽 레일: 예시 문장 패널(Quick Action 대체). 눌러도 즉시 실행되지 않습니다. */
+.serin-example-panel {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(18px);
+}
+
+.serin-example-panel h2 {
+  margin: 0;
+  color: var(--royal-900);
+  font-size: 15px;
+}
+
+.serin-example-panel .quick-actions {
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+.serin-example-panel .quick-actions button {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @keyframes serin-pulse {
   from {
     transform: scale(0.9);
@@ -1148,58 +1389,91 @@
 }
 
 .castle-domain-page {
-  display: grid;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 56px);
+  gap: 10px;
+  padding: 14px 20px 20px;
 }
 
 .castle-hero {
-  min-height: 180px;
-  padding: 16px;
-  border-radius: 30px;
-  background:
-    linear-gradient(180deg, rgba(16, 25, 54, 0.88), rgba(16, 25, 54, 0.5)),
-    url("/assets/palace-main.png") center / cover;
-  box-shadow: var(--shadow-floating);
+  min-height: 92px;
+  padding: 12px 4px;
+  background: none;
 }
 
 .castle-hero h1 {
-  margin: 8px 0 4px;
-  color: #fff;
-  font-size: 30px;
+  margin: 4px 0 2px;
+  color: var(--royal-900);
+  font-size: 24px;
 }
 
 .castle-hero p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-secondary);
   font-size: 13px;
   font-weight: 800;
 }
 
+/* 왕궁 지도 / Scene Navigator — 평범한 웹 탭이 아니라 반투명 Glass HUD 바입니다. */
 .castle-fast-travel,
 .castle-swipe-track {
   display: flex;
-  gap: 7px;
+  gap: 6px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  padding: 8px;
+  border-radius: var(--radius-full);
+  background: rgba(16, 25, 54, 0.06);
+  border: 1px solid var(--glass-border);
 }
 
 .castle-fast-travel button,
 .castle-swipe-track button {
+  display: grid;
+  gap: 2px;
   flex: 0 0 auto;
-  min-height: 34px;
-  padding: 0 12px;
-  border: 1px solid rgba(111, 143, 242, 0.16);
-  border-radius: var(--radius-full);
+  min-height: 32px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--radius-lg);
   color: var(--royal-800);
-  background: rgba(255, 255, 255, 0.74);
+  background: transparent;
   font-size: 12px;
   font-weight: 900;
+  text-align: left;
+}
+
+.castle-fast-travel button strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.castle-fast-travel button small {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.castle-fast-travel button em {
+  font-style: normal;
+  color: #6f5115;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
 }
 
 .castle-fast-travel button.active,
 .castle-swipe-track button.active {
   color: #fff;
   background: var(--royal-600);
+}
+
+.castle-fast-travel button.active small {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.castle-fast-travel button.current:not(.active) {
+  background: rgba(216, 183, 106, 0.18);
 }
 
 .castle-fast-travel button:disabled {
@@ -1239,7 +1513,10 @@
 }
 
 .castle-carousel {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   gap: 10px;
 }
 
@@ -1266,37 +1543,58 @@
   font-size: 13px;
 }
 
-.castle-room-card {
-  position: relative;
-  min-height: 392px;
-  overflow: hidden;
-  border-radius: 30px;
-  background: #fff;
-  box-shadow: var(--shadow-floating);
+.castle-carousel-stage {
+  flex: 1;
+  min-height: 420px;
 }
 
-.castle-room-card img {
-  width: 100%;
-  height: 220px;
-  object-fit: cover;
+/* Castle 방은 카드가 아니라 화면 대부분을 채우는 full-screen room scene입니다. */
+.castle-room-card {
+  position: relative;
+  height: 100%;
+  min-height: 420px;
+  overflow: hidden;
+  border-radius: 24px;
+  background-size: cover;
+  background-position: center;
+}
+
+.castle-room-card-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  background: linear-gradient(180deg, rgba(16, 25, 54, 0) 38%, rgba(16, 25, 54, 0.82) 100%);
 }
 
 .castle-room-copy {
   display: grid;
   gap: 8px;
-  padding: 14px;
+  width: 100%;
+  padding: 22px;
+}
+
+.castle-room-copy span {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .castle-room-copy h2 {
   margin: 0;
-  color: var(--royal-900);
-  font-size: 24px;
+  color: #fff;
+  font-size: 26px;
 }
 
 .castle-room-copy p {
   margin: 0;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.86);
   font-size: 13px;
+}
+
+.castle-room-copy .ds-button {
+  justify-self: start;
+  margin-top: 4px;
 }
 
 .castle-room-stats {
@@ -1308,8 +1606,9 @@
 .castle-room-stats span {
   padding: 5px 8px;
   border-radius: var(--radius-full);
-  color: var(--royal-800);
-  background: rgba(65, 105, 225, 0.08);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
   font-size: 11px;
   font-weight: 900;
 }
@@ -1330,19 +1629,70 @@
   font-size: 22px;
 }
 
+.palace-room-mobile.locked {
+  opacity: 0.72;
+}
+
 .library-page {
   display: grid;
   gap: 12px;
 }
 
+.library-toolbar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.library-tabs {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.library-tabs button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(111, 143, 242, 0.16);
+  border-radius: var(--radius-full);
+  color: var(--royal-800);
+  background: rgba(255, 255, 255, 0.74);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.library-tabs button.active {
+  color: #fff;
+  background: var(--royal-600);
+}
+
+.library-section article p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.library-toolbar input,
+.library-toolbar select {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .library-hero {
-  min-height: 190px;
-  padding: 16px;
-  border-radius: 30px;
+  min-height: 220px;
+  padding: 20px 24px;
+  border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(16, 25, 54, 0.84), rgba(31, 50, 112, 0.5)),
-    url("/assets/library.png") center / cover;
-  box-shadow: var(--shadow-floating);
+    url("/assets/library.webp") center / cover;
 }
 
 .library-hero h1 {
@@ -1406,106 +1756,104 @@
   font-size: 12px;
 }
 
-.library-scope-select {
-  display: grid;
-  grid-template-columns: auto minmax(140px, 220px);
-  gap: 10px;
-  align-items: center;
-  padding: 12px 14px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--shadow-small);
-  backdrop-filter: blur(18px);
-}
-
-.library-scope-select span {
-  color: var(--royal-900);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.library-scope-select select {
-  min-height: 38px;
-  border: 1px solid rgba(111, 143, 242, 0.16);
-  border-radius: var(--radius-lg);
-  padding: 0 10px;
-  color: var(--royal-900);
-  background: rgba(255, 255, 255, 0.88);
-  font-weight: 900;
-}
-
-.garden-page {
-  display: grid;
-  gap: 12px;
-}
-
-.garden-scene {
+/* 정원: 카드 목록이 아니라 화면 전체를 채우는 몰입형 배경 Scene입니다.
+   세린 멘트도 카드가 아니라 말풍선 오버레이로만 뜹니다. */
+.garden-scene-full {
   position: relative;
-  min-height: calc(100dvh - 190px);
+  min-height: calc(100vh - 56px);
   overflow: hidden;
-  border-radius: 30px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(16, 25, 54, 0.2)),
-    url("/assets/garden.png") center / cover;
-  box-shadow: var(--shadow-floating);
 }
 
-.garden-copy {
-  position: relative;
+.garden-scene-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.garden-scene-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(16, 25, 54, 0.12) 0%, rgba(16, 25, 54, 0.04) 40%, rgba(16, 25, 54, 0.4) 100%);
+}
+
+.garden-princess-full {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 1;
+  width: min(60%, 360px);
+  max-height: 88%;
+  object-fit: contain;
+  object-position: bottom center;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 20px 30px rgba(16, 25, 54, 0.35));
+}
+
+.garden-copy-overlay {
+  position: absolute;
+  top: 20px;
+  left: 20px;
   z-index: 2;
-  padding: 18px;
+  max-width: 260px;
   color: #fff;
   text-shadow: 0 2px 18px rgba(16, 25, 54, 0.45);
 }
 
-.garden-copy span {
-  font-size: 12px;
+.garden-copy-overlay span {
+  font-size: 11px;
   font-weight: 900;
+  opacity: 0.85;
 }
 
-.garden-copy h1 {
-  max-width: 310px;
-  margin: 8px 0 0;
-  font-size: 29px;
-}
-
-.garden-copy p {
-  max-width: 320px;
-  margin: 8px 0 0;
-  font-size: 13px;
+.garden-copy-overlay h1 {
+  margin: 6px 0 0;
+  font-size: 19px;
   font-weight: 800;
 }
 
-.garden-princess {
+/* 정원은 말풍선이 주인공입니다 — 흰 카드가 아니라 옅은 Glass 말풍선. */
+.garden-speech-bubble {
   position: absolute;
-  right: -12px;
-  bottom: -4px;
-  z-index: 1;
-  width: min(72%, 280px);
-  max-height: 82%;
-  object-fit: contain;
-  object-position: bottom right;
-}
-
-.garden-serin-note {
-  display: grid;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid var(--glass-border);
+  left: 22px;
+  bottom: 78px;
+  z-index: 2;
+  max-width: min(72%, 300px);
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: var(--radius-xl);
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
+  background: rgba(16, 25, 54, 0.42);
+  backdrop-filter: blur(16px);
 }
 
-.garden-serin-note strong {
-  color: var(--royal-900);
+.garden-speech-bubble strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #ffd76a;
+  font-size: 12px;
 }
 
-.garden-serin-note p {
+.garden-speech-bubble p {
   margin: 0;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.88);
   font-size: 13px;
+}
+
+.garden-back-button {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--radius-full);
+  color: #fff;
+  background: rgba(16, 25, 54, 0.42);
+  backdrop-filter: blur(10px);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .princess-domain-page {
@@ -1523,7 +1871,7 @@
   border-radius: 30px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(65, 105, 225, 0.12)),
-    url("/assets/palace-main.png") center / cover;
+    url("/assets/palace-main.webp") center / cover;
   box-shadow: var(--shadow-floating);
 }
 
@@ -1561,429 +1909,663 @@
 }
 
 .princess-progress-card strong,
-.princess-fate-card h2,
-.princess-equipment-list h2 {
-  margin: 0;
+.princess-fate-card strong {
+  display: block;
   color: var(--royal-900);
-  font-size: 19px;
-}
-
-.princess-progress-card span,
-.princess-fate-card p,
-.princess-fate-card span {
-  color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
 }
 
-.princess-stat-list {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.princess-stat-list article,
-.princess-equipment-list article {
+/* =====================================================================
+   Office — 메인퀘스트(=프로젝트) 관리 공간.
+   ===================================================================== */
+.office-domain-page {
   display: grid;
-  gap: 3px;
-  padding: 10px;
-  border-radius: var(--radius-lg);
-  background: rgba(65, 105, 225, 0.08);
+  gap: 14px;
 }
 
-.princess-stat-list strong,
-.princess-equipment-list strong {
-  color: var(--royal-800);
-  font-size: 12px;
-  text-transform: capitalize;
-}
-
-.princess-stat-list span,
-.princess-equipment-list span {
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 900;
-}
-
-/* Alpha place-based structure */
-.lobby-page {
-  min-height: calc(100dvh - 96px);
-  display: grid;
-  gap: 12px;
-}
-
-.lobby-scene {
-  position: relative;
-  min-height: min(620px, calc(100dvh - 128px));
-  overflow: hidden;
-  border-radius: 30px;
+.office-hero {
+  min-height: 200px;
+  padding: 20px 24px;
+  border-radius: 18px;
   background:
-    linear-gradient(180deg, rgba(16, 25, 54, 0.12), rgba(16, 25, 54, 0.58)),
-    url("/assets/palace-main.png") center / cover;
-  box-shadow: var(--shadow-floating);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(65, 105, 225, 0.16)),
+    url("/assets/office.webp") center / cover;
 }
 
-.lobby-copy {
-  position: relative;
-  z-index: 3;
-  padding: 18px;
-  color: #fff;
-  text-shadow: 0 2px 18px rgba(16, 25, 54, 0.48);
+.office-hero h1 {
+  color: var(--royal-900);
 }
 
-.lobby-copy span {
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.lobby-copy h1 {
-  max-width: 320px;
-  margin: 7px 0 6px;
-  font-size: 31px;
-}
-
-.lobby-copy p {
-  max-width: 310px;
-  margin: 0;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.lobby-characters {
-  position: absolute;
-  inset: auto 0 0;
-  z-index: 2;
-  height: 68%;
-}
-
-.lobby-princess,
-.lobby-serin {
-  position: absolute;
-  bottom: -6px;
-  object-fit: contain;
-  object-position: bottom center;
-  filter: drop-shadow(0 18px 28px rgba(16, 25, 54, 0.28));
-}
-
-.lobby-princess {
-  left: 4px;
-  width: min(62%, 270px);
-  max-height: 100%;
-}
-
-.lobby-serin {
-  right: -6px;
-  width: min(47%, 205px);
-  max-height: 90%;
-}
-
-.lobby-briefing {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  z-index: 4;
+.office-main-quest-list {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.office-main-quest-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+  text-align: left;
+}
+
+.office-main-quest-card.active {
+  border-color: rgba(65, 105, 225, 0.4);
+  box-shadow: var(--shadow-medium);
+}
+
+.office-main-quest-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.lobby-briefing article {
-  min-width: 0;
-  padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.76);
-  backdrop-filter: blur(16px);
-}
-
-.lobby-briefing strong,
-.lobby-briefing span {
-  display: block;
-}
-
-.lobby-briefing strong {
+.office-main-quest-card-head strong {
   color: var(--royal-900);
-  font-size: 17px;
+  font-size: 15px;
 }
 
-.lobby-briefing span {
-  overflow: hidden;
+.office-main-quest-card > span {
   color: var(--text-secondary);
-  font-size: 10px;
-  font-weight: 900;
-  text-overflow: ellipsis;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.office-main-quest-detail {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-medium);
+}
+
+.office-main-quest-detail > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.office-main-quest-detail h2 {
+  margin: 8px 0 4px;
+  color: var(--royal-900);
+  font-size: 20px;
+}
+
+.office-detail-stat {
+  text-align: right;
   white-space: nowrap;
 }
 
-.lobby-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.castle-domain-page {
-  min-height: calc(100dvh - 96px);
-  align-content: start;
-}
-
-.castle-top-bar {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
-  align-items: center;
-  padding: 14px;
-  border: 1px solid var(--glass-border);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.76);
-  box-shadow: var(--shadow-small);
-  backdrop-filter: blur(18px);
-}
-
-.castle-top-bar h1 {
-  margin: 5px 0 2px;
+.office-detail-stat strong {
+  display: block;
   color: var(--royal-900);
-  font-size: 24px;
-}
-
-.castle-top-bar p,
-.castle-top-bar strong {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.castle-room-scene {
-  position: relative;
-  min-height: min(590px, calc(100dvh - 252px));
-  overflow: hidden;
-  border-radius: 30px;
-  box-shadow: var(--shadow-floating);
-}
-
-.castle-room-scene-copy {
-  position: absolute;
-  inset: auto 12px 12px;
-  display: grid;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(18px);
-}
-
-.castle-room-scene-copy h2 {
-  margin: 0;
-  color: var(--royal-900);
-  font-size: 24px;
-}
-
-.castle-room-scene-copy p {
-  margin: 0;
-  color: var(--text-secondary);
   font-size: 13px;
 }
 
-.library-page {
-  min-height: calc(100dvh - 96px);
-  align-content: start;
-  padding: 14px;
-  overflow: hidden;
-  border-radius: 30px;
-  background:
-    linear-gradient(180deg, rgba(16, 25, 54, 0.58), rgba(16, 25, 54, 0.26)),
-    url("/assets/library.png") center / cover;
-  box-shadow: var(--shadow-floating);
+.office-detail-stat span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
 }
 
-.library-hero {
-  min-height: auto;
-  padding: 4px 2px 8px;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.library-section {
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(18px);
-}
-
-.garden-page {
-  min-height: calc(100dvh - 96px);
-}
-
-.garden-scene {
-  min-height: min(690px, calc(100dvh - 150px));
-}
-
-.palace-lobby-page {
+.office-detail-grid {
   display: grid;
-  gap: 14px;
-  min-height: calc(100dvh - 104px);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
 }
 
-.palace-lobby-scene {
+.office-detail-grid h3 {
+  margin: 0 0 8px;
+  color: var(--royal-800);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.office-detail-grid p {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.office-chapter-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.office-chapter-list button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: rgba(65, 105, 225, 0.06);
+  border: 0;
+  border-radius: var(--radius-lg);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.office-chapter-list button.done {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.office-chapter-check {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1px solid rgba(65, 105, 225, 0.4);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+
+.office-update-log {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.office-update-log h3 {
+  margin: 0;
+  color: var(--royal-800);
+  font-size: 13px;
+}
+
+.office-update-input {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.office-update-input input {
+  min-width: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 9px 12px;
+  font-size: 13px;
+}
+
+.office-update-log ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.office-update-log li span {
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.office-update-log li p {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .office-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =====================================================================
+   Bedroom — 다이어리. Full-screen 배경 + 세린 말풍선 + 자동 요약 + 작성 패널.
+   ===================================================================== */
+.bedroom-scene-full {
   position: relative;
-  min-height: min(720px, calc(100dvh - 128px));
+  min-height: calc(100vh - 56px);
   overflow: hidden;
-  border-radius: 34px;
-  background:
-    linear-gradient(180deg, rgba(16, 25, 54, 0.12), rgba(16, 25, 54, 0.56)),
-    url("/assets/palace-main.png") center / cover;
-  box-shadow: var(--shadow-floating);
 }
 
-.lobby-opening-copy {
-  position: relative;
-  z-index: 3;
-  max-width: 560px;
-  padding: 24px;
+.bedroom-scene-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.bedroom-scene-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(16, 25, 54, 0.15), rgba(16, 25, 54, 0.55));
+}
+
+.bedroom-princess-full {
+  position: absolute;
+  left: 8%;
+  bottom: 0;
+  z-index: 1;
+  width: min(38%, 260px);
+  max-height: 82%;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 18px 26px rgba(16, 25, 54, 0.35));
+}
+
+.bedroom-copy-overlay {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  z-index: 2;
   color: #fff;
-  text-shadow: 0 2px 20px rgba(16, 25, 54, 0.42);
-  animation: palace-fade-up 520ms var(--ease-soft) both;
+  text-shadow: 0 2px 18px rgba(16, 25, 54, 0.45);
 }
 
-.lobby-opening-copy span,
-.serin-speech-bubble strong {
+.bedroom-copy-overlay span {
   font-size: 12px;
   font-weight: 900;
 }
 
-.lobby-opening-copy h1 {
+.bedroom-copy-overlay h1 {
   margin: 8px 0 0;
-  font-size: clamp(30px, 4vw, 56px);
-  line-height: 1.06;
+  font-size: 25px;
 }
 
-.lobby-character-stage {
+.bedroom-speech-bubble {
   position: absolute;
-  inset: auto 0 0;
+  left: 8%;
+  bottom: 46%;
   z-index: 2;
-  height: 76%;
+  max-width: 260px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius-xl);
+  background: rgba(16, 25, 54, 0.42);
+  backdrop-filter: blur(16px);
 }
 
-.lobby-princess-main,
-.lobby-serin-aide {
-  position: absolute;
-  bottom: -8px;
-  object-fit: contain;
-  object-position: bottom center;
-  filter: drop-shadow(0 24px 34px rgba(16, 25, 54, 0.28));
-  animation: palace-fade-up 680ms var(--ease-soft) both;
+.bedroom-speech-bubble strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #ffd76a;
+  font-size: 12px;
 }
 
-.lobby-princess-main {
-  left: 22%;
-  width: min(42%, 470px);
-  max-height: 100%;
+.bedroom-speech-bubble p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 13px;
 }
 
-.lobby-serin-aide {
-  left: 55%;
-  width: min(28%, 310px);
-  max-height: 84%;
-  animation-delay: 180ms;
+.bedroom-diary-panel {
+  position: relative;
+  z-index: 2;
+  margin-left: auto;
+  width: min(44%, 380px);
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
 }
 
-.serin-speech-bubble {
-  position: absolute;
-  right: 28px;
-  top: 24%;
-  z-index: 4;
-  max-width: 340px;
-  padding: 16px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: var(--shadow-medium);
-  backdrop-filter: blur(18px);
-  animation: palace-fade-up 520ms var(--ease-soft) 520ms both;
+.bedroom-diary-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: var(--radius-full);
+  background: rgba(16, 25, 54, 0.3);
+  backdrop-filter: blur(14px);
 }
 
-.serin-speech-bubble p {
-  margin: 6px 0 0;
-  color: var(--royal-900);
+.bedroom-diary-tabs button {
+  flex: 1;
+  min-height: 30px;
+  border: 0;
+  border-radius: var(--radius-full);
+  color: rgba(255, 255, 255, 0.72);
+  background: transparent;
+  font-size: 11.5px;
   font-weight: 800;
 }
 
-.palace-room-pills {
-  position: absolute;
-  left: 24px;
-  right: 24px;
-  bottom: 24px;
-  z-index: 5;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  animation: palace-room-reveal 720ms var(--ease-soft) 1150ms both;
-}
-
-.palace-room-pills button {
-  display: inline-grid;
-  grid-template-columns: auto auto;
-  gap: 8px;
-  align-items: center;
-  min-height: 44px;
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  border-radius: var(--radius-full);
-  padding: 0 16px;
+.bedroom-diary-tabs button.active {
   color: var(--royal-900);
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--shadow-small);
-  font-weight: 900;
-  backdrop-filter: blur(18px);
+  background: #fff;
 }
 
-.lobby-today-panel {
+.bedroom-past-entry-list {
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.bedroom-past-entry-list button {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
   border: 1px solid var(--glass-border);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: var(--shadow-small);
-  backdrop-filter: blur(18px);
+  border-radius: var(--radius-lg);
+  background: var(--glass-surface);
+  text-align: left;
 }
 
-.lobby-summary-grid {
+.bedroom-past-entry-list button strong {
+  font-size: 12px;
+  color: var(--royal-900);
+}
+
+.bedroom-past-entry-list button span {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 지난 일기 검색: 날짜/기분/내용 키워드로 필터링합니다. */
+.bedroom-diary-search {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+}
+
+/* 일기 상세 카드 헤더: 제목 + 수정/삭제 버튼을 한 줄에 배치합니다. */
+.bedroom-entry-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.bedroom-entry-head h2 {
+  margin: 0;
+}
+
+.bedroom-entry-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.bedroom-entry-actions button {
+  padding: 4px 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  background: rgba(65, 105, 225, 0.08);
+  color: var(--royal-800);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.bedroom-write-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.bedroom-cancel-edit {
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bedroom-auto-summary,
+.bedroom-write-panel,
+.bedroom-ai-summary {
+  padding: 13px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow-small);
+}
+
+.bedroom-auto-summary h2,
+.bedroom-write-panel h2,
+.bedroom-ai-summary h2 {
+  margin: 0 0 10px;
+  color: var(--royal-900);
+  font-size: 15px;
+}
+
+.bedroom-auto-summary h3 {
+  margin: 8px 0 4px;
+  color: var(--royal-800);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.bedroom-auto-summary p {
+  margin: 0 0 3px;
+  font-size: 12px;
+}
+
+.bedroom-mood-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.bedroom-mood-row button {
+  padding: 6px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+  background: rgba(65, 105, 225, 0.06);
+  font-size: 12px;
+}
+
+.bedroom-mood-row button.active {
+  background: var(--royal-600);
+  color: #fff;
+}
+
+.bedroom-write-panel textarea {
+  width: 100%;
+  min-height: 90px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.bedroom-ai-summary p {
+  margin: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .bedroom-scene-full {
+    min-height: auto;
+    padding-bottom: 20px;
+  }
+
+  .bedroom-princess-full {
+    display: none;
+  }
+
+  .bedroom-speech-bubble {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    margin: 90px 16px 0;
+    max-width: none;
+  }
+
+  .bedroom-diary-panel {
+    width: auto;
+    margin-left: 0;
+  }
+}
+
+/* =====================================================================
+   Relationship — 인연록. 왕국도서관과 별도인 독립 도메인.
+   ===================================================================== */
+.relationship-domain-page {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.relationship-hero {
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+}
+
+.relationship-hero h1 {
+  color: var(--royal-900);
+}
+
+.relationship-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.relationship-list {
+  display: grid;
   gap: 8px;
 }
 
-.lobby-summary-grid article {
-  padding: 12px;
-  border-radius: 18px;
+.relationship-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-surface);
+  text-align: left;
+}
+
+.relationship-list-item.active {
+  border-color: rgba(65, 105, 225, 0.4);
   background: rgba(65, 105, 225, 0.08);
 }
 
-.lobby-summary-grid strong,
-.lobby-summary-grid span {
-  display: block;
+.relationship-list-item span {
+  color: var(--gold-500);
+  font-size: 11px;
 }
 
-.lobby-today-panel button {
-  min-height: 42px;
-  border: 0;
+.relationship-detail {
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-medium);
+}
+
+.relationship-detail > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.relationship-detail h2 {
+  margin: 0;
+  color: var(--royal-900);
+}
+
+.relationship-detail dl {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+.relationship-detail dl div {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.relationship-detail dt {
+  color: var(--text-secondary);
+  font-weight: 800;
+}
+
+.relationship-detail dd {
+  margin: 0;
+}
+
+.relationship-detail h3 {
+  margin: 10px 0 6px;
+  color: var(--royal-800);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.relationship-ai-summary {
+  margin-top: 10px;
+  padding: 12px;
   border-radius: var(--radius-lg);
-  color: #fff;
-  background: var(--royal-600);
-  font-weight: 900;
+  background: rgba(216, 183, 106, 0.14);
 }
 
-.calendar-workspace .calendar-domain-hero {
-  grid-column: 1 / -1;
+@media (max-width: 760px) {
+  .relationship-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
-.calendar-side-stack,
-.calendar-serin-form {
+/* =====================================================================
+   Throne — 성장 화면. 해금 시스템 없이 레벨/EXP/칭호/업적/누적 통계만.
+   ===================================================================== */
+.throne-domain-page {
+  display: grid;
+  gap: 14px;
+}
+
+.throne-hero {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: end;
+  min-height: 300px;
+  overflow: hidden;
+  padding: 20px 24px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(65, 105, 225, 0.16)),
+    url("/assets/throne.webp") center / cover;
+}
+
+.throne-hero img {
+  width: 150px;
+  max-height: 250px;
+  object-fit: contain;
+}
+
+.throne-hero h1 {
+  margin: 8px 0 4px;
+  color: var(--royal-900);
+  font-size: 26px;
+}
+
+.throne-exp-card {
   display: grid;
   gap: 10px;
-}
-
-.calendar-serin-form {
   padding: 14px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
@@ -1991,1356 +2573,269 @@
   box-shadow: var(--shadow-small);
 }
 
-.office-main-quests {
+.throne-exp-card strong {
+  color: var(--royal-900);
+  font-size: 20px;
+}
+
+.throne-stat-grid {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.throne-stat-grid article {
   padding: 14px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--shadow-small);
-  backdrop-filter: blur(18px);
+  background: var(--glass-surface);
+  text-align: center;
 }
 
-.office-project-row {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid rgba(111, 143, 242, 0.16);
-  border-radius: var(--radius-lg);
-  background: rgba(65, 105, 225, 0.07);
-}
-
-.office-project-row strong,
-.office-project-row span {
+.throne-stat-grid strong {
   display: block;
-}
-
-.office-project-row span {
-  margin-top: 3px;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.calendar-serin-form textarea,
-.library-search input {
-  width: 100%;
-  min-width: 0;
-  border: 1px solid rgba(111, 143, 242, 0.16);
-  border-radius: var(--radius-lg);
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.88);
   color: var(--royal-900);
-  font: inherit;
+  font-size: 20px;
 }
 
-.calendar-serin-form textarea {
-  min-height: 86px;
-  resize: vertical;
-}
-
-.library-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-}
-
-.library-search {
-  display: grid;
-  gap: 6px;
-  padding: 12px 14px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--shadow-small);
-}
-
-.library-tabs {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-}
-
-.library-tabs button {
-  flex: 0 0 auto;
-  min-height: 38px;
-  border: 1px solid rgba(111, 143, 242, 0.16);
-  border-radius: var(--radius-full);
-  padding: 0 13px;
-  color: var(--royal-800);
-  background: rgba(255, 255, 255, 0.78);
-  font-weight: 900;
-}
-
-.library-tabs button.active {
-  color: #fff;
-  background: var(--royal-600);
-}
-
-.library-empty-state {
-  padding: 18px;
-  border-radius: var(--radius-lg);
-  background: rgba(65, 105, 225, 0.08);
-}
-
-.palace-os-home {
-  min-height: calc(100dvh - 104px);
-}
-
-.palace-os-scene {
-  position: relative;
-  min-height: calc(100dvh - 104px);
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 30px;
-  color: #fff;
-  background:
-    linear-gradient(90deg, rgba(7, 12, 28, 0.74), rgba(7, 12, 28, 0.12) 34%, rgba(7, 12, 28, 0.62)),
-    linear-gradient(180deg, rgba(7, 12, 28, 0.2), rgba(7, 12, 28, 0.78)),
-    url("/assets/home-bg.png") center / cover no-repeat;
-  box-shadow: 0 30px 90px rgba(20, 30, 70, 0.28);
-  isolation: isolate;
-}
-
-.palace-scene-vignette {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.16), transparent 32%),
-    radial-gradient(circle at 8% 96%, rgba(216, 183, 106, 0.18), transparent 24%);
-}
-
-.palace-hud-top {
-  position: absolute;
-  top: 18px;
-  left: 18px;
-  right: 18px;
-  z-index: 7;
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(260px, 420px) auto;
-  gap: 12px;
-  align-items: center;
-}
-
-.palace-brand-lockup,
-.palace-level-chip,
-.palace-resource-row,
-.hud-panel,
-.palace-bottom-dock {
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: rgba(13, 17, 31, 0.54);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.26);
-  backdrop-filter: blur(22px);
-}
-
-.palace-brand-lockup {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  width: fit-content;
-  min-height: 54px;
-  padding: 10px 14px;
-  border-radius: 18px;
-}
-
-.royal-emblem {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 13px;
-  color: #f1d891;
-  background: rgba(65, 105, 225, 0.24);
-}
-
-.palace-brand-lockup strong,
-.palace-level-chip strong,
-.hud-panel-title strong,
-.palace-serin-bubble strong,
-.palace-bottom-dock strong {
-  color: #fff;
-}
-
-.palace-brand-lockup span:not(.royal-emblem),
-.palace-resource-row span,
-.palace-level-chip span,
-.hud-kicker,
-.hud-panel-title span,
-.hud-empty {
-  color: rgba(255, 255, 255, 0.72);
-}
-
-.palace-level-chip {
-  display: grid;
-  grid-template-columns: auto minmax(120px, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  min-height: 44px;
-  padding: 10px 14px;
-  border-radius: 999px;
-}
-
-.palace-level-chip meter,
-.hud-quest-row meter {
-  width: 100%;
-  height: 8px;
-  overflow: hidden;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.palace-level-chip meter::-webkit-meter-bar,
-.hud-quest-row meter::-webkit-meter-bar {
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.palace-level-chip meter::-webkit-meter-optimum-value,
-.hud-quest-row meter::-webkit-meter-optimum-value {
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--royal-500), #d8b76a);
-}
-
-.palace-resource-row {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  min-height: 44px;
-  padding: 9px;
-  border-radius: 999px;
-}
-
-.palace-resource-row span {
-  display: grid;
-  place-items: center;
-  min-width: 82px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  font-weight: 900;
-}
-
-.palace-hud-left,
-.palace-hud-right {
-  position: absolute;
-  top: 96px;
-  z-index: 6;
-  display: grid;
-  gap: 12px;
-  width: min(30vw, 330px);
-}
-
-.palace-hud-left {
-  left: 18px;
-}
-
-.palace-hud-right {
-  right: 18px;
-  width: min(32vw, 360px);
-}
-
-.hud-panel {
-  padding: 16px;
-  border-radius: 20px;
-}
-
-.hud-panel h1 {
-  margin: 8px 0 8px;
-  font-size: 22px;
-  line-height: 1.22;
-}
-
-.hud-panel p {
-  margin-bottom: 0;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.briefing-metrics {
-  display: grid;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.briefing-metrics button,
-.hud-list-row,
-.hud-quest-row {
-  width: 100%;
-  min-height: 42px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  color: rgba(255, 255, 255, 0.82);
-  background: rgba(255, 255, 255, 0.08);
-  text-align: left;
-}
-
-.briefing-metrics button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-}
-
-.hud-panel-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.hud-panel-title button {
-  min-height: 30px;
-  border: 1px solid rgba(216, 183, 106, 0.28);
-  border-radius: 999px;
-  padding: 0 10px;
-  color: #f1d891;
-  background: rgba(216, 183, 106, 0.1);
-  font-weight: 900;
-}
-
-.hud-list-row {
-  display: grid;
-  grid-template-columns: 54px 1fr;
-  gap: 10px;
-  align-items: center;
-  margin-top: 8px;
-  padding: 9px 11px;
-}
-
-.hud-list-row span {
-  color: #f1d891;
-  font-weight: 900;
-}
-
-.royal-mini-map {
-  position: relative;
-  height: 230px;
-  border-radius: 18px;
-  background:
-    radial-gradient(circle at center, rgba(216, 183, 106, 0.2), transparent 34%),
-    rgba(255, 255, 255, 0.06);
-}
-
-.royal-mini-map::before,
-.royal-mini-map::after {
-  content: "";
-  position: absolute;
-  inset: 50% 18%;
-  height: 1px;
-  background: rgba(216, 183, 106, 0.24);
-  transform: translateY(-50%);
-}
-
-.royal-mini-map::after {
-  inset: 18% 50%;
-  width: 1px;
-  height: auto;
-  transform: translateX(-50%);
-}
-
-.map-center,
-.map-node {
-  position: absolute;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  gap: 2px;
-  width: 72px;
-  height: 72px;
-  border: 1px solid rgba(216, 183, 106, 0.38);
-  border-radius: 999px;
-  color: #fff;
-  background: rgba(13, 17, 31, 0.68);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
-}
-
-.map-center {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.map-center.active {
-  background: rgba(216, 183, 106, 0.24);
-}
-
-.map-node span,
-.map-center span {
-  color: #f1d891;
-  font-size: 18px;
-}
-
-.map-node strong,
-.map-center strong {
+.throne-stat-grid span {
+  color: var(--text-secondary);
   font-size: 11px;
-}
-
-.room-top {
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.room-left {
-  top: 50%;
-  left: 16px;
-  transform: translateY(-50%);
-}
-
-.room-right {
-  top: 50%;
-  right: 16px;
-  transform: translateY(-50%);
-}
-
-.room-bottom-left {
-  bottom: 16px;
-  left: 24%;
-  transform: translateX(-50%);
-}
-
-.room-bottom-right {
-  right: 24%;
-  bottom: 16px;
-  transform: translateX(50%);
-}
-
-.room-bottom {
-  right: 50%;
-  bottom: 0;
-  transform: translateX(50%);
-}
-
-.hud-quest-row {
-  display: grid;
-  grid-template-columns: 48px 1fr 42px;
-  gap: 8px;
-  align-items: center;
-  margin-top: 8px;
-  padding: 10px;
-}
-
-.hud-quest-row meter {
-  grid-column: 2 / 4;
-}
-
-.hud-quest-row span,
-.hud-quest-row em {
-  color: #f1d891;
-  font-style: normal;
-  font-weight: 900;
-}
-
-.palace-character-stage {
-  position: absolute;
-  inset: 92px 20% 92px 18%;
-  z-index: 3;
-  pointer-events: none;
-}
-
-.palace-princess {
-  position: absolute;
-  left: 19%;
-  bottom: -14px;
-  width: min(34vw, 460px);
-  max-height: 78vh;
-  object-fit: contain;
-  filter: drop-shadow(0 24px 42px rgba(0, 0, 0, 0.32));
-}
-
-.palace-serin {
-  position: absolute;
-  right: 18%;
-  bottom: 34px;
-  width: min(18vw, 230px);
-  max-height: 54vh;
-  object-fit: contain;
-  opacity: 0.96;
-  filter: drop-shadow(0 20px 34px rgba(0, 0, 0, 0.28));
-}
-
-.palace-serin-bubble {
-  position: absolute;
-  left: 44%;
-  bottom: 138px;
-  z-index: 5;
-  max-width: 360px;
-  padding: 16px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 20px;
-  color: #fff;
-  background: rgba(13, 17, 31, 0.58);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(22px);
-}
-
-.palace-serin-bubble p {
-  margin: 6px 0 0;
-  color: rgba(255, 255, 255, 0.82);
   font-weight: 800;
 }
 
-.palace-bottom-dock {
-  position: absolute;
-  right: 50%;
-  bottom: 22px;
-  z-index: 7;
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  width: min(720px, calc(100% - 36px));
-  padding: 10px;
-  border-radius: 24px;
-  transform: translateX(50%);
+.throne-titles,
+.throne-achievements,
+.throne-stat-list,
+.throne-equipment-list {
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
 }
 
-.palace-bottom-dock button {
-  display: grid;
-  place-items: center;
-  gap: 5px;
-  min-width: 92px;
-  min-height: 58px;
-  border: 0;
-  border-radius: 17px;
-  color: rgba(255, 255, 255, 0.72);
-  background: transparent;
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.palace-bottom-dock button:hover,
-.briefing-metrics button:hover,
-.hud-list-row:hover,
-.hud-quest-row:hover,
-.map-center:hover,
-.map-node:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.palace-bottom-dock button span {
-  color: #f1d891;
-  font-size: 18px;
-}
-
-.website-scene {
-  position: relative;
-  min-height: 100dvh;
-  overflow: hidden;
-  padding: 112px 32px 32px;
-  color: #fff;
-  background-position: center;
-  background-size: cover;
-  isolation: isolate;
-}
-
-.scene-shade {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(90deg, rgba(5, 8, 20, 0.78), rgba(5, 8, 20, 0.18) 48%, rgba(5, 8, 20, 0.72)),
-    linear-gradient(180deg, rgba(5, 8, 20, 0.25), rgba(5, 8, 20, 0.82));
-}
-
-.scene-title-block {
-  position: relative;
-  z-index: 2;
-  max-width: 520px;
-  padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 24px;
-  background: rgba(9, 13, 30, 0.52);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(22px);
-}
-
-.scene-title-block span,
-.scene-title-block p {
-  color: rgba(255, 255, 255, 0.76);
-}
-
-.scene-title-block h1 {
-  margin: 8px 0 8px;
-  color: #fff;
-  font-size: clamp(38px, 5vw, 74px);
-  line-height: 1;
-}
-
-.scene-fast-travel {
-  position: absolute;
-  right: 32px;
-  bottom: 32px;
-  left: 32px;
-  z-index: 4;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 24px;
-  background: rgba(9, 13, 30, 0.5);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(22px);
-}
-
-.scene-fast-travel button {
-  display: grid;
-  gap: 4px;
-  min-height: 64px;
-  border: 0;
-  border-radius: 16px;
-  padding: 10px;
-  color: rgba(255, 255, 255, 0.72);
-  background: rgba(255, 255, 255, 0.06);
-  text-align: left;
-}
-
-.scene-fast-travel button:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.scene-fast-travel strong {
-  color: #fff;
-}
-
-.scene-fast-travel span {
-  font-size: 12px;
-}
-
-.castle-hub-scene {
-  background-image: url("/assets/palace-main.png");
-}
-
-.castle-map-hud {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 3;
-  width: min(680px, 48vw);
-  aspect-ratio: 1;
-  border: 1px solid rgba(216, 183, 106, 0.24);
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at center, rgba(216, 183, 106, 0.18), transparent 32%),
-    rgba(9, 13, 30, 0.28);
-  backdrop-filter: blur(12px);
-  transform: translate(-50%, -46%);
-}
-
-.castle-map-core,
-.castle-map-room {
-  position: absolute;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-  color: #fff;
-  background: rgba(9, 13, 30, 0.68);
-  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(18px);
-}
-
-.castle-map-core {
-  top: 50%;
-  left: 50%;
-  display: grid;
-  place-items: center;
-  width: 128px;
-  height: 128px;
-  transform: translate(-50%, -50%);
-}
-
-.castle-map-core span {
-  color: #f1d891;
-  font-size: 32px;
-}
-
-.castle-map-room {
-  display: grid;
-  gap: 4px;
-  width: 160px;
-  min-height: 76px;
-  padding: 12px;
-  text-align: left;
-}
-
-.castle-map-room small {
-  color: rgba(255, 255, 255, 0.66);
-}
-
-.room-orbit-0 {
-  top: 5%;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.room-orbit-1 {
-  top: 32%;
-  left: 3%;
-}
-
-.room-orbit-2 {
-  top: 32%;
-  right: 3%;
-}
-
-.room-orbit-3 {
-  bottom: 9%;
-  left: 16%;
-}
-
-.room-orbit-4 {
-  right: 16%;
-  bottom: 9%;
-}
-
-.bedroom-scene {
-  background-image: url("/assets/bedroom.png");
-}
-
-.bedroom-diary-hud,
-.throne-growth-hud {
-  position: absolute;
-  right: 40px;
-  bottom: 40px;
-  z-index: 3;
-  display: grid;
-  gap: 14px;
-  width: min(480px, 36vw);
-  padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 24px;
-  background: rgba(9, 13, 30, 0.58);
-  box-shadow: 0 20px 54px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(22px);
-}
-
-.diary-summary-row {
+.throne-title-row {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.diary-summary-row span {
-  border-radius: 999px;
-  padding: 8px 10px;
-  color: rgba(255, 255, 255, 0.78);
-  background: rgba(255, 255, 255, 0.08);
+.throne-title-row span {
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
   font-size: 12px;
-  font-weight: 900;
+  font-weight: 800;
+  background: rgba(65, 105, 225, 0.08);
+  color: var(--text-secondary);
 }
 
-.bedroom-diary-hud label {
-  display: grid;
-  gap: 8px;
-  color: #fff;
-  font-weight: 900;
-}
-
-.bedroom-diary-hud textarea {
-  min-height: 220px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 18px;
-  padding: 14px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
-  resize: vertical;
-}
-
-.bedroom-diary-hud button,
-.garden-serin-note button {
-  min-height: 44px;
-  border: 0;
-  border-radius: 16px;
-  color: #1b2446;
-  background: #f1d891;
-  font-weight: 900;
-}
-
-.garden-page {
-  background-image: url("/assets/garden.png");
-}
-
-.garden-shade {
-  background:
-    linear-gradient(90deg, rgba(5, 16, 18, 0.5), rgba(5, 16, 18, 0.08) 54%, rgba(5, 16, 18, 0.52)),
-    linear-gradient(180deg, rgba(5, 16, 18, 0.12), rgba(5, 16, 18, 0.42));
-}
-
-.garden-title {
-  max-width: 460px;
-}
-
-.garden-princess {
-  position: absolute;
-  left: 48%;
-  bottom: 0;
-  z-index: 2;
-  width: min(36vw, 480px);
-  max-height: 78vh;
-  object-fit: contain;
-  filter: drop-shadow(0 24px 44px rgba(0, 0, 0, 0.28));
-  transform: translateX(-50%);
-}
-
-.garden-serin-note {
-  position: absolute;
-  right: 40px;
-  bottom: 40px;
-  z-index: 3;
-  max-width: 380px;
-  padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 24px;
-  background: rgba(9, 13, 30, 0.52);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(22px);
-}
-
-.garden-serin-note strong,
-.garden-serin-note p {
-  color: #fff;
-}
-
-.throne-scene {
-  background-image: url("/assets/throne.png");
-}
-
-.throne-princess {
-  position: absolute;
-  left: 50%;
-  bottom: 0;
-  z-index: 2;
-  width: min(34vw, 440px);
-  max-height: 80vh;
-  object-fit: contain;
-  filter: drop-shadow(0 24px 44px rgba(0, 0, 0, 0.34));
-  transform: translateX(-50%);
-}
-
-.throne-growth-hud {
-  top: 124px;
-  bottom: auto;
-}
-
-.throne-growth-hud strong,
-.throne-growth-hud span {
-  display: block;
-}
-
-.throne-growth-hud > div:first-child strong {
-  color: #f1d891;
-  font-size: 36px;
-}
-
-.throne-stat-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.throne-stat-grid article {
-  padding: 12px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.throne-stat-grid article strong {
-  color: #fff;
-  font-size: 24px;
-}
-
-.throne-stat-grid article span {
-  color: rgba(255, 255, 255, 0.68);
-}
-
-.palace-os-home,
-.palace-os-scene {
-  min-height: 100dvh;
-}
-
-.palace-os-scene {
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.calendar-domain-page,
-.quest-domain-screen,
-.library-page,
-.serin-domain-page,
-.princess-domain-page {
-  min-height: 100dvh;
-  padding: 112px 32px 32px;
-}
-
-.calendar-domain-page {
-  background:
-    linear-gradient(90deg, rgba(7, 12, 28, 0.76), rgba(7, 12, 28, 0.22) 50%, rgba(7, 12, 28, 0.58)),
-    url("/assets/office.png") center / cover no-repeat;
-}
-
-.quest-domain-screen {
-  background:
-    linear-gradient(90deg, rgba(7, 12, 28, 0.82), rgba(7, 12, 28, 0.28)),
-    url("/assets/office.png") center / cover no-repeat;
-}
-
-.library-page {
-  background:
-    linear-gradient(90deg, rgba(7, 12, 28, 0.76), rgba(7, 12, 28, 0.18) 48%, rgba(7, 12, 28, 0.64)),
-    url("/assets/library.png") center / cover no-repeat;
-}
-
-.serin-domain-page {
-  background:
-    linear-gradient(90deg, rgba(7, 12, 28, 0.78), rgba(7, 12, 28, 0.18) 52%, rgba(7, 12, 28, 0.7)),
-    url("/assets/palace-main.png") center / cover no-repeat;
-}
-
-.princess-domain-page {
-  background:
-    linear-gradient(90deg, rgba(7, 12, 28, 0.78), rgba(7, 12, 28, 0.2)),
-    url("/assets/bedroom.png") center / cover no-repeat;
-}
-
-.calendar-domain-page .screen-header,
-.quest-domain-hero,
-.library-hero,
-.serin-header,
-.princess-domain-hero {
-  border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(9, 13, 30, 0.58);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
-  backdrop-filter: blur(22px);
-}
-
-.calendar-domain-page .screen-header h1,
-.calendar-domain-page .screen-header p,
-.quest-domain-hero h1,
-.quest-domain-hero p,
-.library-hero h1,
-.library-hero p,
-.serin-header h1,
-.serin-header p,
-.princess-domain-hero h1,
-.princess-domain-hero p {
-  color: #fff;
-}
-
-@media (max-width: 1023px) {
-  .scene-fast-travel {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .castle-map-hud {
-    width: min(680px, 82vw);
-  }
-
-  .bedroom-diary-hud,
-  .throne-growth-hud,
-  .garden-serin-note {
-    right: 20px;
-    left: 20px;
-    width: auto;
-  }
-}
-
-@media (max-width: 767px) {
-  .website-scene,
-  .calendar-domain-page,
-  .quest-domain-screen,
-  .library-page,
-  .serin-domain-page,
-  .princess-domain-page {
-    padding: 92px 12px calc(92px + env(safe-area-inset-bottom));
-  }
-
-  .scene-title-block {
-    max-width: none;
-  }
-
-  .scene-title-block h1 {
-    font-size: 36px;
-  }
-
-  .castle-map-hud {
-    position: relative;
-    top: auto;
-    left: auto;
-    width: 100%;
-    margin: 24px 0 120px;
-    transform: none;
-  }
-
-  .scene-fast-travel {
-    right: 12px;
-    bottom: calc(82px + env(safe-area-inset-bottom));
-    left: 12px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-height: 170px;
-    overflow: auto;
-  }
-
-  .garden-princess,
-  .throne-princess {
-    left: 50%;
-    width: min(70vw, 280px);
-  }
-
-  .bedroom-diary-hud,
-  .throne-growth-hud,
-  .garden-serin-note {
-    position: relative;
-    right: auto;
-    bottom: auto;
-    left: auto;
-    width: 100%;
-    margin-top: 24px;
-  }
-}
-
-@keyframes palace-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(18px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes palace-room-reveal {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.throne-growth-links {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.throne-growth-links button {
-  min-height: 44px;
-  border: 1px solid rgba(216, 183, 106, 0.34);
-  border-radius: var(--radius-lg);
+.throne-title-row span.unlocked {
+  background: rgba(216, 183, 106, 0.2);
   color: #6f5115;
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: var(--shadow-small);
+}
+
+.throne-title-row span.equipped {
+  background: var(--royal-600);
+  color: #fff;
+}
+
+.throne-achievements article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.throne-achievements article:last-child {
+  border-bottom: 0;
+}
+
+.throne-achievements strong {
+  display: block;
   font-size: 13px;
-  font-weight: 900;
+  color: var(--royal-900);
 }
 
-@media (min-width: 768px) {
-  .lobby-page,
-  .castle-domain-page,
-  .calendar-domain-page,
-  .quest-domain-screen,
-  .serin-domain-page,
-  .library-page,
-  .garden-page,
-  .princess-domain-page,
-  .progress-domain-page {
-    min-height: calc(100dvh - 104px);
-  }
+.throne-achievements span {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
 
-  .lobby-page {
-    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
-    align-items: stretch;
-  }
+.throne-achievements em {
+  font-style: normal;
+  color: var(--gold-500);
+  font-size: 12px;
+  font-weight: 800;
+}
 
-  .lobby-scene {
-    min-height: calc(100dvh - 104px);
-  }
+.throne-achievements article.unlocked strong {
+  color: var(--royal-900);
+}
 
-  .lobby-briefing,
-  .lobby-actions {
-    position: static;
-    align-self: end;
-  }
+.throne-stat-list,
+.throne-equipment-list {
+  display: grid;
+  gap: 8px;
+}
 
-  .lobby-briefing {
+.throne-stat-list article,
+.throne-equipment-list article {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .throne-hero {
     grid-template-columns: 1fr;
   }
 
-  .castle-room-scene {
-    min-height: calc(100dvh - 278px);
-  }
-
-  .library-page {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-content: start;
-  }
-
-  .library-hero {
-    grid-column: 1 / -1;
-  }
-
-  .serin-domain-page {
-    grid-template-columns: 360px minmax(0, 1fr);
-    grid-template-rows: auto auto 1fr auto;
-    align-items: stretch;
-  }
-
-  .serin-header,
-  .serin-status-orb,
-  .quick-actions,
-  .serin-memory-panel,
-  .serin-confirmation-card {
-    grid-column: 1;
-  }
-
-  .serin-thread,
-  .serin-input-bar {
-    grid-column: 2;
-  }
-
-  .serin-thread {
-    grid-row: 1 / 4;
-    max-height: none;
-    min-height: 0;
-  }
-
-  .serin-input-bar {
-    position: static;
-    grid-row: 4;
-  }
-
-  .calendar-domain-page {
-    grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr);
-    align-items: start;
-  }
-
-  .calendar-domain-hero,
-  .calendar-view-tabs {
-    grid-column: 1 / -1;
-  }
-
-  .quest-list.rpg,
-  .module-grid,
-  .growth-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1280px) {
-  .palace-lobby-page {
-    grid-template-columns: minmax(0, 1fr) 340px;
-    align-items: stretch;
-  }
-
-  .lobby-today-panel {
-    align-content: start;
-  }
-
-  .castle-room-scene {
-    min-height: calc(100dvh - 236px);
-  }
-
-  .castle-room-scene-copy {
-    max-width: 520px;
-  }
-
-  .lobby-princess {
-    width: min(46%, 420px);
-  }
-
-  .lobby-serin {
-    width: min(34%, 300px);
-  }
-
-  .progress-domain-page,
-  .princess-domain-page {
-    grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1.1fr);
-    align-items: start;
-  }
-
-  .progress-hero,
-  .princess-domain-hero {
-    min-height: 520px;
-  }
-}
-
-@media (max-width: 1279px) {
-  .palace-hud-top {
-    grid-template-columns: minmax(180px, 1fr) minmax(220px, 340px);
-  }
-
-  .palace-resource-row {
+  .throne-hero img {
     display: none;
   }
 
-  .palace-hud-left,
-  .palace-hud-right {
-    top: auto;
-    bottom: 98px;
-    width: min(42vw, 320px);
-  }
-
-  .palace-hud-left {
-    left: 14px;
-  }
-
-  .palace-hud-right {
-    right: 14px;
-  }
-
-  .palace-map-panel {
-    display: none;
-  }
-
-  .palace-character-stage {
-    inset: 92px 10% 132px 8%;
-  }
-
-  .palace-princess {
-    left: 20%;
-    width: min(44vw, 380px);
-  }
-
-  .palace-serin {
-    right: 16%;
-    width: min(25vw, 210px);
+  .throne-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 767px) {
-  .palace-os-home,
-  .palace-os-scene {
-    min-height: 100dvh;
-  }
+/* =====================================================================
+   Library v2 — Notion 스타일 검색 → 필터(폴더) → 목록 → 상세.
+   ===================================================================== */
+.library-page-v2 {
+  display: grid;
+  gap: 14px;
+}
 
-  .palace-os-scene {
-    border-radius: 24px;
-  }
+.library-search-bar input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-surface);
+  font-size: 13px;
+}
 
-  .palace-hud-top {
+.library-notion-layout {
+  display: grid;
+  grid-template-columns: 200px 260px 1fr;
+  gap: 14px;
+  align-items: start;
+  min-height: 420px;
+}
+
+.library-folder-nav {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+}
+
+.library-folder-nav button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: var(--radius-lg);
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.library-folder-nav button.active {
+  background: rgba(65, 105, 225, 0.1);
+  color: var(--royal-800);
+  font-weight: 800;
+}
+
+.library-folder-nav button em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.library-entry-list {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.library-entry-list button {
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  border-radius: var(--radius-lg);
+  border: 0;
+  background: rgba(65, 105, 225, 0.04);
+  text-align: left;
+}
+
+.library-entry-list button.active {
+  background: rgba(65, 105, 225, 0.14);
+}
+
+.library-entry-list button strong {
+  font-size: 12px;
+  color: var(--royal-900);
+}
+
+.library-entry-list button span {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.library-entry-detail {
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+}
+
+.library-entry-detail h2 {
+  margin: 0 0 4px;
+  color: var(--royal-900);
+  font-size: 17px;
+}
+
+.library-entry-detail > span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.library-entry-detail p {
+  margin-top: 10px;
+  white-space: pre-wrap;
+  font-size: 13px;
+}
+
+@media (max-width: 980px) {
+  .library-notion-layout {
     grid-template-columns: 1fr;
-    top: 12px;
-    left: 12px;
-    right: 12px;
   }
 
-  .palace-brand-lockup {
-    width: 100%;
-  }
-
-  .palace-level-chip {
-    grid-template-columns: auto 1fr auto;
-  }
-
-  .palace-hud-left,
-  .palace-hud-right {
-    position: static;
-    width: auto;
-  }
-
-  .palace-hud-left {
-    position: absolute;
-    left: 12px;
-    right: 12px;
-    bottom: 102px;
-  }
-
-  .palace-hud-left .compact-list,
-  .palace-hud-right {
-    display: none;
-  }
-
-  .hud-panel {
-    padding: 14px;
-    border-radius: 18px;
-  }
-
-  .hud-panel h1 {
-    font-size: 18px;
-  }
-
-  .briefing-metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .briefing-metrics button {
-    display: grid;
-    place-items: center;
-    min-height: 58px;
-    padding: 6px;
-    text-align: center;
-  }
-
-  .palace-character-stage {
-    inset: 130px 0 260px;
-  }
-
-  .palace-princess {
-    left: 7%;
-    bottom: -8px;
-    width: min(66vw, 300px);
-  }
-
-  .palace-serin {
-    right: 7%;
-    bottom: 32px;
-    width: min(38vw, 180px);
-  }
-
-  .palace-serin-bubble {
-    left: 14px;
-    right: 14px;
-    bottom: 244px;
-    max-width: none;
-  }
-
-  .palace-bottom-dock {
-    right: 12px;
-    bottom: 16px;
-    left: 12px;
-    width: auto;
+  .library-folder-nav {
+    display: flex;
     overflow-x: auto;
-    justify-content: flex-start;
-    transform: none;
+    gap: 6px;
   }
 
-  .palace-bottom-dock button {
-    flex: 0 0 82px;
-    min-width: 82px;
-  }
-
-  .palace-lobby-scene {
-    min-height: calc(100dvh - 158px);
-  }
-
-  .lobby-princess-main {
-    left: 4%;
-    width: min(66%, 280px);
-  }
-
-  .lobby-serin-aide {
-    left: 58%;
-    width: min(42%, 180px);
-  }
-
-  .serin-speech-bubble {
-    left: 14px;
-    right: 14px;
-    top: 82px;
-  }
-
-  .library-toolbar {
-    grid-template-columns: 1fr;
-  }
-
-  .throne-growth-links {
-    grid-template-columns: 1fr;
+  .library-folder-nav button {
+    flex: 0 0 auto;
   }
 }

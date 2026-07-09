@@ -1,135 +1,72 @@
 import type { AppMockData, ViewKey } from "../../app/types";
-import { getEventsByDay, getUpcomingEvents } from "../../features/calendar/services/calendarService";
+import type { CastleRoom, CastleRoomKey } from "../../features/castle/types/castle.types";
+import { getEventsByDay } from "../../features/calendar/services/calendarService";
+import { HomeHud } from "./HomeHud";
+import { HomeLeftRail } from "./HomeLeftRail";
+import { HomeRightRail } from "./HomeRightRail";
 
 interface HomeSceneProps {
   data: AppMockData;
-  activeView: ViewKey;
+  rooms: CastleRoom[];
+  currentRoomKey: CastleRoomKey;
   onNavigate: (view: ViewKey) => void;
+  onCompleteQuest: (id: string) => void;
 }
 
-const palaceRooms: Array<{ label: string; shortLabel: string; icon: string; view: ViewKey; angle: string }> = [
-  { label: "왕궁 지도", shortLabel: "왕궁", icon: "♕", view: "castle", angle: "room-top" },
-  { label: "왕좌의 방", shortLabel: "성장", icon: "♛", view: "progress", angle: "room-left" },
-  { label: "집무실", shortLabel: "업무", icon: "✎", view: "calendar", angle: "room-right" },
-  { label: "왕국도서관", shortLabel: "기록", icon: "▤", view: "library", angle: "room-bottom-left" },
-  { label: "왕궁정원", shortLabel: "힐링", icon: "✦", view: "garden", angle: "room-bottom-right" },
-  { label: "공주의 침실", shortLabel: "회고", icon: "◐", view: "bedroom", angle: "room-bottom" },
-];
+const TODAY = "2026-07-09";
 
-function greeting() {
+function timeGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return "좋은 아침입니다, 공주님.";
-  if (hour < 18) return "오늘 일정이 차분히 진행되고 있습니다, 공주님.";
-  return "오늘 하루도 정말 수고하셨습니다, 공주님.";
+  if (hour < 11) return "공주님, 좋은 아침이에요. 오늘도 함께 힘내요!";
+  if (hour < 18) return "공주님, 좋은 오후예요. 오늘도 함께 힘내요!";
+  return "공주님, 오늘 하루도 정말 수고하셨어요.";
 }
 
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-export function HomeScene({ data, onNavigate }: HomeSceneProps) {
-  const today = todayKey();
-  const todayEvents = getEventsByDay(data.events, today);
-  const todayQuests = data.quests.filter((quest) => quest.dueDate === today && quest.status !== "completed");
-  const activeMainQuests = data.quests.filter((quest) => quest.type === "main" && quest.status !== "completed");
-  const nextEvent = getUpcomingEvents(data.events)[0];
+// Home = 왕궁 로비. 화면의 주인공은 배경(Scene)이고, UI는 그 위에 떠 있는
+// Glass Overlay입니다. 카드로 화면을 가리지 않습니다. 공주와 세린은 항상
+// Scene 안에 존재합니다. Home 자체에는 기능을 직접 담지 않고, 최소 브리핑과
+// Castle 이동만 제공합니다.
+export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onCompleteQuest }: HomeSceneProps) {
+  const todayEvents = getEventsByDay(data.events, TODAY).sort((a, b) => a.startAt.localeCompare(b.startAt));
+  const todayQuests = data.quests.filter((quest) => quest.dueDate === TODAY);
+  const alertCount = todayEvents.filter((event) => Boolean(event.reminderMinutes)).length;
+  const activeMainQuests = data.mainQuests.filter((mainQuest) => mainQuest.status === "active");
+  const gold = 107515;
+  const gems = 1196;
 
   return (
-    <section className="palace-os-home" aria-label="루멘 왕성 로비">
-      <div className="palace-os-scene">
-        <div className="palace-scene-vignette" />
+    <section className="palace-hud-scene scene-fullbleed">
+      <div className="palace-hud-backdrop" style={{ backgroundImage: 'url("/assets/home-bg.webp")' }} />
 
-        <header className="palace-hud-top">
-          <div className="palace-brand-lockup">
-            <span className="royal-emblem">♕</span>
-            <div>
-              <strong>PRINCESS OS</strong>
-              <span>루멘 왕성 · Live Palace</span>
-            </div>
-          </div>
-          <div className="palace-level-chip">
-            <span>Lv.{data.progress.level} Princess</span>
-            <meter min={0} max={data.progress.requiredExp} value={data.progress.currentExp} />
-            <strong>{data.progress.expRate}%</strong>
-          </div>
-          <div className="palace-resource-row" aria-label="오늘 상태">
-            <span>일정 {todayEvents.length}</span>
-            <span>Quest {todayQuests.length}</span>
-            <span>프로젝트 {activeMainQuests.length}</span>
-          </div>
-        </header>
+      <HomeHud princess={data.princess} progress={data.progress} gold={gold} gems={gems} mailCount={data.serinMessages.length > 0 ? 2 : 0} />
 
-        <aside className="palace-hud-left" aria-label="오늘 브리핑">
-          <section className="hud-panel briefing">
-            <span className="hud-kicker">오늘 브리핑</span>
-            <h1>{greeting()}</h1>
-            <p>{nextEvent ? `다음 일정은 ${nextEvent.startAt.slice(11, 16)} · ${nextEvent.title}입니다.` : "오늘은 여유롭게 왕궁을 정리할 수 있는 하루입니다."}</p>
-            <div className="briefing-metrics">
-              <button type="button" onClick={() => onNavigate("calendar")}>
-                <span>일정</span>
-                <strong>{todayEvents.length}건</strong>
-              </button>
-              <button type="button" onClick={() => onNavigate("quests")}>
-                <span>Quest</span>
-                <strong>{todayQuests.length}개</strong>
-              </button>
-              <button type="button" onClick={() => onNavigate("calendar")}>
-                <span>메인 Quest</span>
-                <strong>{activeMainQuests.length}개</strong>
-              </button>
-            </div>
-          </section>
-        </aside>
-
-        <div className="palace-character-stage" aria-hidden="true">
-          <img className="palace-princess" src="/assets/princess-full-transparent.png" alt="" />
-          <img className="palace-serin" src="/assets/serin-full-transparent.png" alt="" />
-        </div>
-
-        <div className="palace-serin-bubble">
-          <strong>세린</strong>
-          <p>
-            공주님, 오늘은 어디로 가실까요?
-            <br />
-            왕궁 지도에서 공간을 고르시면 제가 안내하겠습니다.
-          </p>
-        </div>
-
-        <aside className="palace-hud-right" aria-label="왕궁 지도">
-          <section className="hud-panel palace-map-panel">
-            <div className="hud-panel-title">
-              <strong>왕궁 지도</strong>
-              <span>Scene Navigator</span>
-            </div>
-            <div className="royal-mini-map">
-              <button type="button" className="map-center active" onClick={() => onNavigate("home")}>
-                <span>♕</span>
-                <strong>로비</strong>
-              </button>
-              {palaceRooms.slice(1).map((room) => (
-                <button
-                  key={room.label}
-                  type="button"
-                  className={`map-node ${room.angle}`}
-                  onClick={() => onNavigate(room.view)}
-                >
-                  <span>{room.icon}</span>
-                  <strong>{room.shortLabel}</strong>
-                </button>
-              ))}
-            </div>
-          </section>
-        </aside>
-
-        <nav className="palace-bottom-dock" aria-label="왕궁 장소 이동">
-          {palaceRooms.map((room) => (
-            <button key={room.label} type="button" onClick={() => onNavigate(room.view)}>
-              <span>{room.icon}</span>
-              <strong>{room.label}</strong>
-            </button>
-          ))}
-        </nav>
+      <div className="palace-hud-figures">
+        <img src="/assets/princess-full-transparent.webp" alt="공주" />
+        <img src="/assets/serin-full-transparent.webp" alt="세린" />
       </div>
+
+      <HomeLeftRail
+        greetingLine={timeGreeting()}
+        todayEventCount={todayEvents.length}
+        todayQuestCount={todayQuests.length}
+        alertCount={alertCount}
+        memoCount={data.serinMessages.filter((message) => message.sender === "serin").length}
+        todayEvents={todayEvents}
+        todayQuests={todayQuests}
+        onNavigate={onNavigate}
+        onCompleteQuest={onCompleteQuest}
+      />
+
+      <HomeRightRail
+        rooms={rooms}
+        currentRoomKey={currentRoomKey}
+        activeMainQuests={activeMainQuests}
+        onNavigate={onNavigate}
+      />
+
+      <button type="button" className="home-castle-enter" onClick={() => onNavigate("castle")}>
+        왕성으로 이동 →
+      </button>
     </section>
   );
 }
