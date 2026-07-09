@@ -1,0 +1,41 @@
+import type { Quest } from "../app/types";
+
+export const mockQuests: Quest[] = [
+  {
+    id: "q-001",
+    title: "지원사업 보고서 초안 정리",
+    description: "집무실에서 오늘 가장 먼저 처리할 핵심 퀘스트",
+    status: "inProgress",
+    category: "work",
+    priority: "high",
+    expReward: 30,
+    goldReward: 12,
+    dueDate: "2026-07-09",
+    rewardClaimed: false,
+  },
+  {
+    id: "q-002",
+    title: "회의 일정 확인",
+    description: "캘린더와 세린 브리핑을 기준으로 오늘 일정을 확인",
+    status: "completed",
+    category: "routine",
+    priority: "medium",
+    expReward: 10,
+    goldReward: 4,
+    dueDate: "2026-07-09",
+    completedAt: "2026-07-09T09:10:00+09:00",
+    rewardClaimed: true,
+  },
+  {
+    id: "q-003",
+    title: "왕국 도서관 메모 정리",
+    description: "아이디어와 참고 자료를 도서관에 정리",
+    status: "pending",
+    category: "growth",
+    priority: "medium",
+    expReward: 20,
+    goldReward: 8,
+    dueDate: "2026-07-09",
+    rewardClaimed: false,
+  },
+];

@@ -1,0 +1,184 @@
+.module-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
+  gap: 18px;
+}
+
+.module-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.module-stack > .ds-card,
+.module-grid .ds-card {
+  padding: 22px;
+}
+
+.module-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.module-heading h2 {
+  margin-bottom: 6px;
+  color: var(--royal-900);
+}
+
+.princess-visual-panel {
+  position: sticky;
+  top: 20px;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  min-height: 680px;
+  padding: 24px 18px 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--radius-2xl);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.28)),
+    url("/assets/palace-main.png") center / cover;
+  box-shadow: var(--shadow-large);
+}
+
+.princess-visual-panel img {
+  width: min(105%, 420px);
+  margin-top: 14px;
+  object-fit: contain;
+}
+
+.stat-grid,
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.stat-card,
+.equipment-slot {
+  min-height: 92px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: rgba(65, 105, 225, 0.08);
+}
+
+.stat-card strong,
+.stat-card span,
+.equipment-slot strong,
+.equipment-slot span {
+  display: block;
+}
+
+.stat-card strong {
+  color: var(--royal-800);
+  font-size: 26px;
+}
+
+.stat-card span,
+.equipment-slot span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.equipment-slot strong {
+  margin-top: 8px;
+  color: var(--royal-900);
+  font-size: 14px;
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.title-chip {
+  padding: 9px 12px;
+  border: 1px solid rgba(111, 143, 242, 0.16);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.66);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.title-chip.active {
+  color: #6f5115;
+  border-color: rgba(216, 183, 106, 0.5);
+  background: rgba(216, 183, 106, 0.22);
+}
+
+.relationship-card,
+.two-character-note,
+.list-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.relationship-card img,
+.two-character-note img {
+  width: 82px;
+  height: 82px;
+  flex: 0 0 auto;
+  border-radius: 26px;
+  object-fit: cover;
+  background: rgba(65, 105, 225, 0.08);
+}
+
+.reward-pill {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  border-radius: var(--radius-full);
+  color: #6f5115;
+  background: rgba(216, 183, 106, 0.24);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.preview-card {
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  padding: 18px;
+}
+
+.preview-card strong {
+  color: var(--royal-900);
+  font-size: 24px;
+}
+
+.preview-card span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 860px) {
+  .module-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .princess-visual-panel {
+    position: relative;
+    min-height: 520px;
+  }
+
+  .stat-grid,
+  .equipment-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .relationship-card,
+  .two-character-note,
+  .list-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

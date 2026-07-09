@@ -1,14 +1,30 @@
-# Princess OS Design System v1.2
+# Princess OS
 
-포함 컴포넌트:
-1. Button
-2. Card
-3. Bottom Navigation
-4. Serin Avatar Button
-5. Input
-6. Badge / Chip
-7. Toast
-8. Bottom Sheet
-9. Top App Bar
+React + TypeScript refactor of the Princess OS prototype.
 
-`index.html`부터 열면 됩니다.
+## Run
+
+```bash
+npm install
+npm run dev
+```
+
+Main files:
+
+- `src/main.tsx`
+- `src/app/App.tsx`
+- `src/components/home/HomeScene.tsx`
+- `src/data/mockRepository.ts`
+- `supabase/schema.sql`
+
+## Direction
+
+Princess OS is not a themed todo app. It is a princess simulation, AI maid assistant, and growth-based life OS.
+
+Main rules:
+
+- Supabase only. Do not introduce alternate backend concepts.
+- Home uses the Live Palace Scene direction.
+- The princess and Serin must have balanced visual weight.
+- Data must flow through MockData now, then Supabase later.
+- Royal Blue, Glass, and restrained Gold accents remain the design system base.

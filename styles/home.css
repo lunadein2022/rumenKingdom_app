@@ -1,9 +1,0 @@
-
-/* Princess OS - Home Screen v2 */
-.home-screen{display:grid;gap:20px;padding:24px}
-.hero{border-radius:32px;padding:28px;background:linear-gradient(180deg,rgba(255,255,255,.65),rgba(255,255,255,.45));backdrop-filter:blur(24px)}
-.serin-banner,.widget{background:rgba(255,255,255,.58);border:1px solid rgba(255,255,255,.72);border-radius:26px;padding:18px}
-.grid{display:grid;grid-template-columns:2fr 1fr;gap:20px}
-.quick{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.quick a{display:grid;place-items:center;height:88px;border-radius:20px;background:linear-gradient(135deg,#2E4FA3,#4169E1);color:#fff;text-decoration:none;font-weight:700}
-@media(max-width:900px){.grid{grid-template-columns:1fr}}

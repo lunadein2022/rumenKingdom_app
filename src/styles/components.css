@@ -1,0 +1,202 @@
+.ds-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  font-weight: 800;
+  letter-spacing: 0;
+  transition:
+    transform var(--motion-fast) var(--ease-soft),
+    box-shadow var(--motion-fast) var(--ease-soft),
+    background var(--motion-fast) var(--ease-soft);
+}
+
+.ds-button:hover {
+  transform: translateY(-1px);
+}
+
+.ds-button--primary {
+  color: var(--text-inverse);
+  background: linear-gradient(135deg, var(--royal-600), var(--royal-500));
+  box-shadow: 0 12px 28px rgba(46, 79, 163, 0.26);
+}
+
+.ds-button--glass {
+  color: var(--royal-800);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(111, 143, 242, 0.18);
+}
+
+.ds-button--ghost {
+  color: var(--royal-700);
+  background: transparent;
+}
+
+.ds-button--sm {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.ds-button--md {
+  min-height: 42px;
+  padding: 0 18px;
+  font-size: 14px;
+}
+
+.ds-button--lg {
+  min-height: 50px;
+  padding: 0 22px;
+  font-size: 15px;
+}
+
+.ds-card {
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-small);
+}
+
+.ds-card--glass {
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(24px);
+}
+
+.ds-card--solid {
+  background: #ffffff;
+  border: 1px solid rgba(111, 143, 242, 0.12);
+}
+
+.ds-card--deep {
+  color: var(--text-inverse);
+  background: linear-gradient(145deg, var(--royal-950), var(--royal-800));
+}
+
+.glass-panel {
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-2xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(24px);
+}
+
+.ds-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.ds-badge--royal {
+  color: var(--royal-800);
+  background: rgba(65, 105, 225, 0.12);
+}
+
+.ds-badge--gold {
+  color: #6f5115;
+  background: rgba(216, 183, 106, 0.28);
+}
+
+.ds-badge--soft {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.ds-badge--success {
+  color: #1d6c53;
+  background: rgba(76, 175, 143, 0.16);
+}
+
+.ds-progress {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border-radius: var(--radius-full);
+  background: rgba(16, 25, 54, 0.08);
+}
+
+.ds-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--royal-500), var(--gold-500));
+}
+
+.top-app-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.64);
+  backdrop-filter: blur(22px);
+  box-shadow: var(--shadow-small);
+}
+
+.top-app-bar h1 {
+  margin: 6px 0 0;
+  color: var(--royal-900);
+  font-size: 24px;
+}
+
+.top-kicker,
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.top-kicker {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.bottom-nav {
+  position: fixed;
+  right: 50%;
+  bottom: 18px;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(58px, 1fr));
+  width: min(560px, calc(100% - 24px));
+  padding: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  border-radius: var(--radius-2xl);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-floating);
+  transform: translateX(50%);
+  backdrop-filter: blur(24px);
+}
+
+.bottom-nav button {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  min-height: 54px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bottom-nav button span:first-child {
+  font-size: 18px;
+}
+
+.bottom-nav button.active {
+  color: var(--royal-800);
+  background: rgba(65, 105, 225, 0.12);
+}
