@@ -27,7 +27,7 @@ export interface CastleRoom {
   role: string;
   description: string;
   image: string;
-  route: "home" | "quests" | "calendar" | "serin" | "progress" | "profile" | "castle";
+  route: "home" | "quests" | "calendar" | "serin" | "castle" | "library" | "garden" | "progress" | "profile";
   unlockLevel: number;
   roomLevel: number;
   isUnlocked: boolean;

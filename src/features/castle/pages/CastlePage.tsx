@@ -28,7 +28,7 @@ export function CastlePage({ rooms, state, onNavigate, onVisitRoom, onUpgradeRoo
       <header className="castle-hero">
         <Badge tone="gold">Castle Domain</Badge>
         <h1>루멘 왕성</h1>
-        <p>Princess OS의 모든 기능은 방과 장소 안에서 이어집니다.</p>
+        <p>왕성은 메뉴가 아니라 Princess OS의 지도입니다. 방을 선택해 기능이 있는 장소로 이동하세요.</p>
       </header>
 
       <nav className="castle-fast-travel" aria-label="Castle fast travel">

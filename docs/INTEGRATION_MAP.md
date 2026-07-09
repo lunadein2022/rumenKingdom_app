@@ -21,6 +21,8 @@
 | 029 Calendar Domain | `features/calendar/*`, `calendar_events`, `calendar_reminders` |
 | 030 Serin Domain | `features/serin/*`, `serin_conversations`, `serin_messages`, `serin_memory`, `contacts`, `diary_drafts` |
 | 031 Castle Domain | `features/castle/*`, `castle_rooms`, `castle_state`, `room_decorations` |
+| 032 Princess Domain | `features/princess/*`, `princess_profiles`, `princess_stats`, `princess_equipment`, `princess_diary` |
+| Kingdom Library / Garden Fix | `features/library/pages/LibraryPage.tsx`, `features/garden/pages/GardenPage.tsx` |
 | Cross-domain Time Navigation | Calendar previous/next months, Quest past/current/future/all filters, Diary range service |
 
 The refactor preserves current scope and turns concept boards into a service-ready app structure.

@@ -1116,7 +1116,7 @@
   padding: 16px;
   border-radius: 30px;
   background:
-    linear-gradient(180deg, rgba(16, 25, 54, 0.78), rgba(65, 105, 225, 0.34)),
+    linear-gradient(180deg, rgba(16, 25, 54, 0.88), rgba(16, 25, 54, 0.5)),
     url("/assets/palace-main.png") center / cover;
   box-shadow: var(--shadow-floating);
 }
@@ -1129,8 +1129,9 @@
 
 .castle-hero p {
   margin: 0;
-  color: rgba(255, 255, 255, 0.78);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 13px;
+  font-weight: 800;
 }
 
 .castle-fast-travel,
@@ -1226,7 +1227,7 @@
 
 .castle-room-card {
   position: relative;
-  min-height: 430px;
+  min-height: 392px;
   overflow: hidden;
   border-radius: 30px;
   background: #fff;
@@ -1290,4 +1291,248 @@
 
 .palace-room-mobile.locked {
   opacity: 0.72;
+}
+
+.library-page {
+  display: grid;
+  gap: 12px;
+}
+
+.library-hero {
+  min-height: 190px;
+  padding: 16px;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(16, 25, 54, 0.84), rgba(31, 50, 112, 0.5)),
+    url("/assets/library.png") center / cover;
+  box-shadow: var(--shadow-floating);
+}
+
+.library-hero h1 {
+  margin: 8px 0 4px;
+  color: #fff;
+  font-size: 30px;
+}
+
+.library-hero p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.library-section {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+}
+
+.library-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.library-section h2 {
+  margin: 0;
+  color: var(--royal-900);
+  font-size: 18px;
+}
+
+.library-section-head span,
+.library-section p {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.library-section article {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+  background: rgba(65, 105, 225, 0.07);
+}
+
+.library-section article strong {
+  color: var(--royal-900);
+  font-size: 13px;
+}
+
+.library-section article span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.garden-page {
+  display: grid;
+  gap: 12px;
+}
+
+.garden-scene {
+  position: relative;
+  min-height: calc(100dvh - 190px);
+  overflow: hidden;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(16, 25, 54, 0.2)),
+    url("/assets/garden.png") center / cover;
+  box-shadow: var(--shadow-floating);
+}
+
+.garden-copy {
+  position: relative;
+  z-index: 2;
+  padding: 18px;
+  color: #fff;
+  text-shadow: 0 2px 18px rgba(16, 25, 54, 0.45);
+}
+
+.garden-copy span {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.garden-copy h1 {
+  max-width: 310px;
+  margin: 8px 0 0;
+  font-size: 29px;
+}
+
+.garden-copy p {
+  max-width: 320px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.garden-princess {
+  position: absolute;
+  right: -12px;
+  bottom: -4px;
+  z-index: 1;
+  width: min(72%, 280px);
+  max-height: 82%;
+  object-fit: contain;
+  object-position: bottom right;
+}
+
+.garden-serin-note {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+}
+
+.garden-serin-note strong {
+  color: var(--royal-900);
+}
+
+.garden-serin-note p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.princess-domain-page {
+  display: grid;
+  gap: 12px;
+}
+
+.princess-domain-hero {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  align-items: end;
+  min-height: 310px;
+  overflow: hidden;
+  padding: 16px 12px 0 16px;
+  border-radius: 30px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(65, 105, 225, 0.12)),
+    url("/assets/palace-main.png") center / cover;
+  box-shadow: var(--shadow-floating);
+}
+
+.princess-domain-hero h1 {
+  margin: 8px 0 4px;
+  color: var(--royal-900);
+  font-size: 30px;
+}
+
+.princess-domain-hero p {
+  margin: 0 0 18px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.princess-domain-hero img {
+  width: 170px;
+  max-height: 300px;
+  object-fit: contain;
+  object-position: bottom right;
+}
+
+.princess-progress-card,
+.princess-fate-card,
+.princess-stat-list,
+.princess-equipment-list {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+}
+
+.princess-progress-card strong,
+.princess-fate-card h2,
+.princess-equipment-list h2 {
+  margin: 0;
+  color: var(--royal-900);
+  font-size: 19px;
+}
+
+.princess-progress-card span,
+.princess-fate-card p,
+.princess-fate-card span {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.princess-stat-list {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.princess-stat-list article,
+.princess-equipment-list article {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+  background: rgba(65, 105, 225, 0.08);
+}
+
+.princess-stat-list strong,
+.princess-equipment-list strong {
+  color: var(--royal-800);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.princess-stat-list span,
+.princess-equipment-list span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 900;
 }

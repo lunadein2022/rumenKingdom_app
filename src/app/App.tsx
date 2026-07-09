@@ -14,7 +14,6 @@ import type {
 } from "./types";
 import { BottomNav } from "../components/design-system/BottomNav";
 import { HomeScene } from "../components/home/HomeScene";
-import { PrincessCharacter } from "../components/modules/PrincessCharacter";
 import { ProgressScreen } from "../components/modules/ProgressScreen";
 import { QuestScreen } from "../components/modules/QuestScreen";
 import { SerinScreen } from "../components/modules/SerinScreen";
@@ -32,6 +31,9 @@ import {
 import { CastlePage } from "../features/castle/pages/CastlePage";
 import { useCastle } from "../features/castle/hooks/useCastle";
 import { useCastleRooms } from "../features/castle/hooks/useCastleRooms";
+import { GardenPage } from "../features/garden/pages/GardenPage";
+import { LibraryPage } from "../features/library/pages/LibraryPage";
+import { PrincessPage } from "../features/princess/pages/PrincessPage";
 import { cancelAction, confirmAction } from "../features/serin/services/serinActionExecutor";
 import { sendMessage as sendSerinDomainMessage } from "../features/serin/services/serinService";
 import { saveMemory } from "../features/serin/services/serinMemoryService";
@@ -249,6 +251,17 @@ export function App() {
             onUpgradeRoom={castleRooms.upgradeRoom}
           />
         )}
+        {activeView === "library" && (
+          <LibraryPage
+            quests={quests}
+            history={questHistory}
+            events={events}
+            messages={messages}
+          />
+        )}
+        {activeView === "garden" && (
+          <GardenPage serin={snapshot.serin} onBackToCastle={() => setActiveView("castle")} />
+        )}
         {activeView === "quests" && (
           <QuestScreen
             quests={quests}
@@ -284,7 +297,7 @@ export function App() {
           />
         )}
         {activeView === "progress" && <ProgressScreen data={appData} onOpenProfile={() => setActiveView("profile")} />}
-        {activeView === "profile" && <PrincessCharacter data={appData} />}
+        {activeView === "profile" && <PrincessPage data={appData} />}
       </main>
 
       <BottomNav activeView={activeView} onChange={setActiveView} />

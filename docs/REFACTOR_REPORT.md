@@ -21,6 +21,9 @@ princess-os-refactor/
       calendar/
       castle/
       diary/
+      garden/
+      library/
+      princess/
       serin/
     components/
       design-system/
@@ -159,6 +162,16 @@ Castle now lives under `src/features/castle/` and is treated as the Princess OS 
 - Movement: swipe-style selector, arrow controls, and fast travel
 - Growth: `CastleState`, room level, visited count, decorations, unlock level
 - Supabase-ready `castle_rooms`, `castle_state`, and `room_decorations`
+- Castle navigation no longer duplicates room selectors: fast travel is shown once, and carousel keeps arrow movement only.
+- Kingdom Library and Garden are now independent pages instead of routing to Serin.
+
+## Update 032 Princess Domain
+
+Princess now starts moving from a weak profile page into `src/features/princess/`. The page treats the princess as the player character with full-body presence, level/EXP, six stats, equipment, and a daily Fate card.
+
+- Supabase-ready `princess_profiles`, `princess_stats`, `princess_equipment`, and `princess_diary`
+- Garden is a non-productivity rest scene with garden image and princess presence
+- Kingdom Library is the archive for completed quests, past events, Serin records, diary, and contacts
 
 ## Time Navigation Principle
 

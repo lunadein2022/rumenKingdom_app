@@ -8,6 +8,8 @@ export type ViewKey =
   | "calendar"
   | "serin"
   | "castle"
+  | "library"
+  | "garden"
   | "progress"
   | "profile";
 

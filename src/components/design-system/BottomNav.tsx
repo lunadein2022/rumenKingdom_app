@@ -6,7 +6,6 @@ const navItems: Array<{ key: ViewKey; label: string; icon: string }> = [
   { key: "quests", label: "Quest", icon: "◆" },
   { key: "serin", label: "세린", icon: "✦" },
   { key: "calendar", label: "일정", icon: "□" },
-  { key: "progress", label: "성장", icon: "♛" },
 ];
 
 interface BottomNavProps {

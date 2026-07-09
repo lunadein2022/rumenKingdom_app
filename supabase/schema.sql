@@ -15,12 +15,49 @@ create table if not exists public.princess_profiles (
   display_name text not null default 'Princess',
   active_title text default '루멘의 공주',
   avatar_url text,
+  current_level integer not null default 1,
+  current_exp integer not null default 0,
   current_room text not null default 'lobby',
+  current_mood text not null default 'calm',
+  castle_level integer not null default 1,
   charm int not null default 0,
   wisdom int not null default 0,
   courage int not null default 0,
   diligence int not null default 0,
   serin_affinity int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.princess_stats (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade unique,
+  charm integer not null default 0,
+  wisdom integer not null default 0,
+  courage integer not null default 0,
+  diligence integer not null default 0,
+  kindness integer not null default 0,
+  creativity integer not null default 0,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.princess_equipment (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  slot text not null,
+  inventory_item_id uuid references public.inventory_items(id) on delete set null,
+  equipped_at timestamptz not null default now(),
+  unique(user_id, slot)
+);
+
+create table if not exists public.princess_diary (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  entry_date date not null,
+  title text not null,
+  content text not null,
+  ai_summary text,
+  mood text not null default 'calm',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -263,6 +300,9 @@ create table if not exists public.diary_drafts (
 
 alter table public.profiles enable row level security;
 alter table public.princess_profiles enable row level security;
+alter table public.princess_stats enable row level security;
+alter table public.princess_equipment enable row level security;
+alter table public.princess_diary enable row level security;
 alter table public.quests enable row level security;
 alter table public.quest_history enable row level security;
 alter table public.calendar_events enable row level security;
@@ -287,6 +327,15 @@ create policy "Users manage own profile" on public.profiles
   for all using (auth.uid() = id) with check (auth.uid() = id);
 
 create policy "Users manage own princess profile" on public.princess_profiles
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own princess stats" on public.princess_stats
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own princess equipment" on public.princess_equipment
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own princess diary" on public.princess_diary
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users manage own quests" on public.quests

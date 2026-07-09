@@ -21,20 +21,8 @@ export function CastleCarousel({ rooms, activeRoomKey, onSelectRoom, onEnterRoom
     <section className="castle-carousel">
       <div className="castle-carousel-controls">
         <button type="button" onClick={() => move(-1)} aria-label="이전 방">‹</button>
-        <strong>{activeIndex + 1} / {rooms.length}</strong>
+        <strong>{activeRoom.name} · {activeIndex + 1} / {rooms.length}</strong>
         <button type="button" onClick={() => move(1)} aria-label="다음 방">›</button>
-      </div>
-      <div className="castle-swipe-track">
-        {rooms.map((room) => (
-          <button
-            key={room.key}
-            type="button"
-            className={room.key === activeRoomKey ? "active" : ""}
-            onClick={() => onSelectRoom(room.key)}
-          >
-            {room.name}
-          </button>
-        ))}
       </div>
       <CastleRoomCard room={activeRoom} onEnter={() => onEnterRoom(activeRoom)} />
     </section>
