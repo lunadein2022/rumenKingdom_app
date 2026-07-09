@@ -158,11 +158,11 @@ Serin now lives under `src/features/serin/` and is treated as the AI maid interf
 
 ## Update 031 Castle Domain
 
-Castle now lives under `src/features/castle/` and is treated as the Princess OS map, not a menu. Home remains the Lobby, while Castle provides room swipe, arrows, fast travel, room unlock state, room upgrade state, and Castle EXP.
+Castle now lives under `src/features/castle/` and is treated as the Princess OS map, not a menu. Home remains the Lobby, while Castle provides room swipe, arrows, fast travel, room score state, and Castle EXP.
 
 - Rooms: Lobby, Throne, Library, Office, Garden, Bedroom, Tower, Secret Garden
 - Movement: swipe-style selector, arrow controls, and fast travel
-- Growth: `CastleState`, room level, visited count, decorations, unlock level
+- Growth: `CastleState`, room level, visited count, decorations, and score/EXP
 - Supabase-ready `castle_rooms`, `castle_state`, and `room_decorations`
 - Castle navigation no longer duplicates room selectors: fast travel is shown once, and carousel keeps arrow movement only.
 - Kingdom Library and Garden are now independent pages instead of routing to Serin.
@@ -187,7 +187,7 @@ Princess now starts moving from a weak profile page into `src/features/princess/
 ## Regression Fixes
 
 - App Shell is now Desktop First: 1440px-oriented responsive Personal OS layout with desktop sidebar, tablet collapse, and mobile BottomNav.
-- Castle room unlock state is derived from user level through `deriveRoomUnlockState()` and refreshed through `checkRoomUnlocks()`.
+- Castle no longer uses room locking in the active UI. Game feel is kept through score, EXP, and princess level.
 - The Throne Room is accessible in Alpha at the current mock level and links to Growth, Achievement/Reward, and Princess Character surfaces.
 - `netlify/functions/serin-chat.js` is restored and `serinService.sendMessage()` calls `/.netlify/functions/serin-chat` first.
 - Mock Serin replies are now fallback-only through `fallbackSerinResponse()` when the API call fails.
@@ -201,6 +201,28 @@ Princess now starts moving from a weak profile page into `src/features/princess/
 - `USE_MOCK` lives in `src/repositories/index.ts`; set `VITE_USE_MOCK=false` to select the Supabase repository.
 - Mock and Supabase code are separated under `src/repositories/mock` and `src/repositories/supabase`.
 - Legacy-only `TopAppBar.tsx` moved to `legacy/components/TopAppBar.tsx`.
+- Calendar event creation fields were removed from the active UI. Schedule and Quest creation now starts from Serin.
+- Kingdom Library now has a single period dropdown: Past, Current, Future, All.
+
+## Simplicity UX Pass
+
+- Removed active room locking from Castle. Game feel is now score, EXP, and princess level only.
+- Calendar month cells now show event titles directly, not just dots or hidden counts.
+- Calendar creation fields are no longer rendered; schedules are created through Serin.
+- Serin now applies recognized schedule and Quest requests directly to app state, then reports completion in chat.
+- Quest screen copy was simplified around checking status and completing items, not creating them.
+- Library filtering is a simple period dropdown to reduce navigation friction.
+
+## Update 034 Home And Serin Flow
+
+- Home now absorbs Castle as the Live Palace Lobby. The active app no longer exposes a separate Castle page.
+- The first experience is palace scene, princess, Serin greeting, then animated room pills.
+- Desktop Calendar uses a wider workspace: month view, selected-day agenda, and a Serin request form in one screen.
+- Library now has search, period filter, and tabs for completed Quest, past events, Diary, relationships, and Serin Memory.
+- Serin screen chat is session-only and starts from a fresh greeting after refresh.
+- Long-term Serin memory is separate from screen chat and persists in the local mock memory store.
+- `serinService.sendMessage()` still calls `/.netlify/functions/serin-chat`; fallback is used only when the API fails.
+- Pending actions are retained, so short replies like "응", "그래", or "퀘스트에 등록해" can execute the previous suggestion.
 
 ## Time Navigation Principle
 
@@ -214,7 +236,7 @@ Calendar, Quest, and Diary domains must support past, current, and future data. 
 - Connect Serin chat API, streaming, OCR, voice input, and memory persistence.
 - Build full Diary and Library pages on top of the new date-range services.
 - Replace temporary generated transparent PNG cutouts with art-directed transparent character exports.
-- Add route handling once screen priorities are locked.
+- Add route handling once screen priorities are finalized.
 
 ## Technical Debt
 

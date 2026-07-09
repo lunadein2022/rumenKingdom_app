@@ -6,14 +6,12 @@ import { ProgressScreen } from "../components/modules/ProgressScreen";
 import { QuestScreen } from "../components/modules/QuestScreen";
 import { SerinScreen } from "../components/modules/SerinScreen";
 import { CalendarPage } from "../features/calendar/pages/CalendarPage";
-import { CastlePage } from "../features/castle/pages/CastlePage";
 import { GardenPage } from "../features/garden/pages/GardenPage";
 import { LibraryPage } from "../features/library/pages/LibraryPage";
 import { PrincessPage } from "../features/princess/pages/PrincessPage";
 
 const desktopNavItems = [
   ...primaryNavItems,
-  { key: "library" as ViewKey, label: "도서관", icon: "▤" },
   { key: "garden" as ViewKey, label: "정원", icon: "✧" },
   { key: "progress" as ViewKey, label: "성장", icon: "▲" },
   { key: "profile" as ViewKey, label: "공주", icon: "♛" },
@@ -29,7 +27,7 @@ export function App() {
           <span>Princess OS Alpha</span>
           <strong>루멘 왕국 개인 운영체제</strong>
         </div>
-        <small>Desktop First · Responsive · PWA Ready</small>
+        <small>Live Palace · Serin Assisted</small>
       </header>
 
       <aside className="personal-os-sidebar" aria-label="Princess OS desktop navigation">
@@ -48,25 +46,17 @@ export function App() {
 
       <main className="personal-os-main">
         {app.activeView === "home" && <HomeScene data={app.appData} activeView={app.activeView} onNavigate={app.setActiveView} />}
-        {app.activeView === "castle" && (
-          <CastlePage
-            rooms={app.castleRooms.rooms}
-            state={app.castleState}
-            onNavigate={app.setActiveView}
-            onVisitRoom={app.castleRooms.visitRoom}
-            onUpgradeRoom={app.castleRooms.upgradeRoom}
-          />
-        )}
         {app.activeView === "library" && (
           <LibraryPage
             quests={app.appData.quests}
             history={app.appData.questHistory}
             events={app.appData.events}
             messages={app.appData.serinMessages}
+            memories={app.serinMemories}
           />
         )}
         {app.activeView === "garden" && (
-          <GardenPage serin={app.snapshot.serin} onBackToCastle={() => app.setActiveView("castle")} />
+          <GardenPage serin={app.snapshot.serin} onBackToCastle={() => app.setActiveView("home")} />
         )}
         {app.activeView === "quests" && (
           <QuestScreen
@@ -83,7 +73,7 @@ export function App() {
             events={app.appData.events}
             selectedDate={app.selectedDate}
             onSelectDate={app.setSelectedDate}
-            onCreateEvent={app.createCalendarEvent}
+            onAskSerin={app.sendSerinMessage}
             onCompleteEvent={app.completeCalendarEvent}
             onCancelEvent={app.cancelCalendarEvent}
           />

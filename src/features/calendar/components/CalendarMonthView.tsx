@@ -21,6 +21,11 @@ function daysInMonth(month: string) {
   return new Date(year, rawMonth, 0).getDate();
 }
 
+function firstDayOffset(month: string) {
+  const [year, rawMonth] = month.split("-").map(Number);
+  return new Date(year, rawMonth - 1, 1).getDay();
+}
+
 function shiftMonth(month: string, delta: number) {
   const [year, rawMonth] = month.split("-").map(Number);
   const date = new Date(year, rawMonth - 1 + delta, 1);
@@ -32,10 +37,10 @@ function toDate(month: string, day: number) {
 }
 
 export function CalendarMonthView({ events, selectedDate, visibleMonth, onSelectDate, onChangeMonth }: CalendarMonthViewProps) {
-  const eventCounts = events.reduce<Record<string, number>>((acc, event) => {
+  const eventsByDate = events.reduce<Record<string, CalendarEvent[]>>((acc, event) => {
     if (event.status !== "cancelled") {
       const date = event.startAt.slice(0, 10);
-      acc[date] = (acc[date] ?? 0) + 1;
+      acc[date] = [...(acc[date] ?? []), event];
     }
     return acc;
   }, {});
@@ -47,13 +52,18 @@ export function CalendarMonthView({ events, selectedDate, visibleMonth, onSelect
         <strong>{monthLabel(visibleMonth)}</strong>
         <button type="button" onClick={() => onChangeMonth(shiftMonth(visibleMonth, 1))}>›</button>
       </div>
-      <span className="calendar-range-note">과거, 현재, 미래 일정을 모두 탐색할 수 있습니다.</span>
+
       <div className="calendar-week-row">
         {weekLabels.map((label) => <span key={label}>{label}</span>)}
       </div>
-      <div className="calendar-grid">
+
+      <div className="calendar-grid calendar-grid-readable">
+        {Array.from({ length: firstDayOffset(visibleMonth) }, (_, index) => (
+          <span className="calendar-empty-cell" key={`empty-${index}`} />
+        ))}
         {Array.from({ length: daysInMonth(visibleMonth) }, (_, index) => index + 1).map((day) => {
           const date = toDate(visibleMonth, day);
+          const dayEvents = eventsByDate[date] ?? [];
           return (
             <button
               type="button"
@@ -61,12 +71,17 @@ export function CalendarMonthView({ events, selectedDate, visibleMonth, onSelect
               className={[
                 date === today ? "today" : "",
                 date === selectedDate ? "selected" : "",
-                eventCounts[date] ? "has-event" : "",
+                dayEvents.length ? "has-event" : "",
               ].join(" ")}
               onClick={() => onSelectDate(date)}
             >
-              <span>{day}</span>
-              {eventCounts[date] ? <small>{eventCounts[date]}</small> : null}
+              <span className="calendar-day-number">{day}</span>
+              <span className="calendar-day-events">
+                {dayEvents.slice(0, 2).map((event) => (
+                  <em key={event.id}>{event.title}</em>
+                ))}
+                {dayEvents.length > 2 && <em>+{dayEvents.length - 2}</em>}
+              </span>
             </button>
           );
         })}

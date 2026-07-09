@@ -1,17 +1,17 @@
 import { useEffect, useState } from "react";
-import { checkRoomUnlocks, upgradeRoom, visitRoom } from "../services/castleService";
+import { normalizeRooms, upgradeRoom, visitRoom } from "../services/castleService";
 import type { CastleRoom, CastleRoomKey } from "../types/castle.types";
 
-export function useCastleRooms(initialRooms: CastleRoom[], userLevel: number) {
-  const [rooms, setRooms] = useState(() => checkRoomUnlocks(initialRooms, userLevel));
+export function useCastleRooms(initialRooms: CastleRoom[], _userLevel: number) {
+  const [rooms, setRooms] = useState(() => normalizeRooms(initialRooms));
 
   useEffect(() => {
-    setRooms((current) => checkRoomUnlocks(current, userLevel));
-  }, [userLevel]);
+    setRooms((current) => normalizeRooms(current));
+  }, []);
 
   return {
     rooms,
-    checkRoomUnlocks: () => setRooms((current) => checkRoomUnlocks(current, userLevel)),
+    normalizeRooms: () => setRooms((current) => normalizeRooms(current)),
     visitRoom: (key: CastleRoomKey) => setRooms((current) => visitRoom(current, key)),
     upgradeRoom: (key: CastleRoomKey) => setRooms((current) => upgradeRoom(current, key)),
   };

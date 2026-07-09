@@ -9,12 +9,10 @@ export const baseCastleRooms: CastleRoom[] = [
     description: "공주와 세린이 하루를 시작하는 루멘 왕성의 중심 공간입니다.",
     image: "/assets/palace-main.png",
     route: "home",
-    unlockLevel: 1,
     roomLevel: 3,
-    isUnlocked: true,
     isDiscovered: true,
     visitedCount: 24,
-    stats: ["Today", "Serin", "Briefing"],
+    stats: ["오늘", "세린", "브리핑"],
     decorations: ["crystal_chandelier", "blue_carpet"],
   },
   {
@@ -25,12 +23,10 @@ export const baseCastleRooms: CastleRoom[] = [
     description: "공주의 레벨, EXP, 칭호, 업적, 보상을 확인하는 성장 시스템의 중심입니다.",
     image: "/assets/throne.png",
     route: "progress",
-    unlockLevel: 7,
     roomLevel: 1,
-    isUnlocked: false,
     isDiscovered: true,
     visitedCount: 2,
-    stats: ["Growth", "Rewards", "Titles"],
+    stats: ["성장", "보상", "칭호"],
     decorations: ["royal_banner"],
   },
   {
@@ -41,12 +37,10 @@ export const baseCastleRooms: CastleRoom[] = [
     description: "완료된 Quest, 지난 일정, 다이어리, 인연록, AI 요약을 보관하는 기억의 공간입니다.",
     image: "/assets/library.png",
     route: "library",
-    unlockLevel: 4,
     roomLevel: 2,
-    isUnlocked: false,
     isDiscovered: true,
     visitedCount: 12,
-    stats: ["History", "Diary", "Search"],
+    stats: ["기록", "검색", "요약"],
     decorations: ["book_wall", "reading_lamp"],
   },
   {
@@ -57,12 +51,10 @@ export const baseCastleRooms: CastleRoom[] = [
     description: "회의, 프로젝트, 메인 Quest를 다루는 생산성 중심 공간입니다.",
     image: "/assets/office.png",
     route: "quests",
-    unlockLevel: 6,
     roomLevel: 2,
-    isUnlocked: false,
     isDiscovered: true,
     visitedCount: 17,
-    stats: ["Meetings", "Projects", "Focus"],
+    stats: ["회의", "프로젝트", "집중"],
     decorations: ["writing_desk", "royal_clock"],
   },
   {
@@ -73,12 +65,10 @@ export const baseCastleRooms: CastleRoom[] = [
     description: "바람과 꽃, 세린의 부드러운 멘트가 있는 비생산성 휴식 공간입니다.",
     image: "/assets/garden.png",
     route: "garden",
-    unlockLevel: 2,
     roomLevel: 4,
-    isUnlocked: false,
     isDiscovered: true,
     visitedCount: 21,
-    stats: ["Rest", "Mood", "BGM"],
+    stats: ["휴식", "감정", "회복"],
     decorations: ["fountain", "flower_bed", "bench"],
   },
   {
@@ -86,61 +76,26 @@ export const baseCastleRooms: CastleRoom[] = [
     name: "공주의 침실",
     subtitle: "Bedroom",
     role: "Diary, 회고, 내일 목표",
-    description: "오늘의 일정, 완료 Quest, 세린과의 대화를 모아 다이어리 초안을 만드는 공간입니다.",
+    description: "오늘의 일정, 완료 Quest, 세린과의 대화를 모아 하루를 정리하는 공간입니다.",
     image: "/assets/bedroom.png",
     route: "calendar",
-    unlockLevel: 8,
     roomLevel: 1,
-    isUnlocked: false,
     isDiscovered: true,
     visitedCount: 0,
-    stats: ["Diary", "Emotion", "Sleep"],
+    stats: ["다이어리", "회고", "수면"],
     decorations: ["moon_curtain"],
-  },
-  {
-    key: "tower",
-    name: "서쪽 탑",
-    subtitle: "Tower",
-    role: "Special Event, Hidden Quest, Story",
-    description: "숨겨진 이야기와 높은 레벨의 특별 이벤트가 열리는 공간입니다.",
-    image: "/assets/throne.png",
-    route: "quests",
-    unlockLevel: 15,
-    roomLevel: 0,
-    isUnlocked: false,
-    isDiscovered: false,
-    visitedCount: 0,
-    stats: ["Lv.15", "Hidden", "Story"],
-    decorations: [],
-  },
-  {
-    key: "secret_garden",
-    name: "비밀 정원",
-    subtitle: "Secret",
-    role: "계절 이벤트와 친밀도 스토리",
-    description: "계절 이벤트와 세린 친밀도 스토리가 열리는 숨겨진 정원입니다.",
-    image: "/assets/garden.png",
-    route: "serin",
-    unlockLevel: 18,
-    roomLevel: 0,
-    isUnlocked: false,
-    isDiscovered: false,
-    visitedCount: 0,
-    stats: ["Season", "Affinity", "Event"],
-    decorations: [],
   },
 ];
 
-export function deriveRoomUnlockState(room: CastleRoom, userLevel: number): CastleRoom {
+export function normalizeRoomState(room: CastleRoom): CastleRoom {
   return {
     ...room,
-    isUnlocked: userLevel >= room.unlockLevel,
-    isDiscovered: room.isDiscovered || userLevel >= Math.max(1, room.unlockLevel - 1),
+    isDiscovered: true,
   };
 }
 
-export function getMockCastleRooms(userLevel: number) {
-  return baseCastleRooms.map((room) => deriveRoomUnlockState(room, userLevel));
+export function getMockCastleRooms() {
+  return baseCastleRooms.map((room) => normalizeRoomState(room));
 }
 
-export const mockCastleRooms = getMockCastleRooms(7);
+export const mockCastleRooms = getMockCastleRooms();

@@ -24,13 +24,13 @@ export function CastlePage({ rooms, state, onNavigate, onVisitRoom }: CastlePage
     <section className="castle-domain-page alpha">
       <header className="castle-top-bar">
         <div>
-          <span>Castle Lv.{state.castleLevel}</span>
+          <span>Castle Score</span>
           <strong>루멘 왕성</strong>
         </div>
-        <small>{state.castleExp}/{state.requiredExp} EXP</small>
+        <small>Lv.{state.castleLevel} · {state.castleExp}/{state.requiredExp} EXP</small>
       </header>
 
-      <nav className="castle-fast-travel" aria-label="Castle fast travel">
+      <nav className="castle-fast-travel" aria-label="Castle rooms">
         {rooms.map((room) => (
           <button
             key={room.key}

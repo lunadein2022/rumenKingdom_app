@@ -24,7 +24,7 @@ export function getPrincessOsSnapshot(): AppMockData {
     questHistory: mockQuestHistory,
     events: mockCalendarEvents,
     serinMessages: mockSerinMessages,
-    rooms: getMockCastleRooms(progress.level),
+    rooms: getMockCastleRooms(),
     achievements: mockAchievements,
     inventory: mockInventory,
   };

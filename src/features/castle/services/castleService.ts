@@ -12,35 +12,17 @@ export function getCastleState(): CastleState {
   };
 }
 
+export function normalizeRoomState(room: CastleRoom): CastleRoom {
+  return { ...room, isDiscovered: true };
+}
+
+export function normalizeRooms(rooms: CastleRoom[]) {
+  return rooms.map((room) => normalizeRoomState(room));
+}
+
 export function getRooms(rooms: CastleRoom[]) {
   // TODO: Replace with Supabase Query
-  return rooms;
-}
-
-export function deriveRoomUnlockState(room: CastleRoom, userLevel: number): CastleRoom {
-  return {
-    ...room,
-    isUnlocked: userLevel >= room.unlockLevel,
-    isDiscovered: room.isDiscovered || userLevel >= Math.max(1, room.unlockLevel - 1),
-  };
-}
-
-export function checkRoomUnlocks(rooms: CastleRoom[], userLevel: number) {
-  // TODO: Replace with Supabase Query/RPC that persists newly unlocked rooms.
-  return rooms.reduce<CastleRoom[]>((nextRooms, room) => {
-    const derived = deriveRoomUnlockState(room, userLevel);
-    if (!room.isUnlocked && derived.isUnlocked) {
-      return unlockRoom([...nextRooms, room], room.key).slice(0, nextRooms.length + 1);
-    }
-    return [...nextRooms, derived];
-  }, []);
-}
-
-export function unlockRoom(rooms: CastleRoom[], key: CastleRoomKey) {
-  // TODO: Replace with Supabase Query
-  return rooms.map((room) =>
-    room.key === key ? { ...room, isUnlocked: true, isDiscovered: true } : room,
-  );
+  return normalizeRooms(rooms);
 }
 
 export function visitRoom(rooms: CastleRoom[], key: CastleRoomKey) {
@@ -51,9 +33,9 @@ export function visitRoom(rooms: CastleRoom[], key: CastleRoomKey) {
 }
 
 export function upgradeRoom(rooms: CastleRoom[], key: CastleRoomKey) {
-  // TODO: Replace with Supabase Query
+  // TODO: Replace with Supabase Query. This is room score growth.
   return rooms.map((room) =>
-    room.key === key && room.isUnlocked ? { ...room, roomLevel: room.roomLevel + 1 } : room,
+    room.key === key ? { ...room, roomLevel: room.roomLevel + 1 } : room,
   );
 }
 

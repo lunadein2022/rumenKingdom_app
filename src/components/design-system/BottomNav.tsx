@@ -2,10 +2,10 @@ import type { ViewKey } from "../../app/types";
 
 export const primaryNavItems: Array<{ key: ViewKey; label: string; icon: string }> = [
   { key: "home", label: "홈", icon: "⌂" },
-  { key: "castle", label: "왕성", icon: "♜" },
   { key: "quests", label: "Quest", icon: "◆" },
   { key: "serin", label: "세린", icon: "✦" },
   { key: "calendar", label: "일정", icon: "□" },
+  { key: "library", label: "도서관", icon: "▤" },
 ];
 
 interface BottomNavProps {

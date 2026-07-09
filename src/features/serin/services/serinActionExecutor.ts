@@ -11,8 +11,8 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
       id: actionId,
       intent: "calendar.create",
       title: draft.title,
-      summary: `${draft.startAt.slice(0, 16).replace("T", " ")} 일정으로 등록할까요?`,
-      confirmLabel: "일정 추가",
+      summary: `${draft.startAt.slice(0, 16).replace("T", " ")} 일정으로 등록합니다.`,
+      confirmLabel: "일정 등록",
       secondaryLabel: "Quest도 만들기",
       payload: {
         calendar: {
@@ -37,12 +37,12 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
       id: actionId,
       intent: "quest.create",
       title: quest.title ?? "새 Quest",
-      summary: "공주의 성장에 반영될 Quest로 생성할까요?",
-      confirmLabel: "Quest 생성",
+      summary: "공주의 성장에 반영할 Quest로 등록합니다.",
+      confirmLabel: "Quest 등록",
       payload: {
         quest: {
           title: quest.title ?? "새 Quest",
-          description: "세린이 대화에서 정리한 Quest입니다.",
+          description: "세린의 대화에서 정리한 Quest입니다.",
           type: "side",
           priority: "medium",
           progress: 0,
@@ -56,34 +56,15 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
     };
   }
 
-  if (parsedIntent.intent === "diary.create" || parsedIntent.intent === "diary.summarize") {
+  if (parsedIntent.intent === "memory.save" && parsedIntent.entities.memory) {
     return {
       id: actionId,
-      intent: parsedIntent.intent,
-      title: "오늘의 공주 다이어리",
-      summary: "오늘 일정, 완료 Quest, 세린과의 대화를 바탕으로 다이어리 초안을 저장할까요?",
-      confirmLabel: "다이어리 초안 저장",
+      intent: "memory.save",
+      title: "세린 기억",
+      summary: "대화 내용을 세린 기억으로 저장합니다.",
+      confirmLabel: "기억 저장",
       payload: {
-        diary: {
-          title: "오늘의 공주 다이어리",
-          content: "오늘의 흐름을 정리한 다이어리 초안입니다.",
-        },
-      },
-    };
-  }
-
-  if (parsedIntent.intent === "contact.extract") {
-    return {
-      id: actionId,
-      intent: "contact.extract",
-      title: "새 연락처",
-      summary: "첨부 이미지 또는 대화에서 추출한 연락처를 왕국도서관에 저장할까요?",
-      confirmLabel: "연락처 저장",
-      payload: {
-        contact: {
-          name: "새 연락처",
-          memo: "OCR 연결 전 mock 추출 결과입니다.",
-        },
+        memory: parsedIntent.entities.memory as SerinAction["payload"]["memory"],
       },
     };
   }

@@ -7,7 +7,7 @@ function hasAny(message: string, words: string[]) {
 
 function extractTitle(message: string) {
   return message
-    .replace(/내일|오늘|모레|까지|퀘스트|일정|만들어줘|생성해줘|추가해줘|등록해줘|기억해줘|저장해줘/g, "")
+    .replace(/내일|오늘|모레|까지|퀘스트|todo|투두|할 일|일정|만들어줘|생성해줘|추가해줘|등록해줘|기억해줘|저장해줘/g, "")
     .replace(/\s+/g, " ")
     .trim() || "새 요청";
 }
@@ -19,7 +19,7 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
       intent: "calendar.create",
       confidence: calendarIntent.confidence,
       entities: { calendar: calendarIntent },
-      needsConfirmation: true,
+      needsConfirmation: false,
     };
   }
 
@@ -34,7 +34,7 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
           source: "serin",
         },
       },
-      needsConfirmation: true,
+      needsConfirmation: false,
     };
   }
 
@@ -54,17 +54,17 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
     };
   }
 
-  if (hasAny(message, ["퀘스트", "할 일", "해야", "작성", "준비"])) {
+  if (hasAny(message, ["퀘스트", "todo", "투두", "할 일", "해야", "작성", "준비"])) {
     return {
       intent: "quest.create",
-      confidence: 0.76,
+      confidence: 0.78,
       entities: {
         quest: {
           title: extractTitle(message),
           dueDate: message.includes("내일") ? "2026-07-10" : "2026-07-09",
         },
       },
-      needsConfirmation: true,
+      needsConfirmation: false,
     };
   }
 
@@ -78,7 +78,7 @@ export function parseIntent(message: string, attachments: SerinAttachment[] = []
           content: "오늘 일정과 완료 Quest를 바탕으로 다이어리 초안을 준비합니다.",
         },
       },
-      needsConfirmation: true,
+      needsConfirmation: false,
     };
   }
 

@@ -39,6 +39,17 @@ function serinMessage(content: string, action: SerinAction | null = null): Serin
   };
 }
 
+function greetingMessage(): SerinMessage {
+  return serinMessage("좋은 아침입니다, 공주님.\n오늘은 어디로 가실까요?", null);
+}
+
+function isAffirmative(content: string) {
+  return /^(응|그래|당연하지|좋아|부탁해|등록해|해줘|진행해|확인)$/i.test(content.trim())
+    || content.includes("퀘스트에 등록")
+    || content.includes("일정에 넣어")
+    || content.includes("캘린더에 넣어");
+}
+
 export function usePrincessOsApp() {
   const snapshot = useMemo(() => princessOsRepository.getSnapshot(), []);
   const [activeView, setActiveView] = useState<ViewKey>("home");
@@ -49,7 +60,7 @@ export function usePrincessOsApp() {
 
   const questDomain = useQuestDomain(snapshot.quests, snapshot.questHistory, snapshot.progress);
   const calendar = useCalendarEvents(snapshot.events);
-  const serinChat = useSerinChat(snapshot.serinMessages);
+  const serinChat = useSerinChat([greetingMessage()]);
   const serinMemory = useSerinMemory(initialSerinMemories);
   const princess = usePrincess(snapshot.princess);
   const { castleState, addCastleExp } = useCastle();
@@ -76,7 +87,6 @@ export function usePrincessOsApp() {
       calendar.createEvent(input);
       return;
     }
-
     const event = calendar.createEventWithLinkedQuest({ ...input, category: input.category ?? "quest" });
     if (!event) return;
     const quest = createQuestFromCalendarEvent(event);
@@ -84,22 +94,56 @@ export function usePrincessOsApp() {
     calendar.applyLinkedQuestId(event.id, quest.id);
   }
 
+  function applySerinAction(action: SerinAction, secondary = false) {
+    confirmAction(action);
+
+    if (action.intent === "calendar.create" && action.payload.calendar) {
+      createCalendarEvent(action.payload.calendar, secondary);
+      return `네, 공주님.\n'${action.payload.calendar.title}' 일정을 등록해두었습니다.\n잊지 않으시도록 제가 곁에서 챙기겠습니다.`;
+    }
+
+    if (action.intent === "quest.create") {
+      const quest = createQuestFromSerinAction(action);
+      questDomain.addQuest(quest);
+      return `네, 공주님.\n'${quest.title}' Quest를 ${quest.dueDate} 할 일로 등록해두었습니다.\n차분히 해내실 수 있도록 제가 곁에서 챙기겠습니다.`;
+    }
+
+    if (action.intent === "memory.save" && action.payload.memory) {
+      serinMemory.saveMemory(action.payload.memory);
+      return "기억해둘게요, 공주님.\n다음 일정과 Quest를 정리할 때 조심스럽게 참고하겠습니다.";
+    }
+
+    return "네, 공주님. 요청을 반영해두었습니다.";
+  }
+
   async function sendSerinMessage(content: string) {
     setLastSerinInput(content);
     serinChat.setStatus("thinking");
+    const history = serinChat.messages.slice(-8).map((message) => ({
+      role: message.sender === "princess" ? "user" as const : "assistant" as const,
+      content: message.content,
+    }));
     serinChat.setMessages((current) => [...current, princessMessage(content)]);
 
-    const result = await princessOsRepository.sendSerinMessage({ conversationId: "serin-conversation-default", content });
-    if (content.includes("기억")) {
-      serinMemory.saveMemory({
-        memoryType: "preference",
-        content: content.replace(/기억해줘|기억해/g, "").trim() || content,
-        importance: "medium",
-        source: "chat",
-      });
+    if (pendingSerinAction && isAffirmative(content)) {
+      const applied = applySerinAction(pendingSerinAction, content.includes("Quest") || content.includes("퀘스트"));
+      setPendingSerinAction(null);
+      serinChat.setStatus("speaking");
+      serinChat.setMessages((current) => [...current, serinMessage(applied)]);
+      window.setTimeout(() => serinChat.setStatus("idle"), 420);
+      return;
     }
 
-    setPendingSerinAction(result.action);
+    const result = await princessOsRepository.sendSerinMessage({
+      conversationId: "serin-conversation-default",
+      content,
+      history,
+    });
+
+    if (result.action) {
+      setPendingSerinAction(result.action);
+    }
+
     serinChat.setStatus(result.status);
     serinChat.setMessages((current) => [
       ...current,
@@ -115,29 +159,8 @@ export function usePrincessOsApp() {
 
   function confirmSerinActionHandler(secondary = false) {
     if (!pendingSerinAction) return;
-    confirmAction(pendingSerinAction);
-
-    if (pendingSerinAction.intent === "calendar.create" && pendingSerinAction.payload.calendar) {
-      createCalendarEvent(pendingSerinAction.payload.calendar, secondary);
-    }
-    if (pendingSerinAction.intent === "quest.create") {
-      questDomain.addQuest(createQuestFromSerinAction(pendingSerinAction));
-    }
-    if (pendingSerinAction.intent === "memory.save" && pendingSerinAction.payload.memory) {
-      serinMemory.saveMemory(pendingSerinAction.payload.memory);
-    }
-
-    serinChat.setMessages((current) => [
-      ...current,
-      {
-        id: `m-${Date.now()}-confirmed`,
-        sender: "serin",
-        content: "완료했습니다, 공주님. 실행 결과를 Princess OS에 반영했습니다.",
-        createdAt: new Date().toISOString(),
-        messageType: "system_notice",
-        metadata: { intent: pendingSerinAction.intent },
-      },
-    ]);
+    const applied = applySerinAction(pendingSerinAction, secondary);
+    serinChat.setMessages((current) => [...current, serinMessage(applied)]);
     setPendingSerinAction(null);
     serinChat.setStatus("idle");
   }
@@ -147,27 +170,18 @@ export function usePrincessOsApp() {
     setPendingSerinAction(null);
     serinChat.setMessages((current) => [
       ...current,
-      {
-        id: `m-${Date.now()}-cancelled`,
-        sender: "serin",
-        content: "알겠습니다. 공주님의 이 요청은 실행하지 않겠습니다.",
-        createdAt: new Date().toISOString(),
-        messageType: "system_notice",
-      },
+      serinMessage("알겠습니다, 공주님.\n이번 요청은 실행하지 않고 조용히 내려두겠습니다."),
     ]);
   }
 
   function handleAttach(type: "image" | "document" | "audio") {
     const message =
       type === "image"
-        ? "사진 첨부를 준비했습니다. 명함이라면 연락처 추출로 이어갈 수 있어요."
+        ? "사진 첨부를 준비했습니다, 공주님. 명함이라면 인연록으로 정리할 수 있어요."
         : type === "document"
-          ? "파일 첨부를 준비했습니다. 문서 요약은 Library Domain과 연결될 예정입니다."
-          : "음성 입력을 준비했습니다. 실제 음성 인식 연결 지점은 TODO로 남겨두었습니다.";
-    serinChat.setMessages((current) => [
-      ...current,
-      { id: `m-${Date.now()}-attachment`, sender: "serin", content: message, createdAt: new Date().toISOString(), messageType: "system_notice" },
-    ]);
+          ? "파일 첨부를 준비했습니다, 공주님. 문서 요약은 왕국도서관과 연결하겠습니다."
+          : "음성 입력을 준비했습니다, 공주님. 실제 음성 인식 연결 지점은 TODO로 남겨두었습니다.";
+    serinChat.setMessages((current) => [...current, serinMessage(message)]);
   }
 
   return {

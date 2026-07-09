@@ -250,12 +250,53 @@
 
 .calendar-grid button {
   position: relative;
-  aspect-ratio: 1;
+  min-height: 82px;
   border: 0;
   border-radius: 14px;
   color: var(--text-secondary);
   background: rgba(255, 255, 255, 0.72);
   font-weight: 900;
+}
+
+.calendar-grid-readable {
+  align-items: stretch;
+}
+
+.calendar-empty-cell {
+  min-height: 82px;
+}
+
+.calendar-grid-readable button {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 8px;
+  text-align: left;
+}
+
+.calendar-day-number {
+  font-size: 12px;
+}
+
+.calendar-day-events {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.calendar-day-events em {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 3px 5px;
+  border-radius: 7px;
+  color: var(--royal-800);
+  background: rgba(65, 105, 225, 0.09);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .calendar-grid button.today {
@@ -1289,10 +1330,6 @@
   font-size: 22px;
 }
 
-.palace-room-mobile.locked {
-  opacity: 0.72;
-}
-
 .library-page {
   display: grid;
   gap: 12px;
@@ -1367,6 +1404,35 @@
 .library-section article span {
   color: var(--text-secondary);
   font-size: 12px;
+}
+
+.library-scope-select {
+  display: grid;
+  grid-template-columns: auto minmax(140px, 220px);
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(18px);
+}
+
+.library-scope-select span {
+  color: var(--royal-900);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.library-scope-select select {
+  min-height: 38px;
+  border: 1px solid rgba(111, 143, 242, 0.16);
+  border-radius: var(--radius-lg);
+  padding: 0 10px;
+  color: var(--royal-900);
+  background: rgba(255, 255, 255, 0.88);
+  font-weight: 900;
 }
 
 .garden-page {
@@ -1751,6 +1817,263 @@
   min-height: min(690px, calc(100dvh - 150px));
 }
 
+.palace-lobby-page {
+  display: grid;
+  gap: 14px;
+  min-height: calc(100dvh - 104px);
+}
+
+.palace-lobby-scene {
+  position: relative;
+  min-height: min(720px, calc(100dvh - 128px));
+  overflow: hidden;
+  border-radius: 34px;
+  background:
+    linear-gradient(180deg, rgba(16, 25, 54, 0.12), rgba(16, 25, 54, 0.56)),
+    url("/assets/palace-main.png") center / cover;
+  box-shadow: var(--shadow-floating);
+}
+
+.lobby-opening-copy {
+  position: relative;
+  z-index: 3;
+  max-width: 560px;
+  padding: 24px;
+  color: #fff;
+  text-shadow: 0 2px 20px rgba(16, 25, 54, 0.42);
+  animation: palace-fade-up 520ms var(--ease-soft) both;
+}
+
+.lobby-opening-copy span,
+.serin-speech-bubble strong {
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.lobby-opening-copy h1 {
+  margin: 8px 0 0;
+  font-size: clamp(30px, 4vw, 56px);
+  line-height: 1.06;
+}
+
+.lobby-character-stage {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 2;
+  height: 76%;
+}
+
+.lobby-princess-main,
+.lobby-serin-aide {
+  position: absolute;
+  bottom: -8px;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 24px 34px rgba(16, 25, 54, 0.28));
+  animation: palace-fade-up 680ms var(--ease-soft) both;
+}
+
+.lobby-princess-main {
+  left: 22%;
+  width: min(42%, 470px);
+  max-height: 100%;
+}
+
+.lobby-serin-aide {
+  left: 55%;
+  width: min(28%, 310px);
+  max-height: 84%;
+  animation-delay: 180ms;
+}
+
+.serin-speech-bubble {
+  position: absolute;
+  right: 28px;
+  top: 24%;
+  z-index: 4;
+  max-width: 340px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-medium);
+  backdrop-filter: blur(18px);
+  animation: palace-fade-up 520ms var(--ease-soft) 520ms both;
+}
+
+.serin-speech-bubble p {
+  margin: 6px 0 0;
+  color: var(--royal-900);
+  font-weight: 800;
+}
+
+.palace-room-pills {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  animation: palace-room-reveal 720ms var(--ease-soft) 1150ms both;
+}
+
+.palace-room-pills button {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: var(--radius-full);
+  padding: 0 16px;
+  color: var(--royal-900);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-small);
+  font-weight: 900;
+  backdrop-filter: blur(18px);
+}
+
+.lobby-today-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(18px);
+}
+
+.lobby-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lobby-summary-grid article {
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(65, 105, 225, 0.08);
+}
+
+.lobby-summary-grid strong,
+.lobby-summary-grid span {
+  display: block;
+}
+
+.lobby-today-panel button {
+  min-height: 42px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  color: #fff;
+  background: var(--royal-600);
+  font-weight: 900;
+}
+
+.calendar-workspace .calendar-domain-hero {
+  grid-column: 1 / -1;
+}
+
+.calendar-side-stack,
+.calendar-serin-form {
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-serin-form {
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  box-shadow: var(--shadow-small);
+}
+
+.calendar-serin-form textarea,
+.library-search input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(111, 143, 242, 0.16);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--royal-900);
+  font: inherit;
+}
+
+.calendar-serin-form textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.library-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.library-search {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-small);
+}
+
+.library-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.library-tabs button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  border: 1px solid rgba(111, 143, 242, 0.16);
+  border-radius: var(--radius-full);
+  padding: 0 13px;
+  color: var(--royal-800);
+  background: rgba(255, 255, 255, 0.78);
+  font-weight: 900;
+}
+
+.library-tabs button.active {
+  color: #fff;
+  background: var(--royal-600);
+}
+
+.library-empty-state {
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  background: rgba(65, 105, 225, 0.08);
+}
+
+@keyframes palace-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes palace-room-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .throne-growth-links {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1844,7 +2167,7 @@
   }
 
   .calendar-domain-page {
-    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.65fr);
     align-items: start;
   }
 
@@ -1861,6 +2184,15 @@
 }
 
 @media (min-width: 1280px) {
+  .palace-lobby-page {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: stretch;
+  }
+
+  .lobby-today-panel {
+    align-content: start;
+  }
+
   .castle-room-scene {
     min-height: calc(100dvh - 236px);
   }
@@ -1890,6 +2222,30 @@
 }
 
 @media (max-width: 767px) {
+  .palace-lobby-scene {
+    min-height: calc(100dvh - 158px);
+  }
+
+  .lobby-princess-main {
+    left: 4%;
+    width: min(66%, 280px);
+  }
+
+  .lobby-serin-aide {
+    left: 58%;
+    width: min(42%, 180px);
+  }
+
+  .serin-speech-bubble {
+    left: 14px;
+    right: 14px;
+    top: 82px;
+  }
+
+  .library-toolbar {
+    grid-template-columns: 1fr;
+  }
+
   .throne-growth-links {
     grid-template-columns: 1fr;
   }
