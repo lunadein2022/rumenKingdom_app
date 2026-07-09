@@ -6,16 +6,30 @@ export interface SupabaseRowBase {
 
 export interface QuestRow extends SupabaseRowBase {
   user_id: string;
+  type: "main" | "side" | "daily" | "routine" | "story";
   title: string;
   description: string;
   status: "pending" | "inProgress" | "completed";
   category: string;
   priority: "low" | "medium" | "high";
+  chapter: string | null;
+  parent_id: string | null;
+  progress: number;
   exp_reward: number;
   gold_reward: number;
+  reward_item: string | null;
   due_date: string | null;
   completed_at: string | null;
   reward_claimed: boolean;
+}
+
+export interface QuestHistoryRow extends SupabaseRowBase {
+  user_id: string;
+  quest_id: string;
+  completed_at: string;
+  reward_exp: number;
+  reward_item: string | null;
+  note: string;
 }
 
 export interface UserProgressRow extends SupabaseRowBase {

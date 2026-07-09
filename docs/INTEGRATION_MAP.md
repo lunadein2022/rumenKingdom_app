@@ -17,5 +17,6 @@
 | 025 Achievement System | `SystemModule.tsx` Achievement boundary + achievement schema |
 | 026 Inventory System | `SystemModule.tsx` Inventory boundary + inventory schema |
 | 027 Princess Character System | `PrincessCharacter.tsx` + `princessService.ts` |
+| 028 Quest Domain | `questDomain.ts`, `QuestScreen.tsx`, `quests`, `quest_history` |
 
 The refactor preserves current scope and turns concept boards into a service-ready app structure.

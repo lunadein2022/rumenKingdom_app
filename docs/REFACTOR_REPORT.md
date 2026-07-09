@@ -2,7 +2,7 @@
 
 ## Sprint Scope
 
-This sprint reorganized Update 013-027 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, but replaces explanation-card placeholders with usable Home, Quest, Calendar, Serin, and Progress interactions.
+This sprint reorganized Update 013-028 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, but replaces explanation-card placeholders with usable Home, Quest, Calendar, Serin, and Progress interactions.
 
 ## Final Folder Structure
 
@@ -15,6 +15,8 @@ princess-os-refactor/
     app/
       App.tsx
       types.ts
+    domain/
+      questDomain.ts
     components/
       design-system/
       home/
@@ -119,9 +121,22 @@ All UI data flows through `mockRepository.ts`; components receive props and do n
 
 Unified SQL lives in `supabase/schema.sql`.
 
+## Update 028 Quest Domain
+
+Quest is now treated as the central Princess OS domain rather than a todo list. The domain layer defines:
+
+- Quest types: Main, Side, Daily, Routine, Story
+- Completion flow: check, glow, EXP, reward, level, castle, achievement, notification, history
+- Active quest filtering by type
+- Quest history records for the 왕국도서관
+- Mock completion pipeline that updates progress, EXP, reward state, and history
+
+Quest Domain is the hub for Calendar, Serin, Castle, Achievement, Inventory, Diary, and Notification. The UI is a result of the domain model, not the source of truth.
+
 ## Remaining TODO
 
 - Replace MockData repository with Supabase service composition.
+- Move Quest completion into a Supabase RPC transaction.
 - Add Supabase Auth session routing.
 - Connect Serin chat API and memory tables.
 - Replace temporary generated transparent PNG cutouts with art-directed transparent character exports.

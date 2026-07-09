@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import type { CalendarEvent, Quest, SerinMessage, UserProgress, ViewKey } from "./types";
+import type { CalendarEvent, Quest, QuestCompletionEvent, QuestHistoryEntry, SerinMessage, UserProgress, ViewKey } from "./types";
 import { getPrincessOsSnapshot } from "../data/mockRepository";
 import { buildMockProgress } from "../data/mockProgress";
+import { completeQuestDomain } from "../domain/questDomain";
 import { BottomNav } from "../components/design-system/BottomNav";
 import { CalendarScreen } from "../components/modules/CalendarScreen";
 import { HomeScene } from "../components/home/HomeScene";
@@ -22,25 +23,21 @@ export function App() {
   const snapshot = useMemo(() => getPrincessOsSnapshot(), []);
   const [activeView, setActiveView] = useState<ViewKey>("home");
   const [quests, setQuests] = useState<Quest[]>(snapshot.quests);
+  const [questHistory, setQuestHistory] = useState<QuestHistoryEntry[]>(snapshot.questHistory);
+  const [completionEvents, setCompletionEvents] = useState<QuestCompletionEvent[]>([]);
+  const [progressBase, setProgressBase] = useState<UserProgress>(snapshot.progress);
   const [events] = useState<CalendarEvent[]>(snapshot.events);
   const [messages, setMessages] = useState<SerinMessage[]>(snapshot.serinMessages);
   const [selectedDate, setSelectedDate] = useState("2026-07-09");
-  const progress = useMemo(() => buildProgress(quests, snapshot.progress), [quests, snapshot.progress]);
-  const appData = { ...snapshot, quests, events, serinMessages: messages, progress };
+  const progress = useMemo(() => buildProgress(quests, progressBase), [quests, progressBase]);
+  const appData = { ...snapshot, quests, questHistory, events, serinMessages: messages, progress };
 
   function completeQuest(id: string) {
-    setQuests((current) =>
-      current.map((quest) =>
-        quest.id === id
-          ? {
-              ...quest,
-              status: "completed",
-              completedAt: new Date().toISOString(),
-              rewardClaimed: false,
-            }
-          : quest,
-      ),
-    );
+    const result = completeQuestDomain(quests, questHistory, id, progress);
+    setQuests(result.quests);
+    setQuestHistory(result.history);
+    setCompletionEvents(result.events);
+    setProgressBase(result.progress);
   }
 
   function cycleQuest(id: string) {
@@ -84,7 +81,14 @@ export function App() {
           <HomeScene data={appData} activeView={activeView} onNavigate={setActiveView} />
         )}
         {activeView === "quests" && (
-          <QuestScreen quests={quests} progress={progress} onCompleteQuest={completeQuest} onCycleQuest={cycleQuest} />
+          <QuestScreen
+            quests={quests}
+            history={questHistory}
+            progress={progress}
+            completionEvents={completionEvents}
+            onCompleteQuest={completeQuest}
+            onCycleQuest={cycleQuest}
+          />
         )}
         {activeView === "calendar" && (
           <CalendarScreen

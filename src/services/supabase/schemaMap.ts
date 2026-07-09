@@ -2,6 +2,7 @@ export const supabaseTables = {
   profiles: "profiles",
   princessProfiles: "princess_profiles",
   quests: "quests",
+  questHistory: "quest_history",
   calendarEvents: "calendar_events",
   userProgress: "user_progress",
   dailyCompletions: "daily_completions",

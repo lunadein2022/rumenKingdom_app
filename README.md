@@ -25,6 +25,7 @@ Main files:
 - `src/main.tsx`
 - `src/app/App.tsx`
 - `src/components/home/HomeScene.tsx`
+- `src/domain/questDomain.ts`
 - `src/data/mockRepository.ts`
 - `supabase/schema.sql`
 

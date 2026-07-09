@@ -28,18 +28,34 @@ create table if not exists public.princess_profiles (
 create table if not exists public.quests (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
+  type text not null default 'daily' check (type in ('main', 'side', 'daily', 'routine', 'story')),
   title text not null,
   description text not null default '',
   status text not null default 'pending' check (status in ('pending', 'inProgress', 'completed')),
   category text not null default 'routine',
   priority text not null default 'medium' check (priority in ('low', 'medium', 'high')),
+  chapter text,
+  parent_id uuid references public.quests(id) on delete set null,
+  progress integer not null default 0 check (progress >= 0 and progress <= 100),
   exp_reward integer not null default 10,
   gold_reward integer not null default 0,
+  reward_item text,
   due_date date,
   completed_at timestamptz,
   reward_claimed boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+create table if not exists public.quest_history (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  quest_id uuid not null references public.quests(id) on delete cascade,
+  completed_at timestamptz not null default now(),
+  reward_exp integer not null default 0,
+  reward_item text,
+  note text not null default '',
+  created_at timestamptz not null default now()
 );
 
 create table if not exists public.calendar_events (
@@ -150,6 +166,7 @@ create table if not exists public.serin_memory (
 alter table public.profiles enable row level security;
 alter table public.princess_profiles enable row level security;
 alter table public.quests enable row level security;
+alter table public.quest_history enable row level security;
 alter table public.calendar_events enable row level security;
 alter table public.user_progress enable row level security;
 alter table public.daily_completions enable row level security;
@@ -168,6 +185,9 @@ create policy "Users manage own princess profile" on public.princess_profiles
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users manage own quests" on public.quests
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own quest history" on public.quest_history
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users manage own calendar events" on public.calendar_events

@@ -4,7 +4,7 @@ import { mockCalendarEvents } from "./mockHome";
 import { mockAchievements, mockInventory } from "./mockInventory";
 import { mockPrincess, mockTitles } from "./mockPrincess";
 import { buildMockProgress } from "./mockProgress";
-import { mockQuests } from "./mockQuests";
+import { mockQuestHistory, mockQuests } from "./mockQuests";
 import { mockSerin, mockSerinMessages } from "./mockSerin";
 
 export function getPrincessOsSnapshot(): AppMockData {
@@ -21,6 +21,7 @@ export function getPrincessOsSnapshot(): AppMockData {
     progress,
     titles: mockTitles,
     quests: mockQuests,
+    questHistory: mockQuestHistory,
     events: mockCalendarEvents,
     serinMessages: mockSerinMessages,
     rooms: mockCastleRooms,

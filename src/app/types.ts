@@ -7,6 +7,38 @@ export type ViewKey =
   | "profile";
 
 export type QuestStatus = "pending" | "inProgress" | "completed";
+export type QuestType = "main" | "side" | "daily" | "routine" | "story";
+export type QuestCompletionEventType =
+  | "check"
+  | "glow"
+  | "exp"
+  | "reward"
+  | "level"
+  | "castle"
+  | "achievement"
+  | "notification"
+  | "history";
+
+export interface QuestReward {
+  exp: number;
+  gold: number;
+  item?: string;
+  title?: string;
+}
+
+export interface QuestHistoryEntry {
+  id: string;
+  questId: string;
+  completedAt: string;
+  rewardExp: number;
+  rewardItem?: string;
+  note: string;
+}
+
+export interface QuestCompletionEvent {
+  type: QuestCompletionEventType;
+  label: string;
+}
 
 export interface UserProgress {
   level: number;
@@ -24,16 +56,22 @@ export interface UserProgress {
 
 export interface Quest {
   id: string;
+  type: QuestType;
   title: string;
   description: string;
   status: QuestStatus;
   category: "routine" | "work" | "growth" | "care";
   priority: "low" | "medium" | "high";
+  chapter?: string;
+  parentId?: string;
+  progress: number;
   expReward: number;
   goldReward: number;
+  rewardItem?: string;
   dueDate: string;
   completedAt?: string;
   rewardClaimed: boolean;
+  source: "manual" | "serin" | "calendar" | "system";
 }
 
 export interface CalendarEvent {
@@ -127,6 +165,7 @@ export interface AppMockData {
   progress: UserProgress;
   titles: UserTitle[];
   quests: Quest[];
+  questHistory: QuestHistoryEntry[];
   events: CalendarEvent[];
   serinMessages: SerinMessage[];
   rooms: PalaceRoom[];
