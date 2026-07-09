@@ -47,9 +47,22 @@ function buildLocalResult(input: SerinServiceMessageInput): SerinExecutionResult
 
   return {
     action: null,
-    reply: "네, 공주님. 오늘의 Quest와 일정을 기준으로 흐름을 다시 정리해두겠습니다.",
+    reply: pickFallbackReply(),
     status: "speaking",
   };
+}
+
+// Netlify AI 함수 호출이 실패했을 때만 쓰이는 마지막 대비용 문장입니다. 매번 같은
+// 문장이 반복되면 "AI가 대화를 이해하지 못한다"는 인상을 주므로, 여러 개 중 하나를
+// 무작위로 골라 최소한의 자연스러움을 유지합니다.
+const FALLBACK_REPLIES = [
+  "죄송해요, 공주님. 지금 이 부분은 제가 바로 답을 드리기 어려워요. 조금만 더 구체적으로 말씀해주시면 도와드릴게요.",
+  "공주님, 방금 말씀은 제가 정확히 파악하지 못했어요. Quest나 일정 관련이라면 다시 한 번 편하게 말씀해주세요.",
+  "잠시 확인이 필요한 내용이에요, 공주님. 등록하실 일정이나 Quest가 있으면 말씀해주시고, 아니면 조금만 더 자세히 알려주세요.",
+];
+
+function pickFallbackReply() {
+  return FALLBACK_REPLIES[Math.floor(Math.random() * FALLBACK_REPLIES.length)];
 }
 
 /**

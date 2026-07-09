@@ -27,6 +27,7 @@ import {
   completeEvent,
   createEvent,
   deleteEvent,
+  getEventsByDay,
 } from "../features/calendar/services/calendarService";
 import { useCastle } from "../features/castle/hooks/useCastle";
 import { useCastleRooms } from "../features/castle/hooks/useCastleRooms";
@@ -42,8 +43,21 @@ import { saveMemory } from "../features/serin/services/serinMemoryService";
 const SHORT_AFFIRM = /(응|어|그래|당연|부탁|등록해|넣어줘|넣어|좋아|네|넵|콜|오케이|ok)/i;
 const SHORT_DECLINE = /(아니|괜찮아|괜찮습니다|취소|하지\s*마|넘어가)/i;
 
+// "내일 뭐하나", "오늘 일정 있어?", "모레 바빠?" 같은 조회성 질문을 감지합니다.
+// 등록(calendarTriggerPattern)이 아니라 "이미 있는 일정을 물어보는" 경우이므로,
+// 세린이 매번 똑같은 안내문 대신 실제 events 데이터를 기준으로 답합니다.
+const SCHEDULE_QUERY_WORDS = /(뭐\s?하|뭐\s?있|무슨\s?일|일정\s?있|일정\s?뭐|스케줄\s?있|바쁘|바빠)/;
+const SCHEDULE_DAY_WORDS = /(오늘|내일|모레)/;
+
 function isShortReply(text: string) {
   return text.trim().length > 0 && text.trim().length <= 14;
+}
+
+function resolveScheduleQuery(content: string): { date: string; label: string } | null {
+  if (!SCHEDULE_DAY_WORDS.test(content) || !SCHEDULE_QUERY_WORDS.test(content)) return null;
+  if (content.includes("모레")) return { date: "2026-07-11", label: "모레" };
+  if (content.includes("내일")) return { date: "2026-07-10", label: "내일" };
+  return { date: "2026-07-09", label: "오늘" };
 }
 
 function buildTimeGreeting(): SerinMessage {
@@ -194,6 +208,30 @@ export function App() {
         cancelSerinAction();
         return;
       }
+    }
+
+    // "내일 뭐하나" 같은 일정 조회 질문은 AI를 거치지 않고, 실제 events 상태를 바로
+    // 조회해서 답합니다. (등록 요청이 아니라 이미 있는 일정을 물어보는 경우)
+    const scheduleQuery = resolveScheduleQuery(content);
+    if (scheduleQuery) {
+      const dayEvents = getEventsByDay(events, scheduleQuery.date);
+      const reply =
+        dayEvents.length === 0
+          ? `공주님, ${scheduleQuery.label}은 등록된 일정이 없어요. 편히 보내셔도 될 것 같아요.`
+          : `공주님, ${scheduleQuery.label} 일정은 ${dayEvents
+              .map((event) => `${event.startAt.slice(11, 16)} ${event.title}`)
+              .join(", ")}(이)가 있어요. 시간 맞춰 챙겨드릴게요.`;
+      setMessages((current) => [
+        ...current,
+        {
+          id: `m-${Date.now()}-schedule`,
+          sender: "serin",
+          content: reply,
+          createdAt: new Date().toISOString(),
+          messageType: "text",
+        },
+      ]);
+      return;
     }
 
     setSerinStatus("thinking");

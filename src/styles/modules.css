@@ -74,35 +74,42 @@
 
 .serin-screen {
   display: grid;
+  min-width: 0;
   min-height: calc(100dvh - 116px);
   gap: 12px;
 }
 
 .serin-side {
   display: grid;
+  min-width: 0;
   gap: 10px;
   align-content: start;
 }
 
 .serin-main {
   display: grid;
+  min-width: 0;
   grid-template-rows: 1fr auto auto auto;
   gap: 10px;
   min-height: 420px;
 }
 
+/* 980px 미만(모바일/좁은 창)에서는 항상 1단 세로 스택입니다. 2단 배치는
+   실제로 두 칼럼이 눌리지 않을 만큼 폭이 충분히 넓을 때만 적용됩니다. */
 @media (min-width: 980px) {
   .serin-screen {
-    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    grid-template-columns: minmax(260px, 0.85fr) minmax(320px, 1.15fr);
     align-items: start;
   }
 }
 
+/* 아바타-제목-아바타를 고정폭 grid 대신 flex-wrap으로 배치해, 폭이 아무리
+   좁아져도 글자가 한 글자씩 줄바꿈되는 대신 아바타가 아래로 밀려납니다. */
 .serin-header {
-  display: grid;
-  grid-template-columns: 56px 1fr 56px;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  gap: 10px;
   padding: 14px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
@@ -110,15 +117,22 @@
   box-shadow: var(--shadow-small);
 }
 
+.serin-header > div {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
 .serin-header h1 {
   margin: 6px 0 3px;
   color: var(--royal-900);
   font-size: 22px;
+  overflow-wrap: break-word;
 }
 
 .serin-header p {
   margin: 0;
   font-size: 12px;
+  overflow-wrap: break-word;
 }
 
 .chat-avatar {
@@ -740,12 +754,15 @@
 
 .calendar-main-grid {
   display: grid;
+  min-width: 0;
   gap: 12px;
 }
 
+/* 980px 미만에서는 월간 달력과 당일 일정을 항상 세로로 쌓습니다.
+   좁은 화면에서 두 칼럼이 나란히 눌리는 것을 막기 위한 안전장치입니다. */
 @media (min-width: 980px) {
   .calendar-main-grid {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    grid-template-columns: minmax(300px, 1.1fr) minmax(280px, 0.9fr);
     align-items: start;
   }
 }
