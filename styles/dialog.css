@@ -1,0 +1,334 @@
+/* Princess OS — Dialog v1 */
+
+.dialog-showcase {
+  display: grid;
+  gap: 20px;
+}
+
+.dialog-stage {
+  min-height: 620px;
+  border-radius: 42px;
+  position: relative;
+  overflow: hidden;
+  padding: 28px;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(180deg, rgba(7,11,26,.05), rgba(7,11,26,.72)),
+    url("../assets/throne.png") center / cover;
+  box-shadow: var(--shadow-floating);
+  border: 1px solid rgba(255,255,255,.42);
+}
+
+.dialog-backdrop-preview {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 32%, rgba(111,143,242,.22), transparent 32%),
+    rgba(7,11,26,.42);
+  backdrop-filter: blur(8px);
+}
+
+.dialog {
+  position: relative;
+  z-index: 2;
+  width: min(480px, 100%);
+  border-radius: 34px;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.76), rgba(255,255,255,.48)),
+    radial-gradient(circle at 18% 0%, rgba(169,187,255,.28), transparent 30%);
+  border: 1px solid rgba(255,255,255,.74);
+  backdrop-filter: blur(32px);
+  box-shadow:
+    0 28px 90px rgba(7,11,26,.34),
+    inset 0 1px 0 rgba(255,255,255,.78);
+  animation: dialog-enter .42s var(--ease-spring);
+}
+
+.dialog.large {
+  width: min(640px, 100%);
+}
+
+.dialog.compact {
+  width: min(380px, 100%);
+  padding: 20px;
+  border-radius: 28px;
+}
+
+.dialog.dark {
+  background:
+    linear-gradient(180deg, rgba(18,30,68,.66), rgba(9,16,38,.58)),
+    radial-gradient(circle at 18% 0%, rgba(169,187,255,.16), transparent 30%);
+  border-color: rgba(255,255,255,.18);
+  box-shadow:
+    0 28px 90px rgba(0,0,0,.42),
+    0 0 62px rgba(111,143,242,.18),
+    inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+.dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.dialog-title-area {
+  display: grid;
+  gap: 8px;
+}
+
+.dialog-kicker {
+  width: fit-content;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--royal-700);
+  background: rgba(111,143,242,.13);
+  border: 1px solid rgba(111,143,242,.16);
+}
+
+.dialog-title {
+  margin: 0;
+  color: var(--royal-900);
+  font-size: 24px;
+  letter-spacing: -.03em;
+}
+
+.dialog.dark .dialog-title,
+.dialog.dark .dialog-description,
+.dialog.dark .dialog-body,
+.dialog.dark .dialog-kicker {
+  color: #fff;
+}
+
+.dialog.dark .dialog-kicker {
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.14);
+}
+
+.dialog-close {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--royal-800);
+  background: rgba(255,255,255,.52);
+  border: 1px solid rgba(255,255,255,.62);
+  backdrop-filter: blur(18px);
+  transition: transform var(--motion-fast) var(--ease-spring), background var(--motion-fast) var(--ease-soft);
+}
+
+.dialog-close:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,.72);
+}
+
+.dialog-close:active {
+  transform: scale(.94);
+}
+
+.dialog.dark .dialog-close {
+  color: #fff;
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.14);
+}
+
+.dialog-description {
+  margin: 0 0 18px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.dialog-body {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.dialog-serin {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 24px;
+  background: rgba(255,255,255,.42);
+  border: 1px solid rgba(255,255,255,.58);
+  margin: 18px 0;
+}
+
+.dialog.dark .dialog-serin {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.12);
+}
+
+.dialog-serin-avatar {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(255,255,255,.9);
+  border: 2px solid rgba(255,255,255,.74);
+  box-shadow: 0 8px 24px rgba(46,79,163,.20);
+}
+
+.dialog-serin-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transform: scale(1.42) translateY(7px);
+}
+
+.dialog-serin h4 {
+  margin: 0 0 4px;
+  color: var(--royal-900);
+  font-size: 15px;
+}
+
+.dialog-serin p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.dialog.dark .dialog-serin h4,
+.dialog.dark .dialog-serin p {
+  color: #fff;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.dialog-actions.stretch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.dialog-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.dialog-option {
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255,255,255,.46);
+  border: 1px solid rgba(255,255,255,.58);
+  cursor: pointer;
+  transition: transform var(--motion-fast) var(--ease-soft), background var(--motion-fast) var(--ease-soft);
+}
+
+.dialog-option:hover {
+  transform: translateY(-2px);
+  background: rgba(255,255,255,.68);
+}
+
+.dialog-option h4 {
+  margin: 0 0 6px;
+  color: var(--royal-900);
+  font-size: 15px;
+}
+
+.dialog-option p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.dialog.dark .dialog-option {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.12);
+}
+
+.dialog.dark .dialog-option h4,
+.dialog.dark .dialog-option p {
+  color: #fff;
+}
+
+.dialog-variants {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 18px;
+}
+
+.dialog-variant-card {
+  min-height: 360px;
+  border-radius: 36px;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(180deg, rgba(7,11,26,.05), rgba(7,11,26,.62)),
+    url("../assets/palace-main.png") center / cover;
+  box-shadow: var(--shadow-small);
+}
+
+.dialog-variant-card.night {
+  background:
+    linear-gradient(180deg, rgba(7,11,26,.12), rgba(7,11,26,.78)),
+    url("../assets/balcony.png") center / cover;
+}
+
+.dialog-variant-card .dialog {
+  transform: scale(.86);
+}
+
+@keyframes dialog-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(.96);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.01);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 820px) {
+  .dialog-variants {
+    grid-template-columns: 1fr;
+  }
+  .dialog-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .dialog-stage {
+    padding: 18px;
+  }
+  .dialog {
+    padding: 20px;
+    border-radius: 28px;
+  }
+  .dialog-actions,
+  .dialog-actions.stretch {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

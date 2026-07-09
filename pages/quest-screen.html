@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<title>Princess OS Quest</title>
+<link rel="stylesheet" href="../styles/foundation.css">
+<link rel="stylesheet" href="../styles/button.css">
+<link rel="stylesheet" href="../styles/quest.css">
+<link rel="stylesheet" href="../styles/quest-screen.css">
+</head>
+<body>
+<main class="quest-screen">
+<div><a href="../index.html" style="font-size:13px;color:#5D6478;text-decoration:none;">‹ 디자인 시스템으로</a></div>
+
+<header class="quest-header">
+<div>
+<h1>📜 Royal Quest Board</h1>
+<p>세린이 오늘의 퀘스트를 추천했습니다.</p>
+</div>
+<div class="streak">🔥 Streak 5</div>
+</header>
+
+<nav class="quest-categories">
+<div class="quest-filter active" style="cursor:pointer;">전체</div>
+<div class="quest-filter" style="cursor:pointer;">Main</div>
+<div class="quest-filter" style="cursor:pointer;">Daily</div>
+<div class="quest-filter" style="cursor:pointer;">Royal</div>
+<div class="quest-filter" style="cursor:pointer;">Completed</div>
+</nav>
+
+<section class="reward-panel">
+<h2>🏆 오늘 완료 시</h2>
+<p>+320 EXP · Gold x120 · 왕궁 장식 해금</p>
+</section>
+
+<div class="quest-list">
+
+<section class="quest-group">
+<h3>👑 Main Quest</h3>
+<div class="quest-stack">
+<article class="quest-card">
+<div class="quest-icon">👑</div>
+<div>
+<h3 class="quest-title">황실 특별 임무</h3>
+<p class="quest-desc">가장 중요한 왕실 업무입니다. 우선적으로 처리해주세요.</p>
+<div class="quest-meta"><span class="quest-tag">Main Quest</span><span class="quest-tag">Focus</span></div>
+<div class="quest-progress"><span></span></div>
+</div>
+<div class="quest-reward"><div class="quest-exp">+120 EXP</div><span class="quest-state state-active">✨ 진행중</span></div>
+</article>
+</div>
+</section>
+
+<section class="quest-group">
+<h3>🌸 Daily Quest</h3>
+<div class="quest-stack">
+<article class="quest-card">
+<div class="quest-icon">🌸</div>
+<div>
+<h3 class="quest-title">정원 산책</h3>
+<p class="quest-desc">15분 휴식으로 컨디션을 회복하세요.</p>
+<div class="quest-meta"><span class="quest-tag">Daily</span><span class="quest-tag">Healing</span></div>
+</div>
+<div class="quest-reward"><div class="quest-exp">+35 EXP</div><span class="quest-state state-done">✅ 완료</span></div>
+</article>
+</div>
+</section>
+
+<section class="quest-group">
+<h3>⭐ Serin Recommended</h3>
+<p>오늘 일정 기반 추천 퀘스트 영역</p>
+<button class="btn btn-primary btn-md">추천 생성</button>
+</section>
+
+</div>
+
+</main>
+<script src="../scripts/quest-screen.js"></script>
+</body></html>

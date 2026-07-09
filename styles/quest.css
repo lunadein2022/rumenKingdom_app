@@ -1,0 +1,24 @@
+
+/* Princess OS Quest Components v1 */
+.quest-stack{display:grid;gap:18px}
+.quest-card{display:grid;grid-template-columns:72px 1fr auto;gap:18px;align-items:center;
+padding:18px;border-radius:28px;background:rgba(255,255,255,.62);
+border:1px solid rgba(255,255,255,.72);backdrop-filter:blur(22px);
+box-shadow:0 12px 30px rgba(16,25,54,.10);transition:.22s}
+.quest-card:hover{transform:translateY(-3px)}
+.quest-icon{width:72px;height:72px;border-radius:24px;
+display:grid;place-items:center;
+background:linear-gradient(135deg,#2E4FA3,#4169E1);color:#fff;font-size:30px}
+.quest-title{margin:0;font-size:20px;font-weight:800;color:#172452}
+.quest-desc{margin:6px 0 10px;color:#5D6478;font-size:14px}
+.quest-meta{display:flex;gap:8px;flex-wrap:wrap}
+.quest-tag{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#EEF3FF;color:#2E4FA3}
+.quest-progress{height:8px;border-radius:999px;background:#E8ECF8;overflow:hidden;margin-top:12px}
+.quest-progress>span{display:block;height:100%;width:65%;background:linear-gradient(90deg,#4169E1,#D8B76A)}
+.quest-reward{text-align:right}
+.quest-exp{font-size:26px;font-weight:900;color:#2E4FA3}
+.quest-small{font-size:12px;color:#6A7287}
+.quest-state{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800}
+.state-active{background:#EAF1FF;color:#2E4FA3}
+.state-done{background:#E8F8F1;color:#2F8A66}
+.state-lock{background:#F5F5F7;color:#8C92A3}
