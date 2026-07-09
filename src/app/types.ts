@@ -1,4 +1,5 @@
 import type { CalendarEvent } from "../features/calendar/types/calendar.types";
+import type { CastleRoom } from "../features/castle/types/castle.types";
 import type { SerinMessageType } from "../features/serin/types/serin.types";
 
 export type ViewKey =
@@ -6,6 +7,7 @@ export type ViewKey =
   | "quests"
   | "calendar"
   | "serin"
+  | "castle"
   | "progress"
   | "profile";
 
@@ -177,7 +179,7 @@ export interface AppMockData {
   questHistory: QuestHistoryEntry[];
   events: CalendarEvent[];
   serinMessages: SerinMessage[];
-  rooms: PalaceRoom[];
+  rooms: CastleRoom[];
   achievements: Achievement[];
   inventory: InventoryItem[];
 }

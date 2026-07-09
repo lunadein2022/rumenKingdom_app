@@ -85,8 +85,28 @@ export interface CastleRoomRow extends SupabaseRowBase {
   user_id: string;
   room_key: string;
   room_name: string;
-  level: number;
+  unlock_level: number;
+  room_level: number;
   is_unlocked: boolean;
+  is_discovered: boolean;
+  visited_count: number;
+}
+
+export interface CastleStateRow extends SupabaseRowBase {
+  user_id: string;
+  castle_level: number;
+  castle_exp: number;
+  castle_theme: string;
+  season: string;
+  time_of_day: string;
+}
+
+export interface RoomDecorationRow extends SupabaseRowBase {
+  user_id: string;
+  room_key: string;
+  decoration_key: string;
+  is_unlocked: boolean;
+  is_equipped: boolean;
 }
 
 export interface SerinMemoryRow extends SupabaseRowBase {

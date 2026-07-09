@@ -29,6 +29,9 @@ import {
   createEvent,
   deleteEvent,
 } from "../features/calendar/services/calendarService";
+import { CastlePage } from "../features/castle/pages/CastlePage";
+import { useCastle } from "../features/castle/hooks/useCastle";
+import { useCastleRooms } from "../features/castle/hooks/useCastleRooms";
 import { cancelAction, confirmAction } from "../features/serin/services/serinActionExecutor";
 import { sendMessage as sendSerinDomainMessage } from "../features/serin/services/serinService";
 import { saveMemory } from "../features/serin/services/serinMemoryService";
@@ -84,15 +87,19 @@ export function App() {
   const [pendingSerinAction, setPendingSerinAction] = useState<SerinAction | null>(null);
   const [serinMemories, setSerinMemories] = useState<SerinMemory[]>(initialSerinMemories);
   const [selectedDate, setSelectedDate] = useState("2026-07-09");
+  const { castleState, addCastleExp } = useCastle();
+  const castleRooms = useCastleRooms(snapshot.rooms);
   const progress = useMemo(() => buildProgress(quests, progressBase), [quests, progressBase]);
-  const appData = { ...snapshot, quests, questHistory, events, serinMessages: messages, progress };
+  const appData = { ...snapshot, quests, questHistory, events, serinMessages: messages, progress, rooms: castleRooms.rooms };
 
   function completeQuest(id: string) {
     const result = completeQuestDomain(quests, questHistory, id, progress);
+    const quest = quests.find((item) => item.id === id);
     setQuests(result.quests);
     setQuestHistory(result.history);
     setCompletionEvents(result.events);
     setProgressBase(result.progress);
+    if (quest) addCastleExp(Math.max(10, Math.round(quest.expReward * 0.4)));
   }
 
   function cycleQuest(id: string) {
@@ -124,23 +131,14 @@ export function App() {
 
   async function sendSerinMessage(content: string) {
     const now = new Date().toISOString();
-    const princessMessage: SerinMessage = {
-      id: `m-${now}-p`,
-      sender: "princess",
-      content,
-      createdAt: now,
-      messageType: "text",
-    };
-
     setSerinStatus("thinking");
-    setMessages((current) => [...current, princessMessage]);
+    setMessages((current) => [
+      ...current,
+      { id: `m-${now}-p`, sender: "princess", content, createdAt: now, messageType: "text" },
+    ]);
 
     try {
-      const result = await sendSerinDomainMessage({
-        conversationId: "mock-serin-conversation",
-        content,
-      });
-
+      const result = await sendSerinDomainMessage({ conversationId: "mock-serin-conversation", content });
       if (content.includes("기억")) {
         setSerinMemories((current) =>
           saveMemory(current, {
@@ -157,7 +155,7 @@ export function App() {
       setMessages((current) => [
         ...current,
         {
-          id: `m-${now}-s`,
+          id: `m-${Date.now()}-s`,
           sender: "serin",
           content: result.reply,
           createdAt: new Date().toISOString(),
@@ -171,7 +169,7 @@ export function App() {
       setMessages((current) => [
         ...current,
         {
-          id: `m-${now}-error`,
+          id: `m-${Date.now()}-error`,
           sender: "serin",
           content: "죄송해요, 공주님. 지금은 처리하지 못했습니다. 잠시 후 다시 시도해볼게요.",
           createdAt: new Date().toISOString(),
@@ -188,23 +186,20 @@ export function App() {
     if (pendingSerinAction.intent === "calendar.create" && pendingSerinAction.payload.calendar) {
       createCalendarEvent(pendingSerinAction.payload.calendar, secondary);
     }
-
     if (pendingSerinAction.intent === "quest.create") {
       setQuests((current) => [createQuestFromSerinAction(pendingSerinAction), ...current]);
     }
-
     if (pendingSerinAction.intent === "memory.save" && pendingSerinAction.payload.memory) {
       setSerinMemories((current) => saveMemory(current, pendingSerinAction.payload.memory!));
     }
 
-    const now = new Date().toISOString();
     setMessages((current) => [
       ...current,
       {
-        id: `m-${now}-confirmed`,
+        id: `m-${Date.now()}-confirmed`,
         sender: "serin",
         content: "완료했습니다, 공주님. 실행 결과를 Princess OS에 반영했습니다.",
-        createdAt: now,
+        createdAt: new Date().toISOString(),
         messageType: "system_notice",
         metadata: { intent: pendingSerinAction.intent },
       },
@@ -237,21 +232,22 @@ export function App() {
           : "음성 입력을 준비했습니다. 실제 음성 인식 연결 지점은 TODO로 남겨두었습니다.";
     setMessages((current) => [
       ...current,
-      {
-        id: `m-${Date.now()}-attachment`,
-        sender: "serin",
-        content: message,
-        createdAt: new Date().toISOString(),
-        messageType: "system_notice",
-      },
+      { id: `m-${Date.now()}-attachment`, sender: "serin", content: message, createdAt: new Date().toISOString(), messageType: "system_notice" },
     ]);
   }
 
   return (
     <div className="mobile-app-shell">
       <main className="mobile-app-main">
-        {activeView === "home" && (
-          <HomeScene data={appData} activeView={activeView} onNavigate={setActiveView} />
+        {activeView === "home" && <HomeScene data={appData} activeView={activeView} onNavigate={setActiveView} />}
+        {activeView === "castle" && (
+          <CastlePage
+            rooms={castleRooms.rooms}
+            state={castleState}
+            onNavigate={setActiveView}
+            onVisitRoom={castleRooms.visitRoom}
+            onUpgradeRoom={castleRooms.upgradeRoom}
+          />
         )}
         {activeView === "quests" && (
           <QuestScreen
@@ -287,12 +283,7 @@ export function App() {
             onAttach={handleAttach}
           />
         )}
-        {activeView === "progress" && (
-          <ProgressScreen
-            data={appData}
-            onOpenProfile={() => setActiveView("profile")}
-          />
-        )}
+        {activeView === "progress" && <ProgressScreen data={appData} onOpenProfile={() => setActiveView("profile")} />}
         {activeView === "profile" && <PrincessCharacter data={appData} />}
       </main>
 

@@ -1,11 +1,12 @@
 import type { ViewKey } from "../../app/types";
 
 const navItems: Array<{ key: ViewKey; label: string; icon: string }> = [
-  { key: "home", label: "홈", icon: "🏰" },
-  { key: "quests", label: "퀘스트", icon: "📜" },
-  { key: "serin", label: "세린", icon: "✨" },
-  { key: "calendar", label: "캘린더", icon: "📅" },
-  { key: "progress", label: "성장", icon: "👑" },
+  { key: "home", label: "홈", icon: "⌂" },
+  { key: "castle", label: "왕성", icon: "♜" },
+  { key: "quests", label: "Quest", icon: "◆" },
+  { key: "serin", label: "세린", icon: "✦" },
+  { key: "calendar", label: "일정", icon: "□" },
+  { key: "progress", label: "성장", icon: "♛" },
 ];
 
 interface BottomNavProps {

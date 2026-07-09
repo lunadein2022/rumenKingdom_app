@@ -2,7 +2,7 @@
 
 ## Sprint Scope
 
-This sprint reorganized Update 013-030 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, but replaces explanation-card placeholders with usable Home, Quest, Calendar, Serin, and Progress interactions.
+This sprint reorganized Update 013-031 into a mobile-first React/TypeScript web app. It keeps MockData and Supabase-ready service boundaries, but replaces explanation-card placeholders with usable Home, Castle, Quest, Calendar, Serin, and Progress interactions.
 
 ## Final Folder Structure
 
@@ -19,6 +19,8 @@ princess-os-refactor/
       questDomain.ts
     features/
       calendar/
+      castle/
+      diary/
       serin/
     components/
       design-system/
@@ -117,6 +119,7 @@ All UI data flows through `mockRepository.ts`; components receive props and do n
 - `questService.ts`: quests and today quest queries
 - `princessService.ts`: princess_profiles and user_titles
 - `castleService.ts`: castle_rooms
+- `castle_state`, `room_decorations`: Castle Domain state and growth
 - `serinService.ts`: serin_memory and serin_conversations
 
 Unified SQL lives in `supabase/schema.sql`.
@@ -148,12 +151,26 @@ Serin now lives under `src/features/serin/` and is treated as the AI maid interf
 - Attachment action placeholders for image, document, and audio
 - Supabase-ready `serin_conversations`, `serin_messages`, `serin_memory`, `contacts`, `relationship_book`, and `diary_drafts`
 
+## Update 031 Castle Domain
+
+Castle now lives under `src/features/castle/` and is treated as the Princess OS map, not a menu. Home remains the Lobby, while Castle provides room swipe, arrows, fast travel, room unlock state, room upgrade state, and Castle EXP.
+
+- Rooms: Lobby, Throne, Library, Office, Garden, Bedroom, Tower, Secret Garden
+- Movement: swipe-style selector, arrow controls, and fast travel
+- Growth: `CastleState`, room level, visited count, decorations, unlock level
+- Supabase-ready `castle_rooms`, `castle_state`, and `room_decorations`
+
+## Time Navigation Principle
+
+Calendar, Quest, and Diary domains must support past, current, and future data. Calendar now supports previous/next month navigation. Quest now supports type filters plus Previous / Current / Future / All scopes. Diary has a typed range service ready for Bedroom and Library views.
+
 ## Remaining TODO
 
 - Replace MockData repository with Supabase service composition.
 - Move Quest completion into a Supabase RPC transaction.
 - Add Supabase Auth session routing.
 - Connect Serin chat API, streaming, OCR, voice input, and memory persistence.
+- Build full Diary and Library pages on top of the new date-range services.
 - Replace temporary generated transparent PNG cutouts with art-directed transparent character exports.
 - Add route handling once screen priorities are locked.
 

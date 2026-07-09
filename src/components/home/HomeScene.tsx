@@ -25,7 +25,7 @@ export function HomeScene({ data, onNavigate }: HomeSceneProps) {
         <div className="home-copy">
           <div className="home-kicker">
             <span>좋은 아침입니다</span>
-            <span>루멘 왕성</span>
+            <span>루멘 왕성 · 로비</span>
           </div>
           <h1>공주님, 오늘의 왕궁이 열렸습니다.</h1>
           <p>{serinLine}</p>
@@ -47,17 +47,17 @@ export function HomeScene({ data, onNavigate }: HomeSceneProps) {
         <button type="button" onClick={() => onNavigate("quests")}>
           <Badge tone="royal">Quest</Badge>
           <strong>{data.progress.todayCompletedQuests}/{data.progress.todayTotalQuests}</strong>
-          <span>오늘 퀘스트</span>
+          <span>오늘 Quest</span>
         </button>
         <button type="button" onClick={() => onNavigate("calendar")}>
           <Badge tone="royal">Calendar</Badge>
           <strong>{todayEvents.length}</strong>
           <span>오늘 일정</span>
         </button>
-        <button type="button" onClick={() => onNavigate("progress")}>
-          <Badge tone="gold">Level</Badge>
-          <strong>Lv.{data.progress.level}</strong>
-          <span>{data.progress.expRate}% EXP</span>
+        <button type="button" onClick={() => onNavigate("castle")}>
+          <Badge tone="gold">Castle</Badge>
+          <strong>{data.rooms.filter((room) => room.isUnlocked).length}</strong>
+          <span>열린 방</span>
         </button>
       </section>
 
@@ -70,13 +70,13 @@ export function HomeScene({ data, onNavigate }: HomeSceneProps) {
       </section>
 
       <section className="home-action-row">
-        <Button onClick={() => onNavigate("quests")}>오늘 Quest 시작</Button>
+        <Button onClick={() => onNavigate("castle")}>왕성 탐험</Button>
         <Button variant="glass" onClick={() => onNavigate("serin")}>세린에게 묻기</Button>
       </section>
 
       <section className="mobile-section-heading">
-        <h2>왕궁 탐험</h2>
-        <p>정원, 도서관, 집무실, 침실, 왕좌의 방으로 하루를 이동합니다.</p>
+        <h2>로비 주변</h2>
+        <p>Home은 로비입니다. 전체 지도와 방 이동은 Castle Domain에서 관리합니다.</p>
       </section>
       <PalaceRoomSection rooms={data.rooms} onNavigate={onNavigate} />
     </section>

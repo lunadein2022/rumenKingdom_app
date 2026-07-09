@@ -8,6 +8,8 @@ export const supabaseTables = {
   userProgress: "user_progress",
   dailyCompletions: "daily_completions",
   castleRooms: "castle_rooms",
+  castleState: "castle_state",
+  roomDecorations: "room_decorations",
   achievements: "achievements",
   userAchievements: "user_achievements",
   inventoryItems: "inventory_items",

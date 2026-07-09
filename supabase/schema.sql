@@ -115,11 +115,37 @@ create table if not exists public.castle_rooms (
   user_id uuid references auth.users(id) on delete cascade,
   room_key text not null,
   room_name text not null,
-  level integer not null default 1,
+  unlock_level integer not null default 1,
+  room_level integer not null default 1,
   is_unlocked boolean not null default true,
+  is_discovered boolean not null default true,
+  visited_count integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique(user_id, room_key)
+);
+
+create table if not exists public.castle_state (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade unique,
+  castle_level integer not null default 1,
+  castle_exp integer not null default 0,
+  castle_theme text not null default 'royal_blue',
+  season text not null default 'summer',
+  time_of_day text not null default 'morning',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.room_decorations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  room_key text not null,
+  decoration_key text not null,
+  is_unlocked boolean not null default false,
+  is_equipped boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique(user_id, room_key, decoration_key)
 );
 
 create table if not exists public.achievements (
@@ -244,6 +270,8 @@ alter table public.calendar_reminders enable row level security;
 alter table public.user_progress enable row level security;
 alter table public.daily_completions enable row level security;
 alter table public.castle_rooms enable row level security;
+alter table public.castle_state enable row level security;
+alter table public.room_decorations enable row level security;
 alter table public.achievements enable row level security;
 alter table public.user_achievements enable row level security;
 alter table public.inventory_items enable row level security;
@@ -280,6 +308,12 @@ create policy "Users manage own daily completions" on public.daily_completions
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Users manage own rooms" on public.castle_rooms
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own castle state" on public.castle_state
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own room decorations" on public.room_decorations
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 create policy "Anyone can view achievement catalog" on public.achievements

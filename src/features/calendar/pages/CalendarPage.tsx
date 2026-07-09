@@ -32,39 +32,41 @@ export function CalendarPage({
   onCancelEvent,
 }: CalendarPageProps) {
   const [view, setView] = useState<CalendarViewMode>("month");
+  const [visibleMonth, setVisibleMonth] = useState(selectedDate.slice(0, 7));
   const selectedEvents = useMemo(() => getEventsByDay(events, selectedDate), [events, selectedDate]);
+
+  function selectDate(date: string) {
+    onSelectDate(date);
+    setVisibleMonth(date.slice(0, 7));
+  }
 
   return (
     <section className="calendar-domain-page">
       <header className="screen-header calendar-domain-hero">
         <Badge tone="royal">Calendar Domain</Badge>
         <h1>왕실 일정표</h1>
-        <p>공주의 하루를 시간순으로 정리하고 Quest, Serin, Diary, Home과 연결합니다.</p>
+        <p>공주의 하루를 시간순으로 정리하고 과거, 현재, 미래 일정을 모두 확인합니다.</p>
       </header>
 
       <nav className="calendar-view-tabs" aria-label="Calendar view">
         {viewTabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            className={view === tab.key ? "active" : ""}
-            onClick={() => setView(tab.key)}
-          >
+          <button key={tab.key} type="button" className={view === tab.key ? "active" : ""} onClick={() => setView(tab.key)}>
             {tab.label}
           </button>
         ))}
       </nav>
 
       {view === "month" && (
-        <CalendarMonthView events={events} selectedDate={selectedDate} onSelectDate={onSelectDate} />
+        <CalendarMonthView
+          events={events}
+          selectedDate={selectedDate}
+          visibleMonth={visibleMonth}
+          onSelectDate={selectDate}
+          onChangeMonth={setVisibleMonth}
+        />
       )}
       {view === "day" && (
-        <CalendarDayView
-          selectedDate={selectedDate}
-          events={selectedEvents}
-          onComplete={onCompleteEvent}
-          onCancel={onCancelEvent}
-        />
+        <CalendarDayView selectedDate={selectedDate} events={selectedEvents} onComplete={onCompleteEvent} onCancel={onCancelEvent} />
       )}
       {view === "timeline" && <CalendarTimeline events={selectedEvents} />}
 
