@@ -1,4 +1,5 @@
 import type { MainQuest, MainQuestUpdate, Quest } from "../app/types";
+import { newId } from "../app/ids";
 
 // 메인퀘스트 = 프로젝트. Office가 관리하는 장기 프로젝트 단위입니다.
 // 여기서는 메인퀘스트 자체의 진행률/업데이트/누적 EXP 계산만 다루고,
@@ -52,7 +53,7 @@ export function createMainQuestFromSerinDraft(title: string): MainQuest {
   // TODO:
   // Replace with Supabase Query — main_quests insert.
   return {
-    id: `mq-serin-${Date.now()}`,
+    id: newId(),
     title,
     description: "세린과의 대화에서 시작된 새 메인퀘스트(프로젝트)입니다.",
     status: "active",

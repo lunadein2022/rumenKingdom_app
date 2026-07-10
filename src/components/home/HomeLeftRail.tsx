@@ -1,6 +1,7 @@
 import type { CalendarEvent, Quest, ViewKey } from "../../app/types";
 
 interface HomeLeftRailProps {
+  dateLine: string;
   greetingLine: string;
   todayEventCount: number;
   todayQuestCount: number;
@@ -9,12 +10,13 @@ interface HomeLeftRailProps {
   todayEvents: CalendarEvent[];
   todayQuests: Quest[];
   onNavigate: (view: ViewKey) => void;
-  onCompleteQuest: (id: string) => void;
+  onToggleQuest: (id: string, completed: boolean) => void;
 }
 
 // 왼쪽에 떠 있는 Glass 오버레이 패널 묶음: 오늘 브리핑 / 오늘의 일정 / 오늘의 웨스트.
 // 배경(Scene)을 가리는 큰 흰 카드가 아니라, 얇고 반투명한 HUD 패널입니다.
 export function HomeLeftRail({
+  dateLine,
   greetingLine,
   todayEventCount,
   todayQuestCount,
@@ -23,12 +25,12 @@ export function HomeLeftRail({
   todayEvents,
   todayQuests,
   onNavigate,
-  onCompleteQuest,
+  onToggleQuest,
 }: HomeLeftRailProps) {
   return (
     <div className="home-left-rail">
       <section className="home-hud-panel home-briefing-panel">
-        <h2>오늘 브리핑</h2>
+        <span className="home-briefing-date">{dateLine}</span>
         <p>{greetingLine}</p>
         <div className="home-briefing-counts">
           <button type="button" onClick={() => onNavigate("calendar")}>
@@ -87,8 +89,8 @@ export function HomeLeftRail({
                   <button
                     type="button"
                     className={done ? "done" : ""}
-                    onClick={() => !done && onCompleteQuest(quest.id)}
-                    disabled={done}
+                    onClick={() => onToggleQuest(quest.id, !done)}
+                    aria-pressed={done}
                   >
                     <span className="home-quest-checkbox">{done ? "✓" : ""}</span>
                     <span>{quest.title}</span>

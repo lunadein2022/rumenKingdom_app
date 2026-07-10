@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { getKoreanToday } from "../../../app/dateUtils";
 import type { CalendarCategory, CalendarEventInput } from "../types/calendar.types";
 
 const initialForm: CalendarEventInput = {
   title: "",
   description: "",
-  startAt: "2026-07-09T09:00:00",
-  endAt: "2026-07-09T10:00:00",
+  startAt: `${getKoreanToday()}T09:00:00`,
+  endAt: `${getKoreanToday()}T10:00:00`,
   location: "루멘 왕성",
   category: "personal",
   priority: "medium",

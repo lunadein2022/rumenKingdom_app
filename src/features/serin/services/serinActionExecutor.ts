@@ -1,26 +1,45 @@
-import type { CalendarIntentDraft } from "../../../app/types";
+import type { CalendarEventInput, CalendarIntentDraft, Quest } from "../../../app/types";
+import { getKoreanToday } from "../../../app/dateUtils";
 import { questTypeMeta } from "../../../domain/questDomain";
 import type { SerinAction, SerinParsedIntent } from "../types/serin.types";
+
+export function confirmAction(action: SerinAction): SerinAction {
+  return action;
+}
+
+export function cancelAction(action: SerinAction): SerinAction {
+  return action;
+}
+
+function compactCalendarChanges(changes: Partial<CalendarEventInput>): Partial<CalendarEventInput> {
+  return Object.fromEntries(
+    Object.entries(changes).filter(([, value]) => value !== undefined && value !== ""),
+  ) as Partial<CalendarEventInput>;
+}
+
+function compactQuestChanges(changes: Partial<Quest>): Partial<Quest> {
+  return Object.fromEntries(
+    Object.entries(changes).filter(([, value]) => value !== undefined && value !== ""),
+  ) as Partial<Quest>;
+}
 
 export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | null {
   const actionId = `serin-action-${Date.now()}`;
 
   if (parsedIntent.intent === "calendar.create") {
     const draft = parsedIntent.entities.calendar as CalendarIntentDraft;
-    const summary = draft.isMultiDay
-      ? `공주님, ${draft.confirmSummary ?? draft.title}할까요? 종일 일정으로 표시해드릴게요.`
-      : `공주님, '${draft.title}'을(를) ${draft.startAt.slice(0, 16).replace("T", " ")} 일정으로 등록해드릴까요? 알림도 함께 챙겨드릴게요.`;
+    const when = draft.isMultiDay ? draft.confirmSummary ?? draft.title : draft.startAt.slice(0, 16).replace("T", " ");
     return {
       id: actionId,
       intent: "calendar.create",
       title: draft.title,
-      summary,
+      summary: `공주님, '${draft.title}' 일정을 ${when}에 등록해드릴까요?`,
       confirmLabel: "일정 추가",
-      secondaryLabel: draft.isMultiDay ? undefined : "Quest도 만들기",
+      secondaryLabel: draft.isMultiDay ? undefined : "Quest로 만들기",
       payload: {
         calendar: {
           title: draft.title,
-          description: `세린이 "${draft.sourceMessage}" 요청에서 정리한 일정입니다.`,
+          description: `세린이 "${draft.sourceMessage}" 말씀에서 정리한 일정입니다.`,
           startAt: draft.startAt,
           endAt: draft.endAt,
           location: "루멘 왕성",
@@ -31,37 +50,29 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
           createdBy: "serin",
         },
       },
-      logEntries: [
-        {
-          domain: "calendar",
-          label: draft.title,
-          detail: draft.isMultiDay
-            ? `${draft.startAt.slice(0, 10)} ~ ${draft.endAt?.slice(0, 10) ?? draft.startAt.slice(0, 10)} 등록`
-            : `${draft.startAt.slice(0, 16).replace("T", " ")} 등록`,
-        },
-      ],
+      logEntries: [{ domain: "calendar", label: draft.title, detail: "일정 생성" }],
     };
   }
 
   if (parsedIntent.intent === "calendar.update") {
     const eventTitle = parsedIntent.entities.eventTitle as string;
     const eventId = parsedIntent.entities.eventId as string;
-    const draft = parsedIntent.entities.draft as CalendarIntentDraft;
+    const draft = parsedIntent.entities.draft as CalendarIntentDraft | null;
+    const rawChanges = parsedIntent.entities.changes as Partial<CalendarEventInput> | undefined;
+    const changes = compactCalendarChanges({
+      ...(rawChanges ?? {}),
+      startAt: rawChanges?.startAt ?? draft?.startAt,
+      endAt: rawChanges?.endAt ?? draft?.endAt,
+      isAllDay: rawChanges?.isAllDay ?? draft?.isAllDay,
+    });
     return {
       id: actionId,
       intent: "calendar.update",
       title: eventTitle,
-      summary: `공주님, '${eventTitle}' 일정을 ${draft.startAt.slice(0, 16).replace("T", " ")}(으)로 옮겨드릴까요?`,
-      confirmLabel: "일정 변경",
-      payload: {
-        calendarUpdate: {
-          eventId,
-          changes: { startAt: draft.startAt, endAt: draft.endAt, isAllDay: draft.isAllDay },
-        },
-      },
-      logEntries: [
-        { domain: "calendar", label: eventTitle, detail: `${draft.startAt.slice(0, 16).replace("T", " ")}(으)로 변경` },
-      ],
+      summary: `공주님, '${eventTitle}' 일정을 말씀하신 내용으로 수정해드릴까요?`,
+      confirmLabel: "일정 수정",
+      payload: { calendarUpdate: { eventId, changes } },
+      logEntries: [{ domain: "calendar", label: eventTitle, detail: "일정 수정" }],
     };
   }
 
@@ -73,9 +84,9 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
       intent: "calendar.delete",
       title: eventTitle,
       summary: `공주님, '${eventTitle}' 일정을 취소해드릴까요?`,
-      confirmLabel: "일정 취소",
+      confirmLabel: "일정 삭제",
       payload: { calendarDelete: { eventId } },
-      logEntries: [{ domain: "calendar", label: eventTitle, detail: "일정 취소" }],
+      logEntries: [{ domain: "calendar", label: eventTitle, detail: "일정 삭제" }],
     };
   }
 
@@ -85,12 +96,10 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
       id: actionId,
       intent: "project.create",
       title,
-      summary: `공주님, '${title}'을(를) 새 메인퀘스트(프로젝트)로 집무실에 등록해드릴까요?`,
+      summary: `공주님, '${title}'을 메인 Quest 프로젝트로 집무실에 등록해드릴까요?`,
       confirmLabel: "프로젝트 생성",
-      payload: {
-        mainQuest: { title },
-      },
-      logEntries: [{ domain: "project", label: title, detail: "새 메인퀘스트 생성" }],
+      payload: { mainQuest: { title } },
+      logEntries: [{ domain: "project", label: title, detail: "메인 Quest 생성" }],
     };
   }
 
@@ -101,11 +110,9 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
       id: actionId,
       intent: "project.update",
       title: mainQuestTitle,
-      summary: `공주님, '${mainQuestTitle}' 프로젝트에 이 내용을 업데이트 로그로 남겨드릴까요?`,
+      summary: `공주님, '${mainQuestTitle}' 프로젝트에 업데이트 로그를 남겨둘까요?`,
       confirmLabel: "업데이트 기록",
-      payload: {
-        mainQuestUpdate: { mainQuestId: mainQuestTitle, content },
-      },
+      payload: { mainQuestUpdate: { mainQuestId: mainQuestTitle, content } },
       logEntries: [{ domain: "project", label: mainQuestTitle, detail: "업데이트 로그 기록" }],
     };
   }
@@ -118,139 +125,144 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
       id: actionId,
       intent: "project.rename",
       title: mainQuestTitle,
-      summary: `공주님, '${mainQuestTitle}'을(를) '${newTitle}'(으)로 이름을 바꿔드릴까요?`,
+      summary: `공주님, '${mainQuestTitle}'의 이름을 '${newTitle}'로 바꿔드릴까요?`,
       confirmLabel: "이름 변경",
-      payload: {
-        mainQuestRename: { mainQuestId: mainQuestTitle, newTitle },
-      },
-      logEntries: [{ domain: "project", label: mainQuestTitle, detail: `이름을 '${newTitle}'(으)로 변경` }],
+      payload: { mainQuestRename: { mainQuestId: mainQuestTitle, newTitle } },
+      logEntries: [{ domain: "project", label: mainQuestTitle, detail: `이름을 '${newTitle}'로 변경` }],
     };
   }
 
   if (parsedIntent.intent === "quest.create") {
-    const quest = parsedIntent.entities.quest as { title?: string; dueDate?: string };
+    const title = parsedIntent.entities.title as string;
+    const dueDate = (parsedIntent.entities.dueDate as string | undefined) ?? getKoreanToday();
     return {
       id: actionId,
       intent: "quest.create",
-      title: quest.title ?? "새 Quest",
-      summary: `공주님, '${quest.title ?? "이 일"}'을(를) 퀘스트로 등록해드릴까요? 처리하시기 편한 시간을 알려주시면 그에 맞춰 챙겨드릴게요.`,
-      confirmLabel: "Quest 생성",
+      title,
+      summary: `공주님, '${title}'을 Quest로 등록해드릴까요?`,
+      confirmLabel: "Quest 추가",
       payload: {
         quest: {
-          title: quest.title ?? "새 Quest",
+          title,
           description: "세린이 대화에서 정리한 Quest입니다.",
           type: "daily",
+          category: "work",
           priority: "medium",
+          status: "pending",
           progress: 0,
+          dueDate,
           expReward: questTypeMeta.daily.baseExp,
-          goldReward: 8,
-          dueDate: quest.dueDate ?? "2026-07-09",
+          goldReward: 0,
           rewardClaimed: false,
           source: "serin",
         },
       },
-      logEntries: [{ domain: "quest", label: quest.title ?? "새 Quest", detail: "일일 Quest 생성" }],
+      logEntries: [{ domain: "quest", label: title, detail: "Quest 생성" }],
     };
   }
 
   if (parsedIntent.intent === "quest.update") {
     const questTitle = parsedIntent.entities.questTitle as string;
     const questId = parsedIntent.entities.questId as string;
+    const changes = compactQuestChanges(parsedIntent.entities.changes as Partial<Quest>);
     return {
       id: actionId,
       intent: "quest.update",
       title: questTitle,
-      summary: `공주님, '${questTitle}' 퀘스트 내용을 방금 말씀대로 수정해드릴까요?`,
+      summary: `공주님, '${questTitle}' Quest를 말씀하신 내용으로 수정해드릴까요?`,
       confirmLabel: "Quest 수정",
-      payload: {
-        questUpdate: { questId, changes: {} },
-      },
-      logEntries: [{ domain: "quest", label: questTitle, detail: "내용 수정" }],
+      payload: { questUpdate: { questId, changes } },
+      logEntries: [{ domain: "quest", label: questTitle, detail: "Quest 수정" }],
+    };
+  }
+
+  if (parsedIntent.intent === "quest.complete") {
+    const questTitle = parsedIntent.entities.questTitle as string;
+    const questId = parsedIntent.entities.questId as string;
+    return {
+      id: actionId,
+      intent: "quest.complete",
+      title: questTitle,
+      summary: `공주님, '${questTitle}' Quest를 완료 처리해드릴까요?`,
+      confirmLabel: "완료 처리",
+      payload: { questUpdate: { questId, changes: { status: "completed", progress: 100 } } },
+      logEntries: [{ domain: "quest", label: questTitle, detail: "Quest 완료" }],
     };
   }
 
   if (parsedIntent.intent === "quest.delete") {
-    const questTitle = (parsedIntent.entities.questTitle as string) ?? "가장 최근 Quest";
+    const questTitle = parsedIntent.entities.questTitle as string;
     const questId = parsedIntent.entities.questId as string;
     return {
       id: actionId,
       intent: "quest.delete",
       title: questTitle,
-      summary: `공주님, '${questTitle}'을(를) 삭제해드릴까요?`,
+      summary: `공주님, '${questTitle}' Quest를 삭제해드릴까요?`,
       confirmLabel: "Quest 삭제",
-      payload: {
-        questDelete: { questId },
-      },
-      logEntries: [{ domain: "quest", label: questTitle, detail: "삭제" }],
+      payload: { questDelete: { questId } },
+      logEntries: [{ domain: "quest", label: questTitle, detail: "Quest 삭제" }],
     };
   }
 
-  if (parsedIntent.intent === "diary.create" || parsedIntent.intent === "diary.summarize") {
+  if (parsedIntent.intent === "memory.save") {
+    const content = parsedIntent.entities.content as string;
     return {
       id: actionId,
-      intent: parsedIntent.intent,
-      title: "오늘의 공주 다이어리",
-      summary: "공주님, 오늘 일정과 완료한 Quest를 바탕으로 다이어리 초안을 정리해드릴까요?",
-      confirmLabel: "다이어리 초안 저장",
+      intent: "memory.save",
+      title: "세린 기억",
+      summary: `공주님, 이 내용을 세린의 장기 기억에 저장해둘까요?\n"${content}"`,
+      confirmLabel: "기억 저장",
       payload: {
-        diary: {
-          title: "오늘의 공주 다이어리",
-          content: "오늘의 흐름을 정리한 다이어리 초안입니다.",
+        memory: {
+          memoryType: "preference",
+          content,
+          importance: "medium",
+          source: "confirmation",
         },
       },
-      logEntries: [{ domain: "diary", label: "오늘의 다이어리", detail: "초안 생성" }],
+      logEntries: [{ domain: "memory", label: "세린 기억", detail: content }],
+    };
+  }
+
+  if (parsedIntent.intent === "diary.create") {
+    const title = (parsedIntent.entities.title as string | undefined) ?? "오늘의 일기";
+    const content = (parsedIntent.entities.content as string | undefined) ?? "";
+    return {
+      id: actionId,
+      intent: "diary.create",
+      title,
+      summary: `공주님, 침실 다이어리에 '${title}' 초안을 적어둘까요?`,
+      confirmLabel: "다이어리 저장",
+      payload: { diary: { title, content } },
+      logEntries: [{ domain: "diary", label: title, detail: "다이어리 초안 생성" }],
     };
   }
 
   if (parsedIntent.intent === "diary.update") {
-    const targetDate = parsedIntent.entities.targetDate as string;
+    const entryId = parsedIntent.entities.entryId as string;
     return {
       id: actionId,
       intent: "diary.update",
-      title: targetDate === "yesterday" ? "어제 일기" : "오늘 일기",
-      summary: `공주님, ${targetDate === "yesterday" ? "어제" : "오늘"} 일기를 침실에서 이어서 수정하실 수 있게 열어드릴까요?`,
-      confirmLabel: "침실에서 수정",
-      payload: {
-        diaryEdit: { entryId: targetDate },
-      },
-      logEntries: [{ domain: "diary", label: targetDate === "yesterday" ? "어제 일기" : "오늘 일기", detail: "수정 모드 진입" }],
+      title: "다이어리 수정",
+      summary: "공주님, 해당 다이어리를 침실에서 수정하실 수 있게 열어둘까요?",
+      confirmLabel: "다이어리 열기",
+      payload: { diaryEdit: { entryId } },
+      logEntries: [{ domain: "diary", label: "다이어리", detail: "수정 화면 열기" }],
     };
   }
 
-  if (parsedIntent.intent === "contact.extract") {
+  if (parsedIntent.intent === "library.search") {
+    const keyword = (parsedIntent.entities.keyword as string | undefined) ?? "";
     return {
       id: actionId,
-      intent: "contact.extract",
-      title: "새 연락처",
-      summary: "공주님, 첨부 이미지나 대화에서 찾은 연락처를 인연록에 저장해드릴까요?",
-      confirmLabel: "인연록에 저장",
-      payload: {
-        contact: {
-          name: "새 연락처",
-          memo: "OCR 연결 전 mock 추출 결과입니다.",
-        },
-      },
-      logEntries: [{ domain: "relationship", label: "새 연락처", detail: "인연록에 저장" }],
+      intent: "library.search",
+      title: keyword || "왕국도서관 검색",
+      summary: `공주님, 왕국도서관에서 '${keyword}' 기록을 찾아볼까요?`,
+      confirmLabel: "도서관 검색",
+      payload: {},
+      logEntries: [{ domain: "library", label: keyword || "검색", detail: "기록 검색" }],
     };
   }
 
   return null;
-}
-
-export function confirmAction(action: SerinAction) {
-  // TODO: Replace with Supabase Query and domain transaction
-  return {
-    actionId: action.id,
-    intent: action.intent,
-    completedAt: new Date().toISOString(),
-  };
-}
-
-export function cancelAction(action: SerinAction) {
-  // TODO: Replace with Supabase Query
-  return {
-    actionId: action.id,
-    intent: action.intent,
-    cancelledAt: new Date().toISOString(),
-  };
 }

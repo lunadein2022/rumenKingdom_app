@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import type {
   CalendarEvent,
   CalendarEventInput,
@@ -15,13 +15,14 @@ import type {
   UserProgress,
   ViewKey,
 } from "./types";
+import { GameTopHud } from "../components/design-system/GameTopHud";
 import { SiteNav } from "../components/design-system/SiteNav";
 import { HomeScene } from "../components/home/HomeScene";
 import { QuestScreen } from "../components/modules/QuestScreen";
 import { SerinScreen } from "../components/modules/SerinScreen";
 import { buildMockProgress } from "../data/mockProgress";
 import { getPrincessOsSnapshot } from "../data/mockRepository";
-import { completeQuestDomain, createQuestFromCalendarEvent, questTypeMeta } from "../domain/questDomain";
+import { createQuestFromCalendarEvent, questTypeMeta, setQuestCompletion } from "../domain/questDomain";
 import { addMainQuestUpdate, createMainQuestFromSerinDraft, toggleMainQuestChapter } from "../domain/mainQuestDomain";
 import { CalendarPage } from "../features/calendar/pages/CalendarPage";
 import {
@@ -31,13 +32,13 @@ import {
   createEvent,
   deleteEvent,
   getEventsByDay,
+  updateEvent,
 } from "../features/calendar/services/calendarService";
 import { CastlePage } from "../features/castle/pages/CastlePage";
 import { useCastleRooms } from "../features/castle/hooks/useCastleRooms";
 import { BedroomPage } from "../features/bedroom/pages/BedroomPage";
 import { GardenPage } from "../features/garden/pages/GardenPage";
 import { LibraryPage } from "../features/library/pages/LibraryPage";
-import { OfficePage } from "../features/office/pages/OfficePage";
 import { RelationshipPage } from "../features/relationship/pages/RelationshipPage";
 import { ThronePage } from "../features/throne/pages/ThronePage";
 import { cancelAction, confirmAction } from "../features/serin/services/serinActionExecutor";
@@ -48,20 +49,38 @@ import {
 } from "../features/serin/services/serinService";
 import { saveMemory } from "../features/serin/services/serinMemoryService";
 import { buildProcessingNotice, runAttachmentPipeline } from "../features/serin/services/attachmentPipeline";
+import { SerinFloatingWidget } from "../features/serin/components/SerinFloatingWidget";
 import type { SerinActionLogEntry } from "../features/serin/types/serin.types";
+import { addDays, getKoreanToday } from "./dateUtils";
+import { newId } from "./ids";
+import { LoginScreen } from "../features/auth/LoginScreen";
+import { getCurrentSession, isSupabaseEnabled, onAuthChange, signOut } from "../services/supabase/authService";
+import {
+  loadSnapshot,
+  syncContacts,
+  syncDiary,
+  syncEvents,
+  syncMainQuests,
+  syncMemories,
+  syncProgress,
+  syncQuestHistory,
+  syncQuests,
+} from "../services/supabase/dataService";
 
-const TODAY = "2026-07-09";
+const TODAY = getKoreanToday();
 
-// 짧은 긍정/부정 답변으로 직전 pendingAction을 이어서 처리하기 위한 감지기.
-// "응", "그래", "당연하지", "부탁해", "등록해", "일정에 넣어" 같은 표현을 포함합니다.
-const SHORT_AFFIRM = /(응|어|그래|당연|부탁|등록해|넣어줘|넣어|좋아|네|넵|콜|오케이|ok)/i;
-const SHORT_DECLINE = /(아니|괜찮아|괜찮습니다|취소|하지\s*마|넘어가)/i;
+// 吏㏃? 湲띿젙/遺???듬??쇰줈 吏곸쟾 pendingAction???댁뼱??泥섎━?섍린 ?꾪븳 媛먯?湲?
+// "??, "洹몃옒", "?뱀뿰?섏?", "遺?곹빐", "?깅줉??, "?쇱젙???ｌ뼱" 媛숈? ?쒗쁽???ы븿?⑸땲??
+const SHORT_AFFIRM = /^(응|그래|당연|좋아|부탁해|해줘|등록해|넣어줘|진행해|확인|ㅇㅇ|ok|okay)$/i;
+const SHORT_DECLINE = /^(아니|괜찮아|취소|하지 마|하지마|됐어|보류)$/i;
 
-// "내일 뭐하나", "오늘 일정 있어?", "모레 바빠?" 같은 조회성 질문을 감지합니다.
-// 등록(calendarTriggerPattern)이 아니라 "이미 있는 일정을 물어보는" 경우이므로,
-// 세린이 매번 똑같은 안내문 대신 실제 events 데이터를 기준으로 답합니다.
-const SCHEDULE_QUERY_WORDS = /(뭐\s?하|뭐\s?있|무슨\s?일|일정\s?있|일정\s?뭐|스케줄\s?있|바쁘|바빠)/;
+// "?댁씪 萸먰븯??, "?ㅻ뒛 ?쇱젙 ?덉뼱?", "紐⑤젅 諛붾튌?" 媛숈? 議고쉶??吏덈Ц??媛먯??⑸땲??
+// ?깅줉(calendarTriggerPattern)???꾨땲??"?대? ?덈뒗 ?쇱젙??臾쇱뼱蹂대뒗" 寃쎌슦?대?濡?
+// ?몃┛??留ㅻ쾲 ?묎컳? ?덈궡臾?????ㅼ젣 events ?곗씠?곕? 湲곗??쇰줈 ?듯빀?덈떎.
+const SCHEDULE_QUERY_WORDS = /(뭐\s*있|뭐야|무슨\s*일정|일정\s*있|일정\s*뭐|알려줘|브리핑|바빠|비어)/;
 const SCHEDULE_DAY_WORDS = /(오늘|내일|모레)/;
+// "?ㅻ뒛 萸??댁빞 ?섏??", "?????뚮젮以? 媛숈? ?섏뒪??議고쉶 吏덈Ц 媛먯?湲?
+const QUEST_QUERY_WORDS = /(뭐\s*해야|할\s*일\s*뭐|퀘스트\s*뭐|todo\s*뭐|남은\s*일)/i;
 
 function isShortReply(text: string) {
   return text.trim().length > 0 && text.trim().length <= 14;
@@ -69,19 +88,19 @@ function isShortReply(text: string) {
 
 function resolveScheduleQuery(content: string): { date: string; label: string } | null {
   if (!SCHEDULE_DAY_WORDS.test(content) || !SCHEDULE_QUERY_WORDS.test(content)) return null;
-  if (content.includes("모레")) return { date: "2026-07-11", label: "모레" };
-  if (content.includes("내일")) return { date: "2026-07-10", label: "내일" };
-  return { date: "2026-07-09", label: "오늘" };
+  if (content.includes("모레")) return { date: addDays(TODAY, 2), label: "모레" };
+  if (content.includes("내일")) return { date: addDays(TODAY, 1), label: "내일" };
+  return { date: TODAY, label: "오늘" };
 }
 
 function buildTimeGreeting(): SerinMessage {
   const hour = new Date().getHours();
   const content =
     hour < 11
-      ? "좋은 아침입니다, 공주님. 오늘 하루도 제가 곁에서 잘 챙기겠습니다."
+      ? "좋은 아침입니다, 공주님. 오늘도 제가 곁에서 차분히 챙기겠습니다."
       : hour < 18
-        ? "공주님, 오늘 일정이 잘 진행되고 있어요. 필요한 게 있으면 언제든 말씀해주세요."
-        : "공주님, 오늘 하루도 정말 수고하셨어요. 편히 쉬실 수 있게 제가 정리해드릴게요.";
+        ? "공주님, 오늘의 흐름을 함께 보고 있어요. 필요한 일이 있으면 편하게 말씀해주세요."
+        : "공주님, 오늘 하루도 정말 수고하셨어요. 정리할 일이 있으면 제가 조용히 도와드리겠습니다.";
   return {
     id: `m-greeting-${Date.now()}`,
     sender: "serin",
@@ -93,84 +112,81 @@ function buildTimeGreeting(): SerinMessage {
 
 function buildConfirmedReply(action: SerinAction): string {
   if (action.intent === "quest.create") {
-    return `네, 공주님. '${action.title}' 퀘스트를 등록해두었습니다. 잊지 않으시도록 제가 곁에서 챙기겠습니다.`;
+    return `네, 공주님. '${action.title}' Quest를 등록해두었습니다. 잊지 않도록 제가 곁에서 챙기겠습니다.`;
   }
   if (action.intent === "calendar.create") {
-    return `네, 공주님. '${action.title}' 일정을 등록해두었습니다. 시간에 맞춰 알려드릴게요.`;
+    return `네, 공주님. '${action.title}' 일정을 등록해두었습니다. 시간에 맞춰 기억해둘게요.`;
   }
   if (action.intent === "project.create") {
-    return `네, 공주님. '${action.title}'을(를) 새 메인퀘스트로 집무실에 등록해두었습니다.`;
+    return `네, 공주님. '${action.title}'을 메인 Quest로 집무실에 등록해두었습니다.`;
   }
   if (action.intent === "project.update") {
-    return `네, 공주님. '${action.title}' 프로젝트에 업데이트를 기록해두었습니다.`;
+    return `네, 공주님. '${action.title}' 프로젝트 업데이트를 기록해두었습니다.`;
   }
   if (action.intent === "memory.save") {
-    return "기억해둘게요, 공주님. 다음부터 이 내용을 참고해서 챙기겠습니다.";
+    return "기억해둘게요, 공주님. 다음 대화와 일정 정리에 참고하겠습니다.";
   }
   if (action.intent === "diary.create" || action.intent === "diary.summarize") {
-    return "네, 공주님. 다이어리 초안을 정리해 침실에 담아두었습니다.";
+    return "네, 공주님. 다이어리 초안을 침실에 정리해두었습니다.";
   }
   if (action.intent === "contact.extract") {
-    return `네, 공주님. '${action.title}'을(를) 인연록에 저장해두었습니다.`;
+    return `네, 공주님. '${action.title}'을 인연록에 저장해두었습니다.`;
   }
   if (action.intent === "calendar.update") {
-    return `네, 공주님. '${action.title}' 일정을 옮겨두었습니다.`;
+    return `네, 공주님. '${action.title}' 일정을 수정해두었습니다.`;
   }
   if (action.intent === "calendar.delete") {
     return `네, 공주님. '${action.title}' 일정을 취소해두었습니다.`;
   }
   if (action.intent === "quest.update") {
-    return `네, 공주님. '${action.title}' 퀘스트 내용을 반영해두었습니다.`;
+    return `네, 공주님. '${action.title}' Quest를 수정해두었습니다.`;
+  }
+  if (action.intent === "quest.complete") {
+    return `네, 공주님. '${action.title}' Quest를 완료 처리했습니다. 수고 많으셨어요.`;
   }
   if (action.intent === "quest.delete") {
-    return `네, 공주님. '${action.title}'을(를) 목록에서 지워두었습니다.`;
+    return `네, 공주님. '${action.title}'을 목록에서 삭제해두었습니다.`;
   }
   if (action.intent === "project.rename") {
-    return `네, 공주님. 프로젝트 이름을 바꿔두었습니다.`;
+    return "네, 공주님. 프로젝트 이름을 바꿔두었습니다.";
   }
   if (action.intent === "diary.update") {
-    return `네, 공주님. 침실에서 바로 이어 쓰실 수 있게 열어두었습니다.`;
+    return "네, 공주님. 침실에서 바로 수정하실 수 있게 열어두었습니다.";
   }
   return `네, 공주님. '${action.title}' 요청을 처리해두었습니다.`;
 }
 
-// 능동적 제안: 확정 직후, 하드한 확인/취소 액션이 아니라 부드러운 텍스트
-// 제안 한 줄을 덧붙입니다. "대화가 먼저, 버튼은 보조" 철학에 맞춰, 이 제안은
-// 그냥 말풍선일 뿐이고 공주님이 실제로 다음 문장을 말해야 이어집니다
-// (자동으로 또 다른 확인 카드를 띄우지 않습니다).
 function buildProactiveSuggestion(action: SerinAction): string | null {
   if (action.intent === "project.create") {
-    return `'${action.title}' 프로젝트에 바로 첫 할 일을 만들어볼까요? "${action.title}에 킥오프 회의 준비해야 돼"처럼 말씀해주시면 알아서 연결해드릴게요.`;
+    return `'${action.title}' 프로젝트의 첫 단계를 바로 만들어둘까요? 세린이 흐름을 같이 정리해드릴게요.`;
   }
   if (action.intent === "calendar.create" && action.payload.calendar?.category === "meeting") {
-    return "미팅이 끝나면 오늘 일기에 정리해드릴까요? 나중에 \"오늘 일기 써줘\"라고 말씀해주시면 반영해드릴게요.";
+    return "회의가 끝나면 오늘 일기 초안에도 정리해드릴까요? 나중에 '오늘 회의 정리'라고 말씀해주세요.";
   }
   if (action.intent === "calendar.create" && action.payload.calendar?.endAt && action.payload.calendar.endAt.slice(0, 10) !== action.payload.calendar.startAt.slice(0, 10)) {
-    return "기간 일정과 관련해서 미리 준비할 게 있으면 \"~해야 돼\"라고 말씀해주세요. 퀘스트로 정리해드릴게요.";
+    return "기간 일정과 관련해 미리 준비할 일이 있으면 퀘스트로도 정리해드릴 수 있어요.";
   }
   return null;
 }
 
-// 도메인별 아이콘/이름표. Action Log를 "등록했습니다" 한 줄이 아니라 무엇을
-// 어떻게 바꿨는지 도메인별로 투명하게 보여주기 위해 씁니다.
 const actionLogDomainMeta: Record<SerinActionLogEntry["domain"], { icon: string; label: string }> = {
-  calendar: { icon: "📅", label: "Calendar" },
-  quest: { icon: "✅", label: "Quest" },
-  project: { icon: "📁", label: "Project" },
-  diary: { icon: "📔", label: "Diary" },
-  memory: { icon: "🧠", label: "Memory" },
-  relationship: { icon: "🤝", label: "인연록" },
-  library: { icon: "📚", label: "도서관" },
+  calendar: { icon: "Calendar", label: "일정" },
+  quest: { icon: "Quest", label: "Quest" },
+  project: { icon: "Project", label: "프로젝트" },
+  diary: { icon: "Diary", label: "다이어리" },
+  memory: { icon: "Memory", label: "세린 기억" },
+  relationship: { icon: "Relation", label: "인연록" },
+  library: { icon: "Library", label: "왕국도서관" },
 };
 
 function buildActionLogMessage(entries: SerinActionLogEntry[]): string {
   const body = entries
     .map((entry) => {
       const meta = actionLogDomainMeta[entry.domain];
-      return `${meta.icon} ${meta.label} · ${entry.label}\n${entry.detail}`;
+      return `${meta.icon} ${meta.label} - ${entry.label}\n${entry.detail}`;
     })
     .join("\n\n");
-  return `세린이 처리한 작업이에요, 공주님\n\n${body}`;
+  return `세린이 처리한 작업이에요, 공주님.\n\n${body}`;
 }
 
 function buildProgress(quests: Quest[], base: UserProgress): UserProgress {
@@ -184,10 +200,10 @@ function buildProgress(quests: Quest[], base: UserProgress): UserProgress {
 function createQuestFromSerinAction(action: SerinAction): Quest {
   const payload = action.payload.quest ?? {};
   return {
-    id: `q-serin-${Date.now()}`,
+    id: newId(),
     type: payload.type ?? "daily",
     title: payload.title ?? action.title,
-    description: payload.description ?? "세린이 대화에서 정리한 Quest입니다.",
+    description: payload.description ?? "?몃┛????붿뿉???뺣━??Quest?낅땲??",
     status: "pending",
     category: payload.category ?? "growth",
     priority: payload.priority ?? "medium",
@@ -204,7 +220,7 @@ function createQuestFromSerinAction(action: SerinAction): Quest {
 function createContactFromSerinAction(action: SerinAction): RelationshipContact {
   const payload = action.payload.contact ?? {};
   return {
-    id: `rel-serin-${Date.now()}`,
+    id: newId(),
     name: payload.name ?? action.title,
     affinity: payload.affinity ?? 3,
     organization: payload.organization,
@@ -216,16 +232,8 @@ function createContactFromSerinAction(action: SerinAction): RelationshipContact 
   };
 }
 
-const initialSerinMemories: SerinMemory[] = [
-  {
-    id: "memory-001",
-    memoryType: "routine",
-    content: "공주님은 오전에 중요한 업무를 먼저 끝낼 때 집중도가 높습니다.",
-    importance: "high",
-    source: "system",
-    createdAt: "2026-07-09T09:00:00+09:00",
-  },
-];
+// ?몃┛??湲곗뼲???ъ슜?먭? ?ㅼ젣濡?留먰븳 寃껊쭔 議댁옱?⑸땲?? 珥덇린媛믪? 鍮꾩뼱 ?덉뒿?덈떎.
+const initialSerinMemories: SerinMemory[] = [];
 
 export function App() {
   const snapshot = useMemo(() => getPrincessOsSnapshot(), []);
@@ -238,32 +246,82 @@ export function App() {
   const [completionEvents, setCompletionEvents] = useState<QuestCompletionEvent[]>([]);
   const [progressBase, setProgressBase] = useState<UserProgress>(snapshot.progress);
   const [events, setEvents] = useState<CalendarEvent[]>(snapshot.events);
-  // 화면 채팅은 세션 한정입니다. 새로고침하면 이전 대화는 사라지고 새 인사부터 시작합니다.
-  // (장기 기억은 별도로 serinMemories에 저장되어 새로고침해도 남아 있습니다.)
+  // ?붾㈃ 梨꾪똿? ?몄뀡 ?쒖젙?낅땲?? ?덈줈怨좎묠?섎㈃ ?댁쟾 ??붾뒗 ?щ씪吏怨????몄궗遺???쒖옉?⑸땲??
+  // (?κ린 湲곗뼲? 蹂꾨룄濡?serinMemories????λ릺???덈줈怨좎묠?대룄 ?⑥븘 ?덉뒿?덈떎.)
   const [messages, setMessages] = useState<SerinMessage[]>(() => [buildTimeGreeting()]);
   const [serinStatus, setSerinStatus] = useState<SerinStatus>("idle");
   const [pendingSerinAction, setPendingSerinAction] = useState<SerinAction | null>(null);
   const [serinMemories, setSerinMemories] = useState<SerinMemory[]>(initialSerinMemories);
   const [selectedDate, setSelectedDate] = useState(TODAY);
-  // 세린이 실제로 무엇을 했는지 투명하게 보여주는 행동 로그입니다. 최근 항목이
-  // 앞에 오도록 쌓고, 왼쪽 패널의 타임라인과 대화창 안 상세 내역 둘 다에 씁니다.
+  // ?몃┛???ㅼ젣濡?臾댁뾿???덈뒗吏 ?щ챸?섍쾶 蹂댁뿬二쇰뒗 ?됰룞 濡쒓렇?낅땲?? 理쒓렐 ??ぉ??  // ?욎뿉 ?ㅻ룄濡??볤퀬, ?쇱そ ?⑤꼸????꾨씪?멸낵 ??붿갹 ???곸꽭 ?댁뿭 ???ㅼ뿉 ?곷땲??
   const [actionLog, setActionLog] = useState<SerinActionLogEntry[]>([]);
-  // "어제 일기 수정할게" 같은 diary.update 확인 후, 침실 화면이 어느 날짜를
-  // 열어서 보여줘야 하는지 전달하는 신호입니다.
+  // "?댁젣 ?쇨린 ?섏젙?좉쾶" 媛숈? diary.update ?뺤씤 ?? 移⑥떎 ?붾㈃???대뒓 ?좎쭨瑜?  // ?댁뼱??蹂댁뿬以섏빞 ?섎뒗吏 ?꾨떖?섎뒗 ?좏샇?낅땲??
   const [diaryFocusTarget, setDiaryFocusTarget] = useState<"today" | "yesterday" | null>(null);
-  // 세린이 기존 Quest/일정을 "수정/삭제"로 해석할 때 실제 항목과 매칭하기 위한
-  // 참조 목록입니다. 매 메시지 전송 시 최신 상태 기준으로 다시 만듭니다.
+  // ?몃┛??湲곗〈 Quest/?쇱젙??"?섏젙/??젣"濡??댁꽍?????ㅼ젣 ??ぉ怨?留ㅼ묶?섍린 ?꾪븳
+  // 李몄“ 紐⑸줉?낅땲?? 留?硫붿떆吏 ?꾩넚 ??理쒖떊 ?곹깭 湲곗??쇰줈 ?ㅼ떆 留뚮벊?덈떎.
   const questRefs = useMemo(() => quests.map((quest) => ({ id: quest.id, title: quest.title })), [quests]);
   const eventRefs = useMemo(() => events.map((event) => ({ id: event.id, title: event.title })), [events]);
-  // TODO(Alpha 이후): 지금은 세린 대화가 새로고침 시 전부 사라지는 세션 한정 mock
-  // 구조입니다. saveMessage/getMessages는 이미 호출되고 있지만 실제로는 아무것도
-  // 저장하지 않는 스텁입니다. Supabase 연동 시 이 conversationId로 실제 메시지 기록을
-  // 읽고 쓰도록 교체하고, 앱 시작 시 getMessages 결과로 messages 초기값을 채워야 합니다.
+  // TODO(Alpha ?댄썑): 吏湲덉? ?몃┛ ??붽? ?덈줈怨좎묠 ???꾨? ?щ씪吏???몄뀡 ?쒖젙 mock
+  // 援ъ“?낅땲?? saveMessage/getMessages???대? ?몄텧?섍퀬 ?덉?留??ㅼ젣濡쒕뒗 ?꾨Т寃껊룄
+  // ??ν븯吏 ?딅뒗 ?ㅽ뀅?낅땲?? Supabase ?곕룞 ????conversationId濡??ㅼ젣 硫붿떆吏 湲곕줉??  // ?쎄퀬 ?곕룄濡?援먯껜?섍퀬, ???쒖옉 ??getMessages 寃곌낵濡?messages 珥덇린媛믪쓣 梨꾩썙???⑸땲??
   const conversationId = useMemo(() => "mock-serin-conversation", []);
-  // Castle은 해금 시스템이 없는 순수 공간 이동 허브입니다. castleRooms는 방 목록과
-  // "지금 어느 방에 있는지"(currentRoomKey, 미니맵 하이라이트용)만 관리합니다.
+  // Castle? ?닿툑 ?쒖뒪?쒖씠 ?녿뒗 ?쒖닔 怨듦컙 ?대룞 ?덈툕?낅땲?? castleRooms??諛?紐⑸줉怨?  // "吏湲??대뒓 諛⑹뿉 ?덈뒗吏"(currentRoomKey, 誘몃땲留??섏씠?쇱씠?몄슜)留?愿由ы빀?덈떎.
   const castleRooms = useCastleRooms(snapshot.rooms);
   const progress = useMemo(() => buildProgress(quests, progressBase), [quests, progressBase]);
+
+  // ?? Supabase ?몄쬆 & ?곸냽??????????????????????????????????????????????
+  // supabase env媛 ?놁쑝硫?濡쒖뺄 mock 紐⑤뱶) ?몄쬆/??μ쓣 嫄대꼫?곷땲??
+  const supabaseOn = isSupabaseEnabled();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(!supabaseOn);
+  // 'idle' ??'loading' ??'ready'. 'ready' ?댄썑?먮쭔 ?곹깭 蹂寃쎌쓣 DB濡??숆린?뷀빀?덈떎
+  // (珥덇린 鍮??곹깭媛 ?ㅼ닔濡?DB瑜?鍮꾩슦吏 ?딅룄濡?.
+  const [dataPhase, setDataPhase] = useState<"idle" | "loading" | "ready">(supabaseOn ? "idle" : "ready");
+
+  // ?몄뀡 ?뺤씤 + 濡쒓렇??濡쒓렇?꾩썐 援щ룆
+  useEffect(() => {
+    if (!supabaseOn) return;
+    let unsub = () => {};
+    void getCurrentSession().then((session) => {
+      setUserId(session?.user?.id ?? null);
+      setAuthReady(true);
+      unsub = onAuthChange((user) => {
+        setUserId(user?.id ?? null);
+        if (!user) setDataPhase("idle");
+      });
+    });
+    return () => unsub();
+  }, [supabaseOn]);
+
+  // 濡쒓렇?몃릺硫??꾩껜 ?ㅻ깄?룹쓣 遺덈윭? ?곹깭瑜?梨꾩썎?덈떎.
+  useEffect(() => {
+    if (!supabaseOn || !userId) return;
+    setDataPhase("loading");
+    void loadSnapshot(userId).then((snap) => {
+      setQuests(snap.quests);
+      setQuestHistory(snap.questHistory);
+      setEvents(snap.events);
+      setMainQuests(snap.mainQuests);
+      setSerinMemories(snap.memories);
+      setContacts(snap.contacts);
+      setDiaryEntries(snap.diaryEntries);
+      if (snap.progressBase) {
+        setProgressBase((current) => ({ ...current, ...snap.progressBase }));
+      }
+      setDataPhase("ready");
+    });
+  }, [supabaseOn, userId]);
+
+  // ?꾨찓?몃퀎 write-through: 'ready' ?댄썑 媛?而щ젆?섏씠 諛붾뚮㈃ DB? ?숆린?뷀빀?덈떎.
+  const canSync = supabaseOn && userId !== null && dataPhase === "ready";
+  useEffect(() => { if (canSync) void syncQuests(userId!, quests); }, [canSync, quests]);
+  useEffect(() => { if (canSync) void syncQuestHistory(userId!, questHistory); }, [canSync, questHistory]);
+  useEffect(() => { if (canSync) void syncEvents(userId!, events); }, [canSync, events]);
+  useEffect(() => { if (canSync) void syncMainQuests(userId!, mainQuests); }, [canSync, mainQuests]);
+  useEffect(() => { if (canSync) void syncMemories(userId!, serinMemories); }, [canSync, serinMemories]);
+  useEffect(() => { if (canSync) void syncContacts(userId!, contacts); }, [canSync, contacts]);
+  useEffect(() => { if (canSync) void syncDiary(userId!, diaryEntries); }, [canSync, diaryEntries]);
+  useEffect(() => { if (canSync) void syncProgress(userId!, progress); }, [canSync, progress]);
   const appData = {
     ...snapshot,
     quests,
@@ -278,33 +336,47 @@ export function App() {
   };
 
   useEffect(() => {
-    // 대화방을 실제로 만들어두는 흐름입니다. 지금은 mock이라 아무 것도 영속화되지
-    // 않지만, Supabase 연동 시 이 자리에서 받은 conversationId로 앞으로의
-    // saveMessage/getMessages 호출을 교체하면 됩니다.
+    // ??붾갑???ㅼ젣濡?留뚮뱾?대몢???먮쫫?낅땲?? 吏湲덉? mock?대씪 ?꾨Т 寃껊룄 ?곸냽?붾릺吏
+    // ?딆?留? Supabase ?곕룞 ?????먮━?먯꽌 諛쏆? conversationId濡??욎쑝濡쒖쓽
+    // saveMessage/getMessages ?몄텧??援먯껜?섎㈃ ?⑸땲??
     void getOrCreateConversation("mock-user");
   }, []);
 
-  function completeQuest(id: string) {
-    const result = completeQuestDomain(quests, questHistory, id, progress);
+  // 泥댄겕諛뺤뒪 toggle: ?꾨즺 泥섎━? ?꾨즺 痍⑥냼(泥댄겕 ?댁젣)瑜?紐⑤몢 ???⑥닔 ?섎굹濡?  // 泥섎━?⑸땲?? mock state(quests/questHistory/progress)? UI媛 利됱떆 ?④퍡
+  // 諛섏쁺?섍퀬, ?섏쨷??Supabase update濡?援먯껜???뚮룄 ??吏꾩엯?먮쭔 諛붽씀硫??⑸땲??
+  function toggleQuestCompletion(id: string, completed: boolean) {
+    const result = setQuestCompletion(quests, questHistory, id, completed, progress);
     setQuests(result.quests);
     setQuestHistory(result.history);
     setCompletionEvents(result.events);
     setProgressBase(result.progress);
   }
 
-  function cycleQuest(id: string) {
-    setQuests((current) =>
-      current.map((quest) => {
-        if (quest.id !== id) return quest;
-        const next = quest.status === "pending" ? "inProgress" : quest.status === "inProgress" ? "completed" : "pending";
-        return {
-          ...quest,
-          status: next,
-          completedAt: next === "completed" ? new Date().toISOString() : undefined,
-          rewardClaimed: next === "completed" ? false : quest.rewardClaimed,
-        };
-      }),
-    );
+  function deleteQuest(id: string) {
+    setQuests((current) => current.filter((quest) => quest.id !== id));
+  }
+
+  function createQuest(input: { title: string; description?: string; type: "daily" | "side"; dueDate: string }) {
+    const quest: Quest = {
+      id: newId(),
+      type: input.type,
+      title: input.title,
+      description: input.description ?? "",
+      status: "pending",
+      category: "growth",
+      priority: "medium",
+      progress: 0,
+      expReward: questTypeMeta[input.type].baseExp,
+      goldReward: 0,
+      dueDate: input.dueDate,
+      rewardClaimed: false,
+      source: "manual",
+    };
+    setQuests((current) => [quest, ...current]);
+  }
+
+  function updateQuest(id: string, changes: Partial<Quest>) {
+    setQuests((current) => current.map((quest) => (quest.id === id ? { ...quest, ...changes } : quest)));
   }
 
   function createCalendarEvent(input: CalendarEventInput, linkQuest = false) {
@@ -330,17 +402,15 @@ export function App() {
   function saveDiaryEntry(content: string, moodEmoji: string, moodLabel: string) {
     const todayEvents = getEventsByDay(events, TODAY);
     const todayCompleted = quests.filter((quest) => quest.status === "completed" && quest.dueDate === TODAY);
-    // TODO: Replace with real AI summary call. 지금은 오늘 데이터를 바탕으로 한
-    // 간단한 mock 요약입니다.
-    const aiSummary = `오늘은 일정 ${todayEvents.length}건, 완료한 퀘스트 ${todayCompleted.length}개와 함께 "${moodLabel}"한 하루였습니다.`;
+    // TODO: Replace with real AI summary call. 吏湲덉? ?ㅻ뒛 ?곗씠?곕? 諛뷀깢?쇰줈 ??    // 媛꾨떒??mock ?붿빟?낅땲??
+    const aiSummary = `?ㅻ뒛? ?쇱젙 ${todayEvents.length}嫄? ?꾨즺???섏뒪??${todayCompleted.length}媛쒖? ?④퍡 "${moodLabel}"???섎（??듬땲??`;
     const linkedEventTitles = todayEvents.map((event) => event.title);
     const linkedQuestTitles = todayCompleted.map((quest) => quest.title);
     const linkedMainQuestUpdates = mainQuests.flatMap((mq) =>
       mq.updates.filter((update) => update.date.slice(0, 10) === TODAY).map((update) => update.content),
     );
 
-    // 오늘 날짜로 이미 기록이 있으면 새로 만들지 않고 그 기록을 갱신합니다
-    // ("오늘 기록"은 하루에 하나만 존재해야 하므로 upsert로 처리합니다).
+    // ?ㅻ뒛 ?좎쭨濡??대? 湲곕줉???덉쑝硫??덈줈 留뚮뱾吏 ?딄퀬 洹?湲곕줉??媛깆떊?⑸땲??    // ("?ㅻ뒛 湲곕줉"? ?섎（???섎굹留?議댁옱?댁빞 ?섎?濡?upsert濡?泥섎━?⑸땲??.
     setDiaryEntries((current) => {
       const existingIndex = current.findIndex((entry) => entry.date === TODAY);
       if (existingIndex >= 0) {
@@ -358,7 +428,7 @@ export function App() {
         return updated;
       }
       const entry: DiaryEntry = {
-        id: `diary-${Date.now()}`,
+        id: newId(),
         date: TODAY,
         moodEmoji,
         moodLabel,
@@ -372,7 +442,7 @@ export function App() {
     });
   }
 
-  // 지난 일기 수정: 내용/기분만 바꿉니다 (자동 요약·연결 데이터는 작성 당일 기준으로 유지).
+  // 吏???쇨린 ?섏젙: ?댁슜/湲곕텇留?諛붽퓠?덈떎 (?먮룞 ?붿빟쨌?곌껐 ?곗씠?곕뒗 ?묒꽦 ?뱀씪 湲곗??쇰줈 ?좎?).
   function updateDiaryEntry(id: string, content: string, moodEmoji: string, moodLabel: string) {
     setDiaryEntries((current) =>
       current.map((entry) => (entry.id === id ? { ...entry, content, moodEmoji, moodLabel } : entry)),
@@ -388,14 +458,11 @@ export function App() {
     const recentHistory = messages.slice(-8).map((item) => ({ sender: item.sender, content: item.content }));
     const princessMessage: SerinMessage = { id: `m-${now}-p`, sender: "princess", content, createdAt: now, messageType: "text" };
     setMessages((current) => [...current, princessMessage]);
-    // 지금은 mock(아무것도 저장하지 않는 스텁)이지만, 실제 흐름(전송 시점에 메시지를
-    // 기록)은 이미 연결해두었습니다. Supabase 연동 시 아래 두 saveMessage 호출만
-    // 실제 저장으로 바뀌면 됩니다.
+    // 吏湲덉? mock(?꾨Т寃껊룄 ??ν븯吏 ?딅뒗 ?ㅽ뀅)?댁?留? ?ㅼ젣 ?먮쫫(?꾩넚 ?쒖젏??硫붿떆吏瑜?    // 湲곕줉)? ?대? ?곌껐?대몢?덉뒿?덈떎. Supabase ?곕룞 ???꾨옒 ??saveMessage ?몄텧留?    // ?ㅼ젣 ??μ쑝濡?諛붾뚮㈃ ?⑸땲??
     void saveMessage({ conversationId, ...princessMessage });
 
-    // 직전에 세린이 확인을 물어본 상태(pendingAction)에서 "응", "그래", "당연하지", "부탁해",
-    // "등록해" 같은 짧은 답변이 오면, 새로 의도를 해석하지 않고 그 pendingAction을 바로 이어서
-    // 실행합니다. ("무엇을 등록할지 모르겠다"는 답을 하지 않기 위함)
+    // 吏곸쟾???몃┛???뺤씤??臾쇱뼱蹂??곹깭(pendingAction)?먯꽌 "??, "洹몃옒", "?뱀뿰?섏?", "遺?곹빐",
+    // "?깅줉?? 媛숈? 吏㏃? ?듬????ㅻ㈃, ?덈줈 ?섎룄瑜??댁꽍?섏? ?딄퀬 洹?pendingAction??諛붾줈 ?댁뼱??    // ?ㅽ뻾?⑸땲?? ("臾댁뾿???깅줉?좎? 紐⑤Ⅴ寃좊떎"???듭쓣 ?섏? ?딄린 ?꾪븿)
     if (pendingSerinAction && isShortReply(content)) {
       if (SHORT_AFFIRM.test(content)) {
         confirmSerinAction();
@@ -407,17 +474,37 @@ export function App() {
       }
     }
 
-    // "내일 뭐하나" 같은 일정 조회 질문은 AI를 거치지 않고, 실제 events 상태를 바로
-    // 조회해서 답합니다. (등록 요청이 아니라 이미 있는 일정을 물어보는 경우)
+    // "?ㅻ뒛 萸??댁빞 ?섏??" 媛숈? ?섏뒪??議고쉶 吏덈Ц? ?ㅼ젣 quests ?곹깭瑜?諛붾줈 議고쉶?댁꽌
+    // ?듯빀?덈떎. (?깅줉 ?붿껌???꾨땲???대? ?덈뒗 ???쇱쓣 臾쇱뼱蹂대뒗 寃쎌슦)
+    if (QUEST_QUERY_WORDS.test(content) && !content.includes("?깅줉") && !content.includes("異붽?")) {
+      const pendingToday = quests.filter((quest) => quest.status !== "completed" && quest.dueDate === TODAY);
+      const reply =
+        pendingToday.length === 0
+          ? "怨듭＜?? ?ㅻ뒛 ?⑥? ?섏뒪?멸? ?놁뼱?? ?덈줈 梨숆만 ?쇱씠 ?앷린硫??명븯寃?留먯??댁＜?몄슂."
+          : `怨듭＜?? ?ㅻ뒛 ?⑥? ?섏뒪?몃뒗 ${pendingToday.map((quest) => `'${quest.title}'`).join(", ")}?낅땲?? ?섎굹???④퍡 ?뺣━?대뱶由닿쾶??`;
+      const questQueryMessage: SerinMessage = {
+        id: `m-${Date.now()}-questquery`,
+        sender: "serin",
+        content: reply,
+        createdAt: new Date().toISOString(),
+        messageType: "text",
+      };
+      setMessages((current) => [...current, questQueryMessage]);
+      void saveMessage({ conversationId, ...questQueryMessage });
+      return;
+    }
+
+    // "?댁씪 萸먰븯?? 媛숈? ?쇱젙 議고쉶 吏덈Ц? AI瑜?嫄곗튂吏 ?딄퀬, ?ㅼ젣 events ?곹깭瑜?諛붾줈
+    // 議고쉶?댁꽌 ?듯빀?덈떎. (?깅줉 ?붿껌???꾨땲???대? ?덈뒗 ?쇱젙??臾쇱뼱蹂대뒗 寃쎌슦)
     const scheduleQuery = resolveScheduleQuery(content);
     if (scheduleQuery) {
       const dayEvents = getEventsByDay(events, scheduleQuery.date);
       const reply =
         dayEvents.length === 0
-          ? `공주님, ${scheduleQuery.label}은 등록된 일정이 없어요. 편히 보내셔도 될 것 같아요.`
-          : `공주님, ${scheduleQuery.label} 일정은 ${dayEvents
+          ? `怨듭＜?? ${scheduleQuery.label}? ?깅줉???쇱젙???놁뼱?? ?명엳 蹂대궡?붾룄 ??寃?媛숈븘??`
+          : `怨듭＜?? ${scheduleQuery.label} ?쇱젙? ${dayEvents
               .map((event) => `${event.startAt.slice(11, 16)} ${event.title}`)
-              .join(", ")}(이)가 있어요. 시간 맞춰 챙겨드릴게요.`;
+              .join(", ")}(??媛 ?덉뼱?? ?쒓컙 留욎떠 梨숆꺼?쒕┫寃뚯슂.`;
       const scheduleMessage: SerinMessage = {
         id: `m-${Date.now()}-schedule`,
         sender: "serin",
@@ -443,11 +530,11 @@ export function App() {
         },
         recentHistory,
       );
-      if (content.includes("기억")) {
+      if (!result.action && /기억|저장|다음에 참고/.test(content)) {
         setSerinMemories((current) =>
           saveMemory(current, {
             memoryType: "preference",
-            content: content.replace(/기억해줘|기억해/g, "").trim() || content,
+            content: content.replace(/기억해줘|기억해|저장해줘|저장해|다음에 참고해줘/g, "").trim() || content,
             importance: "medium",
             source: "chat",
           }),
@@ -475,7 +562,7 @@ export function App() {
           id: `m-${Date.now()}-error`,
           sender: "serin",
           content:
-            "죄송합니다, 공주님. 제가 방금 말씀을 제대로 이해하지 못했어요. 조금만 더 알려주시면 바로 도와드리겠습니다.",
+            "二꾩넚?⑸땲?? 怨듭＜?? ?쒓? 諛⑷툑 留먯????쒕?濡??댄빐?섏? 紐삵뻽?댁슂. 議곌툑留????뚮젮二쇱떆硫?諛붾줈 ?꾩??쒕━寃좎뒿?덈떎.",
           createdAt: new Date().toISOString(),
           messageType: "error",
         },
@@ -499,8 +586,8 @@ export function App() {
     }
     if (pendingSerinAction.intent === "project.update" && pendingSerinAction.payload.mainQuestUpdate) {
       const { mainQuestId, content } = pendingSerinAction.payload.mainQuestUpdate;
-      // mainQuestId 자리에는 (아직 실제 검색 UI가 없어) 프로젝트 제목이 들어옵니다.
-      // id 또는 title 어느 쪽으로 와도 매칭되도록 둘 다 확인합니다.
+      // mainQuestId ?먮━?먮뒗 (?꾩쭅 ?ㅼ젣 寃??UI媛 ?놁뼱) ?꾨줈?앺듃 ?쒕ぉ???ㅼ뼱?듬땲??
+      // id ?먮뒗 title ?대뒓 履쎌쑝濡????留ㅼ묶?섎룄濡??????뺤씤?⑸땲??
       setMainQuests((current) =>
         current.map((mq) => (mq.id === mainQuestId || mq.title === mainQuestId ? addMainQuestUpdate(mq, content, "serin") : mq)),
       );
@@ -524,6 +611,10 @@ export function App() {
       if (Object.keys(changes).length > 0) {
         setQuests((current) => current.map((quest) => (quest.id === questId ? { ...quest, ...changes } : quest)));
       }
+    }
+    if (pendingSerinAction.intent === "quest.complete" && pendingSerinAction.payload.questUpdate) {
+      const { questId } = pendingSerinAction.payload.questUpdate;
+      toggleQuestCompletion(questId, true);
     }
     if (pendingSerinAction.intent === "quest.delete" && pendingSerinAction.payload.questDelete) {
       const { questId } = pendingSerinAction.payload.questDelete;
@@ -554,8 +645,8 @@ export function App() {
       },
     ]);
 
-    // 세린 행동 로그: "등록했습니다" 한 줄이 아니라, 이번에 실제로 무엇을 했는지
-    // 도메인별로 남겨서 왼쪽 타임라인과 대화창에 함께 보여줍니다.
+    // ?몃┛ ?됰룞 濡쒓렇: "?깅줉?덉뒿?덈떎" ??以꾩씠 ?꾨땲?? ?대쾲???ㅼ젣濡?臾댁뾿???덈뒗吏
+    // ?꾨찓?몃퀎濡??④꺼???쇱そ ??꾨씪?멸낵 ??붿갹???④퍡 蹂댁뿬以띾땲??
     if (pendingSerinAction.logEntries && pendingSerinAction.logEntries.length > 0) {
       const stampBase = Date.now();
       const newLogEntries: SerinActionLogEntry[] = pendingSerinAction.logEntries.map((entry, index) => ({
@@ -576,9 +667,9 @@ export function App() {
       ]);
     }
 
-    // 능동적 제안: 처리 결과 뒤에 자연스럽게 다음 대화를 이어갈 수 있는 한 줄을
-    // 덧붙입니다. 별도의 확인/취소 액션이 아니라 그냥 말풍선이라, 공주님이
-    // 무시해도 아무 일도 일어나지 않습니다.
+    // ?λ룞???쒖븞: 泥섎━ 寃곌낵 ?ㅼ뿉 ?먯뿰?ㅻ읇寃??ㅼ쓬 ??붾? ?댁뼱媛????덈뒗 ??以꾩쓣
+    // ?㏓텤?낅땲?? 蹂꾨룄???뺤씤/痍⑥냼 ?≪뀡???꾨땲??洹몃깷 留먰뭾?좎씠?? 怨듭＜?섏씠
+    // 臾댁떆?대룄 ?꾨Т ?쇰룄 ?쇱뼱?섏? ?딆뒿?덈떎.
     const suggestion = buildProactiveSuggestion(pendingSerinAction);
     if (suggestion) {
       setMessages((current) => [
@@ -605,7 +696,7 @@ export function App() {
       {
         id: `m-${Date.now()}-cancelled`,
         sender: "serin",
-        content: "알겠습니다, 공주님. 이번에는 넘어가겠습니다. 필요하시면 언제든 다시 말씀해주세요.",
+        content: "?뚭쿋?듬땲?? 怨듭＜?? ?대쾲?먮뒗 ?섏뼱媛寃좎뒿?덈떎. ?꾩슂?섏떆硫??몄젣???ㅼ떆 留먯??댁＜?몄슂.",
         createdAt: new Date().toISOString(),
         messageType: "system_notice",
       },
@@ -613,9 +704,8 @@ export function App() {
     setSerinStatus("idle");
   }
 
-  // 첨부파일 처리 파이프라인(Mock): "업로드 중" 안내를 바로 보여준 뒤, 짧은
-  // 지연 후 실제 분석 결과 메시지를 보여줍니다. 실제 OCR/STT/문서 요약 API로
-  // 교체하기 전까지는 attachmentPipeline.ts의 mock 로직이 결과를 만듭니다.
+  // 泥⑤??뚯씪 泥섎━ ?뚯씠?꾨씪??Mock): "?낅줈??以? ?덈궡瑜?諛붾줈 蹂댁뿬以 ?? 吏㏃?
+  // 吏?????ㅼ젣 遺꾩꽍 寃곌낵 硫붿떆吏瑜?蹂댁뿬以띾땲?? ?ㅼ젣 OCR/STT/臾몄꽌 ?붿빟 API濡?  // 援먯껜?섍린 ?꾧퉴吏??attachmentPipeline.ts??mock 濡쒖쭅??寃곌낵瑜?留뚮벊?덈떎.
   function handleAttach(type: "image" | "document" | "audio", fileName?: string) {
     setSerinStatus("thinking");
     setMessages((current) => [
@@ -653,8 +743,23 @@ export function App() {
     mainQuest.updates.filter((update) => update.date.slice(0, 10) === TODAY).map((update) => ({ mainQuest, content: update.content })),
   );
 
+  if (supabaseOn && !authReady) {
+    return <div className="app-splash">공주님의 왕국을 여는 중...</div>;
+  }
+  if (supabaseOn && !userId) {
+    return <LoginScreen />;
+  }
+  if (supabaseOn && dataPhase !== "ready") {
+    return <div className="app-splash">공주님의 기록을 불러오는 중...</div>;
+  }
+
   return (
     <div className="app-shell">
+      <GameTopHud
+        princess={snapshot.princess}
+        progress={progress}
+        onSignOut={supabaseOn ? () => void signOut() : undefined}
+      />
       <SiteNav activeView={activeView} onChange={setActiveView} />
 
       <main className="app-main">
@@ -664,7 +769,7 @@ export function App() {
             rooms={castleRooms.rooms}
             currentRoomKey={castleRooms.currentRoomKey}
             onNavigate={setActiveView}
-            onCompleteQuest={completeQuest}
+            onToggleQuest={toggleQuestCompletion}
           />
         )}
         {activeView === "castle" && (
@@ -675,12 +780,15 @@ export function App() {
             onVisitRoom={castleRooms.visitRoom}
           />
         )}
-        {activeView === "office" && (
-          <OfficePage
-            mainQuests={mainQuests}
+        {(activeView === "office" || activeView === "quests") && (
+          <QuestScreen
             quests={quests}
-            events={events}
-            contacts={contacts}
+            mainQuests={mainQuests}
+            onToggleQuest={toggleQuestCompletion}
+            onDeleteQuest={deleteQuest}
+            onCreateQuest={createQuest}
+            onUpdateQuest={updateQuest}
+            onAskSerin={() => setActiveView("serin")}
             onToggleChapter={toggleMainQuestChapterHandler}
             onAddUpdate={addMainQuestUpdateHandler}
           />
@@ -716,17 +824,6 @@ export function App() {
         )}
         {activeView === "throne" && <ThronePage data={appData} />}
         {activeView === "relationship" && <RelationshipPage contacts={contacts} mainQuests={mainQuests} />}
-        {activeView === "quests" && (
-          <QuestScreen
-            quests={quests}
-            mainQuests={mainQuests}
-            history={questHistory}
-            progress={progress}
-            completionEvents={completionEvents}
-            onCompleteQuest={completeQuest}
-            onCycleQuest={cycleQuest}
-          />
-        )}
         {activeView === "calendar" && (
           <CalendarPage
             events={events}
@@ -734,6 +831,7 @@ export function App() {
             onSelectDate={setSelectedDate}
             onCompleteEvent={(id) => setEvents((current) => completeEvent(current, id))}
             onCancelEvent={(id) => setEvents((current) => deleteEvent(current, id))}
+            onUpdateEvent={(id, input) => setEvents((current) => updateEvent(current, id, input))}
             onCreateEvent={createCalendarEvent}
           />
         )}
@@ -745,7 +843,6 @@ export function App() {
             status={serinStatus}
             pendingAction={pendingSerinAction}
             memories={serinMemories}
-            actionLog={actionLog}
             mainQuests={mainQuests}
             events={events}
             contacts={contacts}
@@ -756,6 +853,21 @@ export function App() {
           />
         )}
       </main>
+
+      {/* ?몃┛ 硫붿씠?쒕큸: Serin ?붾㈃(?묒젒?? ?먯껜瑜?蹂??뚮뒗 援녹씠 ???꾩슦吏 ?딄퀬,
+          洹???紐⑤뱺 ?붾㈃?먯꽌 ?곗륫 ?섎떒??理쒖냼?붾맂 梨꾨줈 ?④퍡 ?덉뒿?덈떎. */}
+      {activeView !== "serin" && (
+        <SerinFloatingWidget
+          status={serinStatus}
+          hasPendingAction={pendingSerinAction !== null}
+          onOpenSerin={() => setActiveView("serin")}
+          onQuickAsk={(sentence) => {
+            setActiveView("serin");
+            void sendSerinMessage(sentence);
+          }}
+        />
+      )}
     </div>
   );
 }
+

@@ -3,14 +3,16 @@ import type { PrincessProfile, UserProgress } from "../../app/types";
 interface HomeHudProps {
   princess: PrincessProfile;
   progress: UserProgress;
-  gold: number;
-  gems: number;
-  mailCount: number;
+  todayEventCount: number;
+  todayQuestCount: number;
+  activeMainQuestCount: number;
+  memoCount: number;
 }
 
-// 화면 최상단에 얇게 떠 있는 Glass HUD 바입니다. 큰 흰 카드가 아니라 반투명
-// 오버레이로, 레벨/EXP/재화/우편함만 간결하게 보여줍니다.
-export function HomeHud({ princess, progress, gold, gems, mailCount }: HomeHudProps) {
+// 화면 최상단에 얇게 떠 있는 Glass HUD 바입니다. Princess OS에는 재화(보석/코인)
+// 시스템이 없으므로, 실제로 존재하는 지표(레벨/EXP/오늘 일정·Quest/진행 중
+// 메인Quest/세린 메모)만 간결하게 보여줍니다.
+export function HomeHud({ princess, progress, todayEventCount, todayQuestCount, activeMainQuestCount, memoCount }: HomeHudProps) {
   return (
     <header className="home-hud-bar">
       <div className="home-hud-brand">
@@ -26,16 +28,11 @@ export function HomeHud({ princess, progress, gold, gems, mailCount }: HomeHudPr
         <span className="home-hud-exp-label">{progress.expRate}%</span>
       </div>
 
-      <div className="home-hud-currency">
-        <span>💎 {gems.toLocaleString()}</span>
-        <span>🪙 {gold.toLocaleString()}</span>
-      </div>
-
-      <div className="home-hud-icons">
-        <button type="button" aria-label="우편함">
-          ✉️{mailCount > 0 && <em>{mailCount}</em>}
-        </button>
-        <button type="button" aria-label="설정">⚙️</button>
+      <div className="home-hud-stats">
+        <span title="오늘 일정">📅 {todayEventCount}</span>
+        <span title="오늘 Quest">✅ {todayQuestCount}</span>
+        <span title="진행 중 메인 Quest">📁 {activeMainQuestCount}</span>
+        <span title="세린 메모">🧠 {memoCount}</span>
       </div>
     </header>
   );

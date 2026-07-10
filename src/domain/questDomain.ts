@@ -7,14 +7,13 @@ import type {
   UserProgress,
 } from "../app/types";
 import { buildMockProgress } from "../data/mockProgress";
+import { newId } from "../app/ids";
 
 // 메인퀘스트(=프로젝트)는 이 파일이 아니라 domain/mainQuestDomain.ts가 다룹니다.
-// 여기서는 실행형 퀘스트(서브/일일/반복/스토리)만 다룹니다.
+// 여기서는 실행형 퀘스트(서브/일일)만 다룹니다.
 export const questTypeMeta: Record<QuestType, { icon: string; label: string; baseExp: number }> = {
   side: { icon: "⭐", label: "서브", baseExp: 80 },
   daily: { icon: "☀", label: "일일", baseExp: 20 },
-  routine: { icon: "🔄", label: "반복", baseExp: 40 },
-  story: { icon: "📖", label: "스토리", baseExp: 200 },
 };
 
 export const questCompletionFlow: QuestCompletionEvent[] = [
@@ -68,7 +67,7 @@ export function completeQuestDomain(
 
   const updatedHistory: QuestHistoryEntry[] = [
     {
-      id: `qh-${quest.id}-${Date.now()}`,
+      id: newId(),
       questId: quest.id,
       completedAt,
       rewardExp: quest.expReward,
@@ -100,12 +99,71 @@ export function completeQuestDomain(
   };
 }
 
+// 체크 해제(완료 취소): 방금 완료로 표시한 Quest를 다시 대기 상태로 되돌리고,
+// 왕국도서관 기록과 EXP도 함께 롤백합니다. (레벨업까지 되돌리는 정밀한 트랜잭션은
+// Supabase RPC 연동 시 처리할 몫이라, 지금은 EXP는 0 아래로 내려가지 않게만 막습니다.)
+export function uncompleteQuestDomain(
+  quests: Quest[],
+  history: QuestHistoryEntry[],
+  questId: string,
+  baseProgress: UserProgress,
+) {
+  const quest = quests.find((item) => item.id === questId);
+
+  if (!quest || quest.status !== "completed") {
+    return {
+      quests,
+      history,
+      progress: buildMockProgress(quests, baseProgress.currentExp, baseProgress.requiredExp),
+      events: [] as QuestCompletionEvent[],
+    };
+  }
+
+  const updatedQuests = quests.map((item) =>
+    item.id === questId
+      ? { ...item, status: "pending" as const, progress: 0, completedAt: undefined, rewardClaimed: false }
+      : item,
+  );
+
+  const updatedHistory = history.filter(
+    (entry) => !(entry.questId === questId && entry.completedAt === quest.completedAt),
+  );
+
+  const revertedExp = Math.max(0, baseProgress.currentExp - quest.expReward);
+  const progress = buildMockProgress(updatedQuests, revertedExp, baseProgress.requiredExp);
+
+  return {
+    quests: updatedQuests,
+    history: updatedHistory,
+    progress: {
+      ...progress,
+      level: baseProgress.level,
+      streakDays: baseProgress.streakDays,
+    },
+    events: [] as QuestCompletionEvent[],
+  };
+}
+
+// 체크박스 하나로 완료/완료취소를 모두 처리하는 진입점입니다. Home의 오늘의
+// Quest 체크리스트와 QuestScreen의 완료 버튼이 함께 씁니다.
+export function setQuestCompletion(
+  quests: Quest[],
+  history: QuestHistoryEntry[],
+  questId: string,
+  completed: boolean,
+  baseProgress: UserProgress,
+) {
+  return completed
+    ? completeQuestDomain(quests, history, questId, baseProgress)
+    : uncompleteQuestDomain(quests, history, questId, baseProgress);
+}
+
 export function createQuestFromSerinDraft(title: string, mainQuestId?: string): Quest {
   const now = new Date().toISOString();
   // TODO:
   // Replace with Supabase Query and AI intent parser.
   return {
-    id: `q-serin-${Date.now()}`,
+    id: newId(),
     type: "daily",
     title,
     description: "세린의 대화에서 추출한 일일 퀘스트 초안입니다.",
@@ -126,8 +184,8 @@ export function createQuestFromCalendarEvent(event: CalendarEvent): Quest {
   // TODO:
   // Replace with Supabase Query and calendar-to-quest transaction.
   return {
-    id: `q-calendar-${Date.now()}`,
-    type: event.category === "routine" ? "routine" : "daily",
+    id: newId(),
+    type: "daily",
     title: event.title,
     description: `${event.location ?? "루멘 왕성"} 일정에서 생성된 Quest입니다.`,
     status: "pending",

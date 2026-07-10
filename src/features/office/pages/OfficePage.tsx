@@ -38,7 +38,10 @@ export function OfficePage({ mainQuests, quests, events, contacts, onToggleChapt
   }
 
   return (
-    <section className="office-domain-page">
+    <section className="office-domain-page scene-fullbleed">
+      <div className="office-scene-backdrop" style={{ backgroundImage: 'url("/assets/office.webp")' }} />
+      <img className="scene-center-princess" src="/assets/princess-full-transparent.webp" alt="공주" />
+      <div className="office-scene-content">
       <header className="office-hero">
         <Badge tone="royal">Office</Badge>
         <h1>집무실</h1>
@@ -156,6 +159,7 @@ export function OfficePage({ mainQuests, quests, events, contacts, onToggleChapt
           </section>
         </section>
       )}
+      </div>
     </section>
   );
 }

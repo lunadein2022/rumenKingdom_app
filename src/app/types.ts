@@ -38,7 +38,9 @@ export type {
 // 아래 Quest는 그 프로젝트 아래(또는 독립적으로) 실행되는 작은 실행 단위입니다.
 // -----------------------------------------------------------------------
 export type QuestStatus = "pending" | "inProgress" | "completed";
-export type QuestType = "side" | "daily" | "routine" | "story";
+// 퀘스트 계층: 메인(=프로젝트, MainQuest 모델) → 서브(side, 며칠~몇 주 업무)
+// → 일일(daily, 오늘 할 일). 반복/스토리 타입은 제거되었습니다.
+export type QuestType = "side" | "daily";
 export type QuestCompletionEventType =
   | "check"
   | "glow"

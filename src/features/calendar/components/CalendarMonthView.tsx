@@ -1,4 +1,5 @@
 import type { CalendarEvent } from "../types/calendar.types";
+import { getKoreanToday } from "../../../app/dateUtils";
 import { isDateWithinEvent, isMultiDayEvent } from "../services/calendarService";
 
 interface CalendarMonthViewProps {
@@ -10,7 +11,7 @@ interface CalendarMonthViewProps {
 }
 
 const weekLabels = ["일", "월", "화", "수", "목", "금", "토"];
-const today = "2026-07-09";
+const today = getKoreanToday();
 
 function monthLabel(month: string) {
   const [year, rawMonth] = month.split("-");
@@ -67,8 +68,22 @@ function buildDayIndex(events: CalendarEvent[], visibleMonth: string) {
   return { eventCounts, multiDaySpans };
 }
 
+// 날짜별 일정 목록(제목 칩 표시용). 기간 일정은 걸쳐 있는 모든 날짜에 나옵니다.
+function buildDayEvents(events: CalendarEvent[], visibleMonth: string) {
+  const byDate: Record<string, CalendarEvent[]> = {};
+  for (let day = 1; day <= daysInMonth(visibleMonth); day += 1) {
+    const date = toDate(visibleMonth, day);
+    const list = events
+      .filter((event) => event.status !== "cancelled" && isDateWithinEvent(event, date))
+      .sort((a, b) => a.startAt.localeCompare(b.startAt));
+    if (list.length > 0) byDate[date] = list;
+  }
+  return byDate;
+}
+
 export function CalendarMonthView({ events, selectedDate, visibleMonth, onSelectDate, onChangeMonth }: CalendarMonthViewProps) {
   const { eventCounts, multiDaySpans } = buildDayIndex(events, visibleMonth);
+  const dayEvents = buildDayEvents(events, visibleMonth);
 
   return (
     <section className="calendar-card calendar-month-view">
@@ -77,14 +92,23 @@ export function CalendarMonthView({ events, selectedDate, visibleMonth, onSelect
         <strong>{monthLabel(visibleMonth)}</strong>
         <button type="button" onClick={() => onChangeMonth(shiftMonth(visibleMonth, 1))}>›</button>
       </div>
-      <span className="calendar-range-note">과거, 현재, 미래 일정을 모두 탐색할 수 있습니다.</span>
       <div className="calendar-week-row">
-        {weekLabels.map((label) => <span key={label}>{label}</span>)}
+        {weekLabels.map((label, index) => (
+          <span key={label} className={index === 0 ? "sunday" : index === 6 ? "saturday" : ""}>
+            {label}
+          </span>
+        ))}
       </div>
       <div className="calendar-grid">
+        {/* 실제 달력처럼 1일이 해당 요일 칸에서 시작하도록, 첫 주의 빈 칸을 채웁니다. */}
+        {Array.from({ length: new Date(`${visibleMonth}-01T00:00:00`).getDay() }, (_, index) => (
+          <span key={`empty-${index}`} className="calendar-empty-cell" aria-hidden="true" />
+        ))}
         {Array.from({ length: daysInMonth(visibleMonth) }, (_, index) => index + 1).map((day) => {
           const date = toDate(visibleMonth, day);
           const span = multiDaySpans[date];
+          const list = dayEvents[date] ?? [];
+          const weekday = new Date(`${date}T00:00:00`).getDay();
           return (
             <button
               type="button"
@@ -93,12 +117,19 @@ export function CalendarMonthView({ events, selectedDate, visibleMonth, onSelect
                 date === today ? "today" : "",
                 date === selectedDate ? "selected" : "",
                 eventCounts[date] ? "has-event" : "",
+                weekday === 0 ? "sunday" : weekday === 6 ? "saturday" : "",
                 span && span !== "single" ? `multi-day multi-day-${span}` : "",
               ].join(" ")}
               onClick={() => onSelectDate(date)}
             >
               <span>{day}</span>
-              {eventCounts[date] ? <small>{eventCounts[date]}</small> : null}
+              {/* 일정 제목 칩: 최대 2개까지 표시하고 나머지는 +N */}
+              {list.slice(0, 2).map((event) => (
+                <em key={event.id} className="calendar-event-chip">
+                  {event.isAllDay ? event.title : `${event.startAt.slice(11, 16)} ${event.title}`}
+                </em>
+              ))}
+              {list.length > 2 && <small>+{list.length - 2}</small>}
             </button>
           );
         })}

@@ -1,14 +1,15 @@
 import { CalendarEventCard } from "./CalendarEventCard";
-import type { CalendarEvent } from "../types/calendar.types";
+import type { CalendarEvent, CalendarEventInput } from "../types/calendar.types";
 
 interface CalendarDayViewProps {
   selectedDate: string;
   events: CalendarEvent[];
   onComplete: (id: string) => void;
   onCancel: (id: string) => void;
+  onUpdate: (id: string, input: Partial<CalendarEventInput>) => void;
 }
 
-export function CalendarDayView({ selectedDate, events, onComplete, onCancel }: CalendarDayViewProps) {
+export function CalendarDayView({ selectedDate, events, onComplete, onCancel, onUpdate }: CalendarDayViewProps) {
   return (
     <section className="calendar-day-view">
       <div className="calendar-section-title">
@@ -18,7 +19,7 @@ export function CalendarDayView({ selectedDate, events, onComplete, onCancel }: 
       {events.length === 0 ? (
         <article className="calendar-empty">
           <strong>등록된 일정이 없습니다.</strong>
-          <span>세린에게 말하거나 아래 입력으로 왕실 일정을 추가하세요.</span>
+          <span>세린에게 말하거나 직접 입력해서 일정을 추가하세요.</span>
         </article>
       ) : (
         events.map((event) => (
@@ -27,6 +28,7 @@ export function CalendarDayView({ selectedDate, events, onComplete, onCancel }: 
             event={event}
             onComplete={onComplete}
             onCancel={onCancel}
+            onUpdate={onUpdate}
           />
         ))
       )}

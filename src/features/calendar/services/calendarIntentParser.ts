@@ -1,3 +1,4 @@
+import { getKoreanToday } from "../../../app/dateUtils";
 import type { CalendarCategory, CalendarIntentDraft } from "../types/calendar.types";
 
 const weekdayOrder = ["일", "월", "화", "수", "목", "금", "토"];
@@ -12,6 +13,42 @@ function formatDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+function hasDateSignal(message: string) {
+  return (
+    /(오늘|내일|모레|이번\s*주|다음\s*주|이번\s*달|다음\s*달)/.test(message) ||
+    /(\d{1,2})\s*월\s*(\d{1,2})\s*일/.test(message) ||
+    /[일월화수목금토]요일/.test(message)
+  );
+}
+
+function hasTimeSignal(message: string) {
+  return /(\d{1,2})\s*(시|:)\s*(\d{1,2})?/.test(message) || /(오전|오후|저녁|밤|아침|점심)/.test(message);
+}
+
+function isQuestionOnly(message: string) {
+  return /(뭐\s*있|뭐야|알려줘|확인해줘|있어\??|있나요|있니|어때|괜찮을까|가능할까|일정\s*있)/.test(message);
+}
+
+function isRetrospective(message: string) {
+  return /(갔었|했었|먹었|봤었|다녀왔|였어|이었다|좋았어|힘들었어|기억나|생각나)/.test(message);
+}
+
+function isHesitation(message: string) {
+  return /(고민이야|해야\s*하는데|할까\s*말까|어쩌지|모르겠어|해야\s*되나|하면\s*좋을까)/.test(message);
+}
+
+function hasExplicitCalendarCommand(message: string) {
+  return /(일정|캘린더|예약|약속|회의|미팅).{0,12}(추가|등록|넣어|만들어|잡아|예약)/.test(message) ||
+    /(추가|등록|넣어|만들어|잡아|예약).{0,12}(일정|캘린더|약속|회의|미팅)/.test(message);
+}
+
+function shouldCreateCalendar(message: string) {
+  if (isRetrospective(message) || isHesitation(message) || isQuestionOnly(message)) return false;
+  if (hasExplicitCalendarCommand(message)) return true;
+  if ((hasDateSignal(message) || hasTimeSignal(message)) && /(일정|약속|회의|미팅|예약|방문|전화|가야|만나|출발)/.test(message)) return true;
+  return false;
+}
+
 function parseDate(message: string, baseDate: string) {
   const base = new Date(`${baseDate}T09:00:00`);
 
@@ -19,7 +56,7 @@ function parseDate(message: string, baseDate: string) {
   if (message.includes("내일")) return formatDate(addDays(base, 1));
   if (message.includes("오늘")) return formatDate(base);
 
-  const weekdayMatch = message.match(/([월화수목금토일])요일/);
+  const weekdayMatch = message.match(/([일월화수목금토])요일/);
   if (weekdayMatch) {
     const targetDay = weekdayOrder.indexOf(weekdayMatch[1]);
     const isNextWeek = message.includes("다음");
@@ -29,15 +66,15 @@ function parseDate(message: string, baseDate: string) {
     return formatDate(addDays(base, diff));
   }
 
-  if (message.includes("다음주")) return formatDate(addDays(base, 7));
-  if (message.includes("이번주")) return formatDate(base);
-  if (message.includes("다음달")) {
+  if (message.includes("다음주") || message.includes("다음 주")) return formatDate(addDays(base, 7));
+  if (message.includes("이번주") || message.includes("이번 주")) return formatDate(base);
+  if (message.includes("다음달") || message.includes("다음 달")) {
     const next = new Date(base);
     next.setMonth(next.getMonth() + 1);
     return formatDate(next);
   }
 
-  const numericMatch = message.match(/(\d{1,2})월\s*(\d{1,2})일/);
+  const numericMatch = message.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
   if (numericMatch) {
     const next = new Date(base);
     next.setMonth(Number(numericMatch[1]) - 1);
@@ -50,22 +87,25 @@ function parseDate(message: string, baseDate: string) {
 
 function parseHour(message: string) {
   const match = message.match(/(\d{1,2})\s*시/);
-  if (!match) return 9;
+  if (!match) {
+    if (message.includes("아침")) return 9;
+    if (message.includes("점심")) return 12;
+    if (message.includes("저녁")) return 19;
+    if (message.includes("밤")) return 21;
+    return 9;
+  }
   const raw = Number(match[1]);
   if ((message.includes("오후") || message.includes("저녁") || message.includes("밤")) && raw < 12) return raw + 12;
   return raw;
 }
 
-// "8월 19일부터 3일간", "8월 19일부터 3일 동안", "2박 3일" 같은 기간 표현에서
-// "며칠짜리 일정인지"를 뽑아냅니다. "3일간"은 시작일을 포함한 3일이므로,
-// 종료일은 시작일 + (일수 - 1)입니다.
 function parseDurationDays(message: string): number | null {
   const nightsMatch = message.match(/(\d{1,2})\s*박\s*(\d{1,2})\s*일/);
   if (nightsMatch) return Number(nightsMatch[2]);
 
-  const durationMatch = message.match(/(\d{1,2})\s*일\s*간|(\d{1,2})\s*일\s*동안|(\d{1,2})\s*일\s*내내/);
+  const durationMatch = message.match(/(\d{1,2})\s*일\s*(동안|간)|(\d{1,2})\s*일\s*내내/);
   if (durationMatch) {
-    const value = durationMatch[1] ?? durationMatch[2] ?? durationMatch[3];
+    const value = durationMatch[1] ?? durationMatch[3];
     return Number(value);
   }
 
@@ -87,21 +127,17 @@ function inferCategory(message: string): CalendarCategory {
 function cleanTitle(message: string) {
   return message
     .replace(/\d{1,2}\s*박\s*\d{1,2}\s*일/g, "")
-    .replace(/\d{1,2}\s*일\s*간|\d{1,2}\s*일\s*동안|\d{1,2}\s*일\s*내내/g, "")
-    .replace(/오늘|내일|모레|다음주|이번주|다음달|오전|오후|저녁|밤|\d{1,2}\s*시|\d{1,2}월\s*\d{1,2}일|[월화수목금토일]요일/g, "")
+    .replace(/\d{1,2}\s*일\s*(동안|간|내내)/g, "")
+    .replace(/오늘|내일|모레|이번\s*주|다음\s*주|이번\s*달|다음\s*달|오전|오후|저녁|밤|아침|점심/g, "")
+    .replace(/\d{1,2}\s*월\s*\d{1,2}\s*일|\d{1,2}\s*시|[일월화수목금토]요일/g, "")
     .replace(/부터|까지/g, "")
-    .replace(/추가해줘|등록해줘|잡아줘|잡아|넣어줘|넣어|만들어줘|올려줘|예약해줘|일정|캘린더|스케줄|약속|에/g, "")
+    .replace(/추가해줘|등록해줘|넣어줘|넣어|만들어줘|잡아줘|예약해줘|일정|캘린더|약속/g, "")
     .replace(/\s+/g, " ")
     .trim() || "새 일정";
 }
 
-const calendarTriggerPattern =
-  /(일정|캘린더|스케줄|예약|회의|미팅|약속|추가|등록|잡아|넣어|체크인|여행|휴가)/;
-
-export function parseCalendarIntent(message: string, baseDate = "2026-07-09"): CalendarIntentDraft | null {
-  // TODO: Replace mock parser with Serin AI intent parser
-  const hasCalendarIntent = calendarTriggerPattern.test(message);
-  if (!hasCalendarIntent) return null;
+export function parseCalendarIntent(message: string, baseDate = getKoreanToday()): CalendarIntentDraft | null {
+  if (!shouldCreateCalendar(message)) return null;
 
   const date = parseDate(message, baseDate);
   const durationDays = parseDurationDays(message);
@@ -122,7 +158,7 @@ export function parseCalendarIntent(message: string, baseDate = "2026-07-09"): C
       confidence: 0.84,
       needsConfirmation: true,
       sourceMessage: message,
-      confirmSummary: `${title}을(를) ${date}부터 ${formatDate(endDateObj)}까지 종일 일정으로 등록`,
+      confirmSummary: `${title}을 ${date}부터 ${formatDate(endDateObj)}까지 종일 일정으로 등록`,
     };
   }
 
@@ -134,12 +170,12 @@ export function parseCalendarIntent(message: string, baseDate = "2026-07-09"): C
     title,
     startAt,
     endAt,
-    isAllDay: false,
+    isAllDay: !hasTimeSignal(message),
     isMultiDay: false,
     category: inferCategory(message),
-    confidence: message.includes("일정") || message.includes("회의") ? 0.86 : 0.68,
+    confidence: hasExplicitCalendarCommand(message) ? 0.88 : 0.72,
     needsConfirmation: true,
     sourceMessage: message,
-    confirmSummary: `${title}을(를) ${date} ${String(hour).padStart(2, "0")}:00 일정으로 등록`,
+    confirmSummary: `${title}을 ${date}${hasTimeSignal(message) ? ` ${String(hour).padStart(2, "0")}:00` : ""} 일정으로 등록`,
   };
 }

@@ -72,104 +72,152 @@
   font-size: 13px;
 }
 
-.serin-screen {
-  display: grid;
-  min-width: 0;
-  min-height: calc(100dvh - 116px);
-  gap: 14px;
+/* =====================================================================
+   Serin = 세린과 만나는 왕궁 응접실입니다("업무 대시보드"가 아니라 Scene).
+   배경 + 세린/공주 캐릭터가 항상 화면 안에 있고, 그 위에 3개 영역
+   (대화 / 추천 문장 / 세린의 기억)만 Glass Overlay로 떠 있습니다.
+   ===================================================================== */
+.serin-scene {
+  position: relative;
+  min-height: calc(100vh - 56px);
+  overflow: hidden;
+  display: block;
 }
 
-/* Serin = Princess OS의 메인 화면. 왼쪽 레일(상태/기억/행동로그/최근항목/예시문장)과
-   오른쪽 대화 칼럼으로 나뉩니다. 대화 칼럼은 "카카오톡 정도의 폭"으로 제한해,
-   화면 전체를 채우지 않고 왼쪽 레일과 나란히 자리잡습니다. */
-.serin-workspace {
+.serin-scene-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.serin-scene-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(16, 25, 54, 0.46) 0%,
+    rgba(16, 25, 54, 0.12) 30%,
+    rgba(16, 25, 54, 0.14) 58%,
+    rgba(16, 25, 54, 0.55) 100%
+  );
+}
+
+/* 채팅 패널 상단의 세린 상태 칩 (대기/생각 중/말하는 중) */
+.serin-chat-status {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 16px;
-  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  font-weight: 800;
 }
 
-.serin-rail {
-  display: grid;
-  min-width: 0;
-  flex: 1 1 280px;
-  max-width: 320px;
-  gap: 10px;
-  align-content: start;
+.serin-chat-status em {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--royal-400);
+  font-style: normal;
 }
 
-.serin-chat-column {
+.serin-chat-status.thinking em,
+.serin-chat-status.speaking em {
+  background: var(--gold-500);
+  animation: serin-pulse 880ms var(--ease-soft) infinite alternate;
+}
+
+.serin-chat-status.error em {
+  background: #d94848;
+}
+
+/* Character Presence — 이 공간의 주인은 세린 한 명입니다. 왼쪽 패널과 오른쪽
+   채팅창 사이(가용 공간의 중앙)에 크게 서 있고, 어떤 패널/카드에도 가려지지
+   않도록 항상 위 레이어에 둡니다(pointer-events: none이라 조작은 방해하지 않음). */
+.serin-scene-figure {
+  position: absolute;
+  left: 46%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 8;
+  width: min(38%, 420px);
+  max-height: 86%;
+  object-fit: contain;
+  object-position: bottom center;
+  pointer-events: none;
+  filter: drop-shadow(0 20px 30px rgba(7, 11, 26, 0.45));
+}
+
+/* 왼쪽 레일: 세린의 기억 + 추천 문장, 딱 이 둘만 */
+.serin-scene-rail {
+  position: absolute;
+  left: 16px;
+  bottom: 90px;
+  z-index: 5;
+  width: min(30%, 300px);
   display: flex;
   flex-direction: column;
-  min-width: 0;
-  flex: 1 1 380px;
-  max-width: 480px;
-  height: calc(100dvh - 230px);
-  min-height: 460px;
   gap: 10px;
 }
 
-/* 980px 미만(모바일/좁은 창)에서는 항상 1단 세로 스택이고, 대화 칼럼의 폭 제한도
-   풀어 화면을 가득 씁니다("확인용" 반응형). */
+/* 대화창 — "카카오톡 정도의 폭"으로 제한된 Glass 채팅 카드. 배경(응접실)과
+   세린/공주가 항상 함께 보이도록 화면을 다 채우지 않습니다. */
+.serin-scene-chat {
+  position: absolute;
+  right: 16px;
+  top: 72px;
+  bottom: 16px;
+  z-index: 6;
+  width: min(100% - 32px, 420px);
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius-xl);
+  background: rgba(16, 25, 54, 0.28);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: var(--shadow-floating);
+}
+
+/* 좁은 화면: Scene은 유지하되 절대배치를 풀어 세로 스택으로 전환합니다. */
 @media (max-width: 979px) {
-  .serin-rail,
-  .serin-chat-column {
-    max-width: none;
-    flex-basis: 100%;
+  .serin-scene {
+    min-height: auto;
+    padding: 72px 12px 16px;
   }
 
-  .serin-chat-column {
+  .serin-scene-figure {
+    position: relative;
+    display: block;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    margin: 4px auto 12px;
+    width: min(58%, 260px);
+    max-height: none;
+  }
+
+  .serin-scene-rail {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .serin-scene-chat {
+    position: relative;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: 100%;
+    max-width: none;
     height: 62dvh;
   }
-}
-
-/* 아바타-제목-아바타를 고정폭 grid 대신 flex-wrap으로 배치해, 폭이 아무리
-   좁아져도 글자가 한 글자씩 줄바꿈되는 대신 아바타가 아래로 밀려납니다. */
-.serin-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
-}
-
-.serin-header > div {
-  flex: 1 1 140px;
-  min-width: 0;
-}
-
-.serin-header h1 {
-  margin: 6px 0 3px;
-  color: var(--royal-900);
-  font-size: 22px;
-  overflow-wrap: break-word;
-}
-
-.serin-header p {
-  margin: 0;
-  font-size: 12px;
-  overflow-wrap: break-word;
-}
-
-.chat-avatar {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  overflow: hidden;
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(65, 105, 225, 0.12));
-}
-
-.chat-avatar img {
-  width: 120%;
-  height: 120%;
-  object-fit: contain;
 }
 
 .quick-actions {
@@ -1058,12 +1106,6 @@
   font-size: 12px;
 }
 
-.serin-domain-page {
-  min-height: calc(100dvh - 116px);
-}
-
-.serin-status-orb,
-.serin-memory-panel,
 .serin-confirmation-card {
   padding: 12px;
   border: 1px solid var(--glass-border);
@@ -1071,99 +1113,82 @@
   background: var(--glass-surface);
   box-shadow: var(--shadow-small);
   backdrop-filter: blur(18px);
-}
-
-.serin-status-orb {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.serin-status-orb span {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--royal-500);
-  box-shadow: 0 0 0 6px rgba(65, 105, 225, 0.1);
-}
-
-.serin-status-orb.thinking span,
-.serin-status-orb.speaking span {
-  background: var(--gold-500);
-  animation: serin-pulse 880ms var(--ease-soft) infinite alternate;
-}
-
-.serin-status-orb.error span {
-  background: #d94848;
-}
-
-.serin-status-orb strong {
-  color: var(--royal-900);
-  font-size: 12px;
-}
-
-.serin-confirmation-card {
   display: grid;
   gap: 8px;
   border-color: rgba(216, 183, 106, 0.34);
   background: rgba(216, 183, 106, 0.14);
 }
 
-.serin-confirmation-card h2,
-.serin-memory-panel h2 {
+.serin-confirmation-card h2 {
   margin: 0;
   color: var(--royal-900);
   font-size: 17px;
 }
 
-.serin-confirmation-card p,
-.serin-memory-panel p {
+.serin-confirmation-card p {
   margin: 0;
   color: var(--text-secondary);
   font-size: 12px;
 }
 
-.serin-confirmation-card > div,
-.serin-memory-panel > div {
+.serin-confirmation-card > div {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.serin-memory-panel {
-  display: grid;
-  gap: 8px;
+/* 세린의 기억 = "저장된 메모리 미리보기" 정도의 4줄 요약. 카드를 여러 장
+   나열하지 않습니다. */
+.serin-memory-preview {
+  padding: 12px;
+  border-radius: var(--radius-xl);
+  background: rgba(16, 25, 54, 0.4);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: var(--shadow-small);
 }
 
-.serin-memory-panel > div span {
-  color: var(--text-muted);
-  font-size: 12px;
+.serin-memory-preview h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
   font-weight: 900;
 }
 
-.serin-memory-panel article {
+.serin-memory-preview dl {
   display: grid;
-  gap: 3px;
-  padding: 9px;
-  border-radius: var(--radius-lg);
-  background: rgba(65, 105, 225, 0.07);
+  gap: 6px;
+  margin: 0;
 }
 
-.serin-memory-panel article strong {
-  color: var(--royal-800);
-  font-size: 11px;
-  text-transform: uppercase;
+.serin-memory-preview dl > div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
 }
 
-.serin-memory-panel article span {
-  color: var(--text-secondary);
+.serin-memory-preview dt {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.serin-memory-preview dd {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.92);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 12px;
 }
 
-/* 대화창 = .serin-chat-column 안의 스크롤 영역입니다. flex:1로 남는 세로 공간을
-   모두 차지하고, 그 안에서만 overflow-y: auto로 스크롤됩니다. 새 메시지는
-   SerinChatThread의 useEffect가 항상 맨 아래로 스크롤시킵니다. */
+/* 대화창 안의 스크롤 영역입니다. flex:1로 남는 세로 공간을 모두 차지하고,
+   그 안에서만 overflow-y: auto로 스크롤됩니다. 새 메시지는 SerinChatThread의
+   useEffect가 항상 맨 아래로 스크롤시킵니다. */
 .serin-thread {
   flex: 1;
   min-height: 0;
@@ -1249,125 +1274,37 @@
   background: rgba(216, 183, 106, 0.14);
 }
 
-/* 왼쪽 레일: 세린의 최근 활동(행동 로그) 타임라인 */
-.serin-action-log-panel {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
-  backdrop-filter: blur(18px);
-}
-
-.serin-action-log-panel > div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.serin-action-log-panel h2 {
-  margin: 0;
-  color: var(--royal-900);
-  font-size: 15px;
-}
-
-.serin-action-log-panel > div span {
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.serin-action-log-panel ul {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.serin-action-log-panel li {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: var(--radius-md);
-  background: rgba(65, 105, 225, 0.06);
-  font-size: 12px;
-}
-
-.serin-action-log-time {
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.serin-action-log-label {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 왼쪽 레일: 최근 프로젝트 / 일정 / 인연 */
-.serin-recent-panel {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-xl);
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
-  backdrop-filter: blur(18px);
-}
-
-.serin-recent-panel h3 {
-  margin: 0 0 5px;
-  color: var(--royal-800);
-  font-size: 11px;
-  text-transform: uppercase;
-}
-
-.serin-recent-panel ul {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.serin-recent-panel li {
-  overflow: hidden;
-  color: var(--text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-}
-
-/* 왼쪽 레일: 예시 문장 패널(Quick Action 대체). 눌러도 즉시 실행되지 않습니다. */
+/* 왼쪽 레일: 예시 문장 패널(Quick Action 대체). 눌러도 즉시 실행되지 않고
+   입력창에 채워지기만 합니다. Scene 위에 뜨는 Glass 오버레이라 어두운 톤입니다. */
 .serin-example-panel {
   display: grid;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--glass-border);
   border-radius: var(--radius-xl);
-  background: var(--glass-surface);
-  box-shadow: var(--shadow-small);
+  background: rgba(16, 25, 54, 0.4);
   backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: var(--shadow-small);
 }
 
 .serin-example-panel h2 {
   margin: 0;
-  color: var(--royal-900);
-  font-size: 15px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.serin-example-panel .small-copy {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
 }
 
 .serin-example-panel .quick-actions {
   flex-wrap: wrap;
   overflow-x: visible;
+  max-height: 160px;
+  overflow-y: auto;
 }
 
 .serin-example-panel .quick-actions button {
@@ -1375,6 +1312,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 @keyframes serin-pulse {
@@ -1920,8 +1860,30 @@
    Office — 메인퀘스트(=프로젝트) 관리 공간.
    ===================================================================== */
 .office-domain-page {
+  position: relative;
+  padding: 14px 0 20px;
+}
+
+.office-scene-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.office-scene-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(247, 248, 253, 0.88) 0%, rgba(247, 248, 253, 0.94) 100%);
+}
+
+.office-scene-content {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: 14px;
+  padding: 0 20px;
 }
 
 .office-hero {
@@ -2534,8 +2496,30 @@
    Throne — 성장 화면. 해금 시스템 없이 레벨/EXP/칭호/업적/누적 통계만.
    ===================================================================== */
 .throne-domain-page {
+  position: relative;
+  padding: 14px 0 20px;
+}
+
+.throne-scene-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.throne-scene-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(247, 248, 253, 0.88) 0%, rgba(247, 248, 253, 0.94) 100%);
+}
+
+.throne-scene-content {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: 14px;
+  padding: 0 20px;
 }
 
 .throne-hero {
@@ -2706,8 +2690,30 @@
    Library v2 — Notion 스타일 검색 → 필터(폴더) → 목록 → 상세.
    ===================================================================== */
 .library-page-v2 {
+  position: relative;
+  padding: 14px 0 20px;
+}
+
+.library-scene-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+.library-scene-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(247, 248, 253, 0.88) 0%, rgba(247, 248, 253, 0.94) 100%);
+}
+
+.library-scene-content {
+  position: relative;
+  z-index: 1;
   display: grid;
   gap: 14px;
+  padding: 0 20px;
 }
 
 .library-search-bar input {
@@ -2838,4 +2844,119 @@
   .library-folder-nav button {
     flex: 0 0 auto;
   }
+}
+
+/* =====================================================================
+   세린 메이드봇 — Serin 화면이 아닌 모든 화면 우측 하단에 떠 있는 플로팅
+   위젯입니다. 평소에는 작은 아바타로 최소화되어 있다가, 눌렀을 때만 최근
+   대화 미리보기가 펼쳐집니다. 실제 대화는 항상 Serin 화면으로 안내합니다.
+   ===================================================================== */
+.serin-maidbot {
+  position: fixed;
+  right: 20px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.serin-maidbot-avatar {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: var(--royal-700);
+  box-shadow: var(--shadow-floating);
+  overflow: visible;
+}
+
+.serin-maidbot-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.serin-maidbot-status-dot {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-soft);
+  background: var(--royal-400);
+}
+
+.serin-maidbot-avatar.thinking .serin-maidbot-status-dot,
+.serin-maidbot-avatar.speaking .serin-maidbot-status-dot {
+  background: var(--gold-500);
+  animation: serin-pulse 880ms var(--ease-soft) infinite alternate;
+}
+
+.serin-maidbot-avatar.error .serin-maidbot-status-dot {
+  background: #d94848;
+}
+
+.serin-maidbot-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ff5d5d;
+  border: 2px solid var(--bg-soft);
+}
+
+.serin-maidbot-popover {
+  display: grid;
+  gap: 8px;
+  width: min(78vw, 260px);
+  padding: 12px;
+  border-radius: var(--radius-xl);
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-floating);
+  backdrop-filter: blur(20px);
+}
+
+.serin-maidbot-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.serin-maidbot-popover-head strong {
+  color: var(--royal-900);
+  font-size: 13px;
+}
+
+.serin-maidbot-popover-head button {
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.serin-maidbot-popover p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.serin-maidbot-open {
+  border: 0;
+  border-radius: var(--radius-full);
+  padding: 8px 12px;
+  background: var(--royal-600);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
 }

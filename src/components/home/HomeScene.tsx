@@ -1,7 +1,7 @@
 import type { AppMockData, ViewKey } from "../../app/types";
 import type { CastleRoom, CastleRoomKey } from "../../features/castle/types/castle.types";
 import { getEventsByDay } from "../../features/calendar/services/calendarService";
-import { HomeHud } from "./HomeHud";
+import { formatKoreanDateLong, getKoreanToday } from "../../app/dateUtils";
 import { HomeLeftRail } from "./HomeLeftRail";
 import { HomeRightRail } from "./HomeRightRail";
 
@@ -10,10 +10,10 @@ interface HomeSceneProps {
   rooms: CastleRoom[];
   currentRoomKey: CastleRoomKey;
   onNavigate: (view: ViewKey) => void;
-  onCompleteQuest: (id: string) => void;
+  onToggleQuest: (id: string, completed: boolean) => void;
 }
 
-const TODAY = "2026-07-09";
+const TODAY = getKoreanToday();
 
 function timeGreeting() {
   const hour = new Date().getHours();
@@ -26,35 +26,34 @@ function timeGreeting() {
 // Glass Overlay입니다. 카드로 화면을 가리지 않습니다. 공주와 세린은 항상
 // Scene 안에 존재합니다. Home 자체에는 기능을 직접 담지 않고, 최소 브리핑과
 // Castle 이동만 제공합니다.
-export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onCompleteQuest }: HomeSceneProps) {
+export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onToggleQuest }: HomeSceneProps) {
   const todayEvents = getEventsByDay(data.events, TODAY).sort((a, b) => a.startAt.localeCompare(b.startAt));
   const todayQuests = data.quests.filter((quest) => quest.dueDate === TODAY);
   const alertCount = todayEvents.filter((event) => Boolean(event.reminderMinutes)).length;
   const activeMainQuests = data.mainQuests.filter((mainQuest) => mainQuest.status === "active");
-  const gold = 107515;
-  const gems = 1196;
+  const memoCount = data.serinMessages.filter((message) => message.sender === "serin").length;
 
   return (
     <section className="palace-hud-scene scene-fullbleed">
       <div className="palace-hud-backdrop" style={{ backgroundImage: 'url("/assets/home-bg.webp")' }} />
 
-      <HomeHud princess={data.princess} progress={data.progress} gold={gold} gems={gems} mailCount={data.serinMessages.length > 0 ? 2 : 0} />
-
+      {/* 중앙 인물 = 공주(파란 드레스) 한 명입니다. 세린(검정+흰색 메이드복)은
+          이 장면이 아니라 우측 하단 메이드봇 위젯으로 존재합니다. */}
       <div className="palace-hud-figures">
         <img src="/assets/princess-full-transparent.webp" alt="공주" />
-        <img src="/assets/serin-full-transparent.webp" alt="세린" />
       </div>
 
       <HomeLeftRail
+        dateLine={formatKoreanDateLong(TODAY)}
         greetingLine={timeGreeting()}
         todayEventCount={todayEvents.length}
         todayQuestCount={todayQuests.length}
         alertCount={alertCount}
-        memoCount={data.serinMessages.filter((message) => message.sender === "serin").length}
+        memoCount={memoCount}
         todayEvents={todayEvents}
         todayQuests={todayQuests}
         onNavigate={onNavigate}
-        onCompleteQuest={onCompleteQuest}
+        onToggleQuest={onToggleQuest}
       />
 
       <HomeRightRail

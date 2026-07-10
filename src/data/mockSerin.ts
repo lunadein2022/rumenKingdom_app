@@ -1,34 +1,14 @@
 import type { SerinMessage, SerinProfile } from "../app/types";
 
+// 세린 프로필은 캐릭터 설정(데이터가 아니라 페르소나)이므로 유지합니다.
 export const mockSerin: SerinProfile = {
   name: "세린",
   role: "ai_maid",
-  greetingTitle: "공주님, 좋은 아침입니다.",
-  greetingText: "오늘의 Quest와 일정을 정리해두었습니다. 세린이 곁에서 동선을 보좌하겠습니다.",
+  greetingTitle: "공주님, 어서오세요.",
+  greetingText: "필요한 것이 있으면 언제든 말씀해주세요. 세린이 곁에서 챙기겠습니다.",
   relationshipLabel: "신뢰",
-  affinity: 64,
+  affinity: 0,
 };
 
-export const mockSerinMessages: SerinMessage[] = [
-  {
-    id: "m-001",
-    sender: "serin",
-    content: "공주님, 오늘은 집무실 Quest를 먼저 처리하면 하루 흐름이 좋아지겠습니다.",
-    createdAt: "2026-07-09T09:00:00+09:00",
-    messageType: "text",
-  },
-  {
-    id: "m-002",
-    sender: "princess",
-    content: "오늘 중요한 일을 정리해줘.",
-    createdAt: "2026-07-09T09:01:00+09:00",
-    messageType: "text",
-  },
-  {
-    id: "m-003",
-    sender: "serin",
-    content: "지금은 보고서 Quest, 회의 일정 확인, 도서관 메모 정리 순서로 추천드립니다.",
-    createdAt: "2026-07-09T09:02:00+09:00",
-    messageType: "system_notice",
-  },
-];
+// 대화 기록은 사용자가 실제로 나눈 것만 존재합니다. 초기값은 비어 있습니다.
+export const mockSerinMessages: SerinMessage[] = [];

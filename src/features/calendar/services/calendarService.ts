@@ -1,3 +1,4 @@
+import { newId } from "../../../app/ids";
 import type {
   CalendarEvent,
   CalendarEventInput,
@@ -30,7 +31,7 @@ export function isMultiDayEvent(event: CalendarEvent) {
 export function buildCalendarEvent(input: CalendarEventInput): CalendarEvent {
   const now = new Date().toISOString();
   return {
-    id: `cal-${Date.now()}-${Math.round(Math.random() * 9999)}`,
+    id: newId(),
     title: input.title,
     description: input.description ?? "",
     startAt: input.startAt,
@@ -70,7 +71,7 @@ export function getEventsByDay(events: CalendarEvent[], date: string) {
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
 }
 
-export function getUpcomingEvents(events: CalendarEvent[], nowIso = "2026-07-09T09:00:00") {
+export function getUpcomingEvents(events: CalendarEvent[], nowIso = new Date().toISOString().slice(0, 19)) {
   // TODO: Replace with Supabase Query
   const now = toTime(nowIso);
   return events

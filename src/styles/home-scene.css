@@ -99,44 +99,14 @@
   white-space: nowrap;
 }
 
-.home-hud-currency {
+/* Princess OS에는 재화(보석/코인) 시스템이 없습니다. 여기에는 실제로 존재하는
+   지표(오늘 일정/Quest, 진행 중 메인Quest, 세린 메모)만 짧게 보여줍니다. */
+.home-hud-stats {
   display: flex;
   gap: 10px;
   font-size: 12px;
   font-weight: 800;
   white-space: nowrap;
-}
-
-.home-hud-icons {
-  display: flex;
-  gap: 8px;
-}
-
-.home-hud-icons button {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  font-size: 13px;
-}
-
-.home-hud-icons em {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
-  border-radius: 999px;
-  background: #ff5d5d;
-  color: #fff;
-  font-size: 9px;
-  font-style: normal;
-  display: grid;
-  place-items: center;
 }
 
 /* ---------------------------------------------------------------------
