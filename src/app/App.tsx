@@ -21,7 +21,7 @@ import { QuestScreen } from "../components/modules/QuestScreen";
 import { SerinScreen } from "../components/modules/SerinScreen";
 import { buildMockProgress } from "../data/mockProgress";
 import { getPrincessOsSnapshot } from "../data/mockRepository";
-import { completeQuestDomain, createQuestFromCalendarEvent, questTypeMeta } from "../domain/questDomain";
+import { createQuestFromCalendarEvent, questTypeMeta, setQuestCompletion } from "../domain/questDomain";
 import { addMainQuestUpdate, createMainQuestFromSerinDraft, toggleMainQuestChapter } from "../domain/mainQuestDomain";
 import { CalendarPage } from "../features/calendar/pages/CalendarPage";
 import {
@@ -48,6 +48,7 @@ import {
 } from "../features/serin/services/serinService";
 import { saveMemory } from "../features/serin/services/serinMemoryService";
 import { buildProcessingNotice, runAttachmentPipeline } from "../features/serin/services/attachmentPipeline";
+import { SerinFloatingWidget } from "../features/serin/components/SerinFloatingWidget";
 import type { SerinActionLogEntry } from "../features/serin/types/serin.types";
 
 const TODAY = "2026-07-09";
@@ -284,8 +285,11 @@ export function App() {
     void getOrCreateConversation("mock-user");
   }, []);
 
-  function completeQuest(id: string) {
-    const result = completeQuestDomain(quests, questHistory, id, progress);
+  // 체크박스 toggle: 완료 처리와 완료 취소(체크 해제)를 모두 이 함수 하나로
+  // 처리합니다. mock state(quests/questHistory/progress)와 UI가 즉시 함께
+  // 반영되고, 나중에 Supabase update로 교체할 때도 이 진입점만 바꾸면 됩니다.
+  function toggleQuestCompletion(id: string, completed: boolean) {
+    const result = setQuestCompletion(quests, questHistory, id, completed, progress);
     setQuests(result.quests);
     setQuestHistory(result.history);
     setCompletionEvents(result.events);
@@ -664,7 +668,7 @@ export function App() {
             rooms={castleRooms.rooms}
             currentRoomKey={castleRooms.currentRoomKey}
             onNavigate={setActiveView}
-            onCompleteQuest={completeQuest}
+            onToggleQuest={toggleQuestCompletion}
           />
         )}
         {activeView === "castle" && (
@@ -723,7 +727,7 @@ export function App() {
             history={questHistory}
             progress={progress}
             completionEvents={completionEvents}
-            onCompleteQuest={completeQuest}
+            onToggleQuest={toggleQuestCompletion}
             onCycleQuest={cycleQuest}
           />
         )}
@@ -745,7 +749,6 @@ export function App() {
             status={serinStatus}
             pendingAction={pendingSerinAction}
             memories={serinMemories}
-            actionLog={actionLog}
             mainQuests={mainQuests}
             events={events}
             contacts={contacts}
@@ -756,6 +759,17 @@ export function App() {
           />
         )}
       </main>
+
+      {/* 세린 메이드봇: Serin 화면(응접실) 자체를 볼 때는 굳이 또 띄우지 않고,
+          그 외 모든 화면에서 우측 하단에 최소화된 채로 함께 있습니다. */}
+      {activeView !== "serin" && (
+        <SerinFloatingWidget
+          lastMessage={messages[messages.length - 1]}
+          status={serinStatus}
+          hasPendingAction={pendingSerinAction !== null}
+          onOpenSerin={() => setActiveView("serin")}
+        />
+      )}
     </div>
   );
 }

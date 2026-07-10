@@ -139,7 +139,9 @@ export function LibraryPage({ quests, questHistory, events, memories, mainQuests
   }
 
   return (
-    <section className="library-page-v2">
+    <section className="library-page-v2 scene-fullbleed">
+      <div className="library-scene-backdrop" style={{ backgroundImage: 'url("/assets/library.webp")' }} />
+      <div className="library-scene-content">
       <header className="library-hero">
         <Badge tone="royal">Kingdom Library</Badge>
         <h1>왕국 도서관</h1>
@@ -200,6 +202,7 @@ export function LibraryPage({ quests, questHistory, events, memories, mainQuests
             <p className="small-copy">왼쪽에서 기록을 선택하세요.</p>
           )}
         </div>
+      </div>
       </div>
     </section>
   );

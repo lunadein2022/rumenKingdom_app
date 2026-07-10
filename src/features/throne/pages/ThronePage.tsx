@@ -25,7 +25,9 @@ export function ThronePage({ data }: ThronePageProps) {
   const serinConversations = serinMessages.filter((message) => message.sender === "princess").length;
 
   return (
-    <section className="throne-domain-page">
+    <section className="throne-domain-page scene-fullbleed">
+      <div className="throne-scene-backdrop" style={{ backgroundImage: 'url("/assets/throne.webp")' }} />
+      <div className="throne-scene-content">
       <header className="throne-hero">
         <img src="/assets/princess-full-transparent.webp" alt="공주 전신" />
         <div>
@@ -99,6 +101,7 @@ export function ThronePage({ data }: ThronePageProps) {
           </article>
         ))}
       </section>
+      </div>
     </section>
   );
 }

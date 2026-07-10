@@ -11,7 +11,7 @@ interface QuestScreenProps {
   history: QuestHistoryEntry[];
   progress: UserProgress;
   completionEvents: QuestCompletionEvent[];
-  onCompleteQuest: (id: string) => void;
+  onToggleQuest: (id: string, completed: boolean) => void;
   onCycleQuest: (id: string) => void;
 }
 
@@ -47,7 +47,7 @@ export function QuestScreen({
   history,
   progress,
   completionEvents,
-  onCompleteQuest,
+  onToggleQuest,
   onCycleQuest,
 }: QuestScreenProps) {
   const [activeType, setActiveType] = useState<QuestType>("daily");
@@ -135,7 +135,13 @@ export function QuestScreen({
               <ProgressBar value={quest.progress} label={`${quest.title} progress`} />
               <div className="quest-actions">
                 <Button variant="glass" size="sm" onClick={() => onCycleQuest(quest.id)}>계속</Button>
-                <Button size="sm" onClick={() => onCompleteQuest(quest.id)} disabled={quest.status === "completed"}>완료</Button>
+                <Button
+                  size="sm"
+                  variant={quest.status === "completed" ? "glass" : "primary"}
+                  onClick={() => onToggleQuest(quest.id, quest.status !== "completed")}
+                >
+                  {quest.status === "completed" ? "완료 취소" : "완료"}
+                </Button>
               </div>
             </article>
           ))

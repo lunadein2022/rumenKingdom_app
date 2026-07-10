@@ -10,7 +10,7 @@ interface HomeSceneProps {
   rooms: CastleRoom[];
   currentRoomKey: CastleRoomKey;
   onNavigate: (view: ViewKey) => void;
-  onCompleteQuest: (id: string) => void;
+  onToggleQuest: (id: string, completed: boolean) => void;
 }
 
 const TODAY = "2026-07-09";
@@ -26,19 +26,25 @@ function timeGreeting() {
 // Glass Overlay입니다. 카드로 화면을 가리지 않습니다. 공주와 세린은 항상
 // Scene 안에 존재합니다. Home 자체에는 기능을 직접 담지 않고, 최소 브리핑과
 // Castle 이동만 제공합니다.
-export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onCompleteQuest }: HomeSceneProps) {
+export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onToggleQuest }: HomeSceneProps) {
   const todayEvents = getEventsByDay(data.events, TODAY).sort((a, b) => a.startAt.localeCompare(b.startAt));
   const todayQuests = data.quests.filter((quest) => quest.dueDate === TODAY);
   const alertCount = todayEvents.filter((event) => Boolean(event.reminderMinutes)).length;
   const activeMainQuests = data.mainQuests.filter((mainQuest) => mainQuest.status === "active");
-  const gold = 107515;
-  const gems = 1196;
+  const memoCount = data.serinMessages.filter((message) => message.sender === "serin").length;
 
   return (
     <section className="palace-hud-scene scene-fullbleed">
       <div className="palace-hud-backdrop" style={{ backgroundImage: 'url("/assets/home-bg.webp")' }} />
 
-      <HomeHud princess={data.princess} progress={data.progress} gold={gold} gems={gems} mailCount={data.serinMessages.length > 0 ? 2 : 0} />
+      <HomeHud
+        princess={data.princess}
+        progress={data.progress}
+        todayEventCount={todayEvents.length}
+        todayQuestCount={todayQuests.length}
+        activeMainQuestCount={activeMainQuests.length}
+        memoCount={memoCount}
+      />
 
       <div className="palace-hud-figures">
         <img src="/assets/princess-full-transparent.webp" alt="공주" />
@@ -50,11 +56,11 @@ export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onCompleteQ
         todayEventCount={todayEvents.length}
         todayQuestCount={todayQuests.length}
         alertCount={alertCount}
-        memoCount={data.serinMessages.filter((message) => message.sender === "serin").length}
+        memoCount={memoCount}
         todayEvents={todayEvents}
         todayQuests={todayQuests}
         onNavigate={onNavigate}
-        onCompleteQuest={onCompleteQuest}
+        onToggleQuest={onToggleQuest}
       />
 
       <HomeRightRail

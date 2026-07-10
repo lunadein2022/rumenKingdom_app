@@ -9,7 +9,7 @@ interface HomeLeftRailProps {
   todayEvents: CalendarEvent[];
   todayQuests: Quest[];
   onNavigate: (view: ViewKey) => void;
-  onCompleteQuest: (id: string) => void;
+  onToggleQuest: (id: string, completed: boolean) => void;
 }
 
 // 왼쪽에 떠 있는 Glass 오버레이 패널 묶음: 오늘 브리핑 / 오늘의 일정 / 오늘의 웨스트.
@@ -23,7 +23,7 @@ export function HomeLeftRail({
   todayEvents,
   todayQuests,
   onNavigate,
-  onCompleteQuest,
+  onToggleQuest,
 }: HomeLeftRailProps) {
   return (
     <div className="home-left-rail">
@@ -87,8 +87,8 @@ export function HomeLeftRail({
                   <button
                     type="button"
                     className={done ? "done" : ""}
-                    onClick={() => !done && onCompleteQuest(quest.id)}
-                    disabled={done}
+                    onClick={() => onToggleQuest(quest.id, !done)}
+                    aria-pressed={done}
                   >
                     <span className="home-quest-checkbox">{done ? "✓" : ""}</span>
                     <span>{quest.title}</span>
