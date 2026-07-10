@@ -52,6 +52,34 @@ export function parseIntent(
     return { intent: "chat.general", confidence: 0.9, entities: {}, needsConfirmation: false };
   }
 
+  // 0.5. 명시적 퀘스트 슬롯 지정 — "메인에/서브에/일일에 추가해줘"는 사용자가
+  // 계층을 직접 지정한 것이므로, 캘린더 감지보다 먼저 그대로 따릅니다.
+  if (hasAny(message, ["추가해", "만들어", "등록해", "넣어"])) {
+    if (/메인\s?(퀘스트)?(에|으로|로)/.test(message)) {
+      return {
+        intent: "project.create",
+        confidence: 0.86,
+        entities: { title: extractTitle(message.replace(/메인\s?(퀘스트)?(에|으로|로)?/g, " ")) },
+        needsConfirmation: true,
+      };
+    }
+    const slotMatch = message.match(/(서브|일일)\s?(퀘스트)?(에|으로|로)/);
+    if (slotMatch) {
+      return {
+        intent: "quest.create",
+        confidence: 0.86,
+        entities: {
+          quest: {
+            type: slotMatch[1] === "서브" ? "side" : "daily",
+            title: extractTitle(message.replace(/(서브|일일)\s?(퀘스트)?(에|으로|로)?/g, " ")),
+            dueDate: message.includes("내일") ? addDays(getKoreanToday(), 1) : getKoreanToday(),
+          },
+        },
+        needsConfirmation: true,
+      };
+    }
+  }
+
   // 1. Calendar — 날짜/시간/기간이 있으면 최우선입니다. 기간 표현
   // ("8월 19일부터 3일간")도 여기서 함께 처리됩니다.
   const calendarIntent = parseCalendarIntent(message);
@@ -113,11 +141,15 @@ export function parseIntent(
     }
   }
 
-  if (hasAny(message, ["프로젝트 시작", "새 프로젝트", "프로젝트를 시작", "메인퀘스트 시작"])) {
+  // "메인에 추가해줘 / 메인 퀘스트로 만들어줘" — 메인 퀘스트(=프로젝트) 생성.
+  if (
+    hasAny(message, ["프로젝트 시작", "새 프로젝트", "프로젝트를 시작", "메인퀘스트 시작"]) ||
+    (/메인/.test(message) && hasAny(message, ["추가해", "만들어", "등록해", "넣어"]))
+  ) {
     return {
       intent: "project.create",
       confidence: 0.78,
-      entities: { title: extractTitle(message) },
+      entities: { title: extractTitle(message.replace(/메인\s?(퀘스트)?(에|으로|로)?/g, " ")) },
       needsConfirmation: true,
     };
   }
@@ -181,14 +213,20 @@ export function parseIntent(
     };
   }
 
-  // 6. 단순 업무 → Daily Quest. "해야/보내야/정리해야" 같은 실행형 동사 위주입니다.
-  if (hasAny(message, ["해야", "보내야", "정리해야", "준비해야", "연락해야", "챙겨야", "할 일", "할일", "todo", "task", "체크리스트"])) {
+  // 6. 실행형 업무 → 일일/서브 Quest. "서브에 추가해줘"는 서브, "일일에 추가해줘"
+  // 또는 일반 실행형("~해야 돼")은 일일로 라우팅합니다.
+  if (
+    hasAny(message, ["해야", "보내야", "정리해야", "준비해야", "연락해야", "챙겨야", "할 일", "할일", "todo", "task", "체크리스트"]) ||
+    (/(서브|일일)/.test(message) && hasAny(message, ["추가해", "만들어", "등록해", "넣어"]))
+  ) {
+    const type = /서브/.test(message) ? "side" : "daily";
     return {
       intent: "quest.create",
       confidence: 0.76,
       entities: {
         quest: {
-          title: extractTitle(message),
+          type,
+          title: extractTitle(message.replace(/(서브|일일)\s?(퀘스트)?(에|으로|로)?/g, " ")),
           dueDate: message.includes("내일") ? addDays(getKoreanToday(), 1) : getKoreanToday(),
         },
       },

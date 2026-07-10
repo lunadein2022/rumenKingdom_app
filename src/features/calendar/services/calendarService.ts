@@ -1,3 +1,4 @@
+import { newId } from "../../../app/ids";
 import type {
   CalendarEvent,
   CalendarEventInput,
@@ -30,7 +31,7 @@ export function isMultiDayEvent(event: CalendarEvent) {
 export function buildCalendarEvent(input: CalendarEventInput): CalendarEvent {
   const now = new Date().toISOString();
   return {
-    id: `cal-${Date.now()}-${Math.round(Math.random() * 9999)}`,
+    id: newId(),
     title: input.title,
     description: input.description ?? "",
     startAt: input.startAt,

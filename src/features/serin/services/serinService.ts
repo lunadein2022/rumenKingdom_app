@@ -50,6 +50,8 @@ interface RemoteCalendarAction {
 interface RemoteQuestAction {
   type: "quest.create";
   title: string;
+  // 퀘스트 계층: daily(일일) / side(서브) / main(메인=프로젝트)
+  questType?: "daily" | "side" | "main";
   dueDate: string | null;
   description: string | null;
 }
@@ -123,28 +125,46 @@ function buildActionFromRemote(remote: RemoteAction): SerinAction | null {
   }
 
   if (remote.type === "quest.create") {
+    // 메인 퀘스트(=프로젝트)는 Quest 모델이 아니라 MainQuest로 등록합니다.
+    if (remote.questType === "main") {
+      return {
+        id: actionId,
+        intent: "project.create",
+        title: remote.title,
+        summary: `공주님, '${remote.title}'을(를) 새 메인 퀘스트(프로젝트)로 집무실에 등록해드릴까요?`,
+        confirmLabel: "메인 퀘스트 생성",
+        payload: {
+          mainQuest: { title: remote.title },
+        },
+        logEntries: [{ domain: "project", label: remote.title, detail: "새 메인 퀘스트(프로젝트) 생성" }],
+      };
+    }
+
+    const questType = remote.questType === "side" ? "side" : "daily";
     const dueDate = remote.dueDate ?? getKoreanToday();
     return {
       id: actionId,
       intent: "quest.create",
       title: remote.title,
-      summary: `공주님, '${remote.title}'을(를) ${dueDate} 마감 퀘스트로 등록해드릴까요?`,
+      summary: `공주님, '${remote.title}'을(를) ${dueDate} 마감 ${questTypeMeta[questType].label} 퀘스트로 등록해드릴까요?`,
       confirmLabel: "Quest 생성",
       payload: {
         quest: {
           title: remote.title,
           description: remote.description ?? "세린이 대화에서 정리한 Quest입니다.",
-          type: "daily",
+          type: questType,
           priority: "medium",
           progress: 0,
-          expReward: questTypeMeta.daily.baseExp,
+          expReward: questTypeMeta[questType].baseExp,
           goldReward: 0,
           dueDate,
           rewardClaimed: false,
           source: "serin",
         },
       },
-      logEntries: [{ domain: "quest", label: remote.title, detail: `마감 ${dueDate} Quest 생성` }],
+      logEntries: [
+        { domain: "quest", label: remote.title, detail: `마감 ${dueDate} ${questTypeMeta[questType].label} Quest 생성` },
+      ],
     };
   }
 

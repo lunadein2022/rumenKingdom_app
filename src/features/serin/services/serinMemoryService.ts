@@ -1,11 +1,11 @@
+import { newId } from "../../../app/ids";
 import type { SerinMemory } from "../types/serin.types";
 
 export function saveMemory(memories: SerinMemory[], input: Omit<SerinMemory, "id" | "createdAt">) {
-  // TODO: Replace with Supabase Query
   return [
     {
       ...input,
-      id: `memory-${Date.now()}`,
+      id: newId(),
       createdAt: new Date().toISOString(),
     },
     ...memories,

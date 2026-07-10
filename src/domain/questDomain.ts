@@ -7,14 +7,13 @@ import type {
   UserProgress,
 } from "../app/types";
 import { buildMockProgress } from "../data/mockProgress";
+import { newId } from "../app/ids";
 
 // 메인퀘스트(=프로젝트)는 이 파일이 아니라 domain/mainQuestDomain.ts가 다룹니다.
-// 여기서는 실행형 퀘스트(서브/일일/반복/스토리)만 다룹니다.
+// 여기서는 실행형 퀘스트(서브/일일)만 다룹니다.
 export const questTypeMeta: Record<QuestType, { icon: string; label: string; baseExp: number }> = {
   side: { icon: "⭐", label: "서브", baseExp: 80 },
   daily: { icon: "☀", label: "일일", baseExp: 20 },
-  routine: { icon: "🔄", label: "반복", baseExp: 40 },
-  story: { icon: "📖", label: "스토리", baseExp: 200 },
 };
 
 export const questCompletionFlow: QuestCompletionEvent[] = [
@@ -68,7 +67,7 @@ export function completeQuestDomain(
 
   const updatedHistory: QuestHistoryEntry[] = [
     {
-      id: `qh-${quest.id}-${Date.now()}`,
+      id: newId(),
       questId: quest.id,
       completedAt,
       rewardExp: quest.expReward,
@@ -164,7 +163,7 @@ export function createQuestFromSerinDraft(title: string, mainQuestId?: string): 
   // TODO:
   // Replace with Supabase Query and AI intent parser.
   return {
-    id: `q-serin-${Date.now()}`,
+    id: newId(),
     type: "daily",
     title,
     description: "세린의 대화에서 추출한 일일 퀘스트 초안입니다.",
@@ -185,8 +184,8 @@ export function createQuestFromCalendarEvent(event: CalendarEvent): Quest {
   // TODO:
   // Replace with Supabase Query and calendar-to-quest transaction.
   return {
-    id: `q-calendar-${Date.now()}`,
-    type: event.category === "routine" ? "routine" : "daily",
+    id: newId(),
+    type: "daily",
     title: event.title,
     description: `${event.location ?? "루멘 왕성"} 일정에서 생성된 Quest입니다.`,
     status: "pending",

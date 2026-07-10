@@ -52,19 +52,27 @@ const TOOLS = [
   {
     name: "create_quest",
     description:
-      "공주님이 해야 할 일(퀘스트/할 일/todo)을 말할 때 호출한다. '~해야 돼', '~할 일 추가해줘' 같은 실행형 요청에 쓴다.",
+      "공주님이 해야 할 일(퀘스트/할 일/todo)을 말할 때 호출한다. '~해야 돼', '~할 일 추가해줘' 같은 실행형 요청에 쓴다. " +
+      "퀘스트 계층: main(메인)=장기 프로젝트, side(서브)=며칠~몇 주짜리 업무, daily(일일)=오늘 할 일. " +
+      "공주님이 '메인에/메인 퀘스트로 추가해줘'라고 하면 main, '서브에'는 side, '일일에'는 daily로 지정한다. " +
+      "명시가 없으면 일의 규모로 판단한다(오늘 처리할 작은 일=daily, 장기 프로젝트성=main, 그 사이=side).",
     input_schema: {
       type: "object",
       properties: {
         title: {
           type: "string",
           description:
-            "할 일의 핵심 제목만. 명사형으로 다듬고, '~해야 돼', '~까지', '만들어줘' 같은 요청/기한 표현은 제목에 넣지 않는다. 예: '내일까지 제안서 초안 작성해야 돼' → '제안서 초안 작성'",
+            "할 일의 핵심 제목만. 명사형으로 다듬고, '~해야 돼', '~까지', '만들어줘', '메인에/서브에/일일에' 같은 요청/기한/분류 표현은 제목에 넣지 않는다. 예: '내일까지 제안서 초안 작성해야 돼' → '제안서 초안 작성'",
+        },
+        quest_type: {
+          type: "string",
+          enum: ["daily", "side", "main"],
+          description: "퀘스트 계층. daily=일일(오늘 할 일), side=서브(중기 업무), main=메인(장기 프로젝트)",
         },
         due_date: { type: "string", description: "마감 날짜 YYYY-MM-DD. 없으면 생략(오늘로 처리됨)" },
         description: { type: "string", description: "부가 설명. 없으면 생략" },
       },
-      required: ["title"],
+      required: ["title", "quest_type"],
     },
   },
   {
@@ -120,9 +128,11 @@ function toAction(toolUse) {
   }
   if (toolUse.name === "create_quest") {
     if (!input.title) return null;
+    const questType = ["daily", "side", "main"].includes(input.quest_type) ? input.quest_type : "daily";
     return {
       type: "quest.create",
       title: String(input.title),
+      questType,
       dueDate: DATE_RE.test(input.due_date ?? "") ? input.due_date : null,
       description: input.description ? String(input.description) : null,
     };

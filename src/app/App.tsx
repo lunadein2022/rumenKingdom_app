@@ -38,7 +38,6 @@ import { useCastleRooms } from "../features/castle/hooks/useCastleRooms";
 import { BedroomPage } from "../features/bedroom/pages/BedroomPage";
 import { GardenPage } from "../features/garden/pages/GardenPage";
 import { LibraryPage } from "../features/library/pages/LibraryPage";
-import { OfficePage } from "../features/office/pages/OfficePage";
 import { RelationshipPage } from "../features/relationship/pages/RelationshipPage";
 import { ThronePage } from "../features/throne/pages/ThronePage";
 import { cancelAction, confirmAction } from "../features/serin/services/serinActionExecutor";
@@ -52,6 +51,20 @@ import { buildProcessingNotice, runAttachmentPipeline } from "../features/serin/
 import { SerinFloatingWidget } from "../features/serin/components/SerinFloatingWidget";
 import type { SerinActionLogEntry } from "../features/serin/types/serin.types";
 import { addDays, getKoreanToday } from "./dateUtils";
+import { newId } from "./ids";
+import { LoginScreen } from "../features/auth/LoginScreen";
+import { getCurrentSession, isSupabaseEnabled, onAuthChange, signOut } from "../services/supabase/authService";
+import {
+  loadSnapshot,
+  syncContacts,
+  syncDiary,
+  syncEvents,
+  syncMainQuests,
+  syncMemories,
+  syncProgress,
+  syncQuestHistory,
+  syncQuests,
+} from "../services/supabase/dataService";
 
 const TODAY = getKoreanToday();
 
@@ -189,7 +202,7 @@ function buildProgress(quests: Quest[], base: UserProgress): UserProgress {
 function createQuestFromSerinAction(action: SerinAction): Quest {
   const payload = action.payload.quest ?? {};
   return {
-    id: `q-serin-${Date.now()}`,
+    id: newId(),
     type: payload.type ?? "daily",
     title: payload.title ?? action.title,
     description: payload.description ?? "세린이 대화에서 정리한 Quest입니다.",
@@ -209,7 +222,7 @@ function createQuestFromSerinAction(action: SerinAction): Quest {
 function createContactFromSerinAction(action: SerinAction): RelationshipContact {
   const payload = action.payload.contact ?? {};
   return {
-    id: `rel-serin-${Date.now()}`,
+    id: newId(),
     name: payload.name ?? action.title,
     affinity: payload.affinity ?? 3,
     organization: payload.organization,
@@ -261,6 +274,60 @@ export function App() {
   // "지금 어느 방에 있는지"(currentRoomKey, 미니맵 하이라이트용)만 관리합니다.
   const castleRooms = useCastleRooms(snapshot.rooms);
   const progress = useMemo(() => buildProgress(quests, progressBase), [quests, progressBase]);
+
+  // ── Supabase 인증 & 영속화 ────────────────────────────────────────────
+  // supabase env가 없으면(로컬 mock 모드) 인증/저장을 건너뜁니다.
+  const supabaseOn = isSupabaseEnabled();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [authReady, setAuthReady] = useState(!supabaseOn);
+  // 'idle' → 'loading' → 'ready'. 'ready' 이후에만 상태 변경을 DB로 동기화합니다
+  // (초기 빈 상태가 실수로 DB를 비우지 않도록).
+  const [dataPhase, setDataPhase] = useState<"idle" | "loading" | "ready">(supabaseOn ? "idle" : "ready");
+
+  // 세션 확인 + 로그인/로그아웃 구독
+  useEffect(() => {
+    if (!supabaseOn) return;
+    let unsub = () => {};
+    void getCurrentSession().then((session) => {
+      setUserId(session?.user?.id ?? null);
+      setAuthReady(true);
+      unsub = onAuthChange((user) => {
+        setUserId(user?.id ?? null);
+        if (!user) setDataPhase("idle");
+      });
+    });
+    return () => unsub();
+  }, [supabaseOn]);
+
+  // 로그인되면 전체 스냅샷을 불러와 상태를 채웁니다.
+  useEffect(() => {
+    if (!supabaseOn || !userId) return;
+    setDataPhase("loading");
+    void loadSnapshot(userId).then((snap) => {
+      setQuests(snap.quests);
+      setQuestHistory(snap.questHistory);
+      setEvents(snap.events);
+      setMainQuests(snap.mainQuests);
+      setSerinMemories(snap.memories);
+      setContacts(snap.contacts);
+      setDiaryEntries(snap.diaryEntries);
+      if (snap.progressBase) {
+        setProgressBase((current) => ({ ...current, ...snap.progressBase }));
+      }
+      setDataPhase("ready");
+    });
+  }, [supabaseOn, userId]);
+
+  // 도메인별 write-through: 'ready' 이후 각 컬렉션이 바뀌면 DB와 동기화합니다.
+  const canSync = supabaseOn && userId !== null && dataPhase === "ready";
+  useEffect(() => { if (canSync) void syncQuests(userId!, quests); }, [canSync, quests]);
+  useEffect(() => { if (canSync) void syncQuestHistory(userId!, questHistory); }, [canSync, questHistory]);
+  useEffect(() => { if (canSync) void syncEvents(userId!, events); }, [canSync, events]);
+  useEffect(() => { if (canSync) void syncMainQuests(userId!, mainQuests); }, [canSync, mainQuests]);
+  useEffect(() => { if (canSync) void syncMemories(userId!, serinMemories); }, [canSync, serinMemories]);
+  useEffect(() => { if (canSync) void syncContacts(userId!, contacts); }, [canSync, contacts]);
+  useEffect(() => { if (canSync) void syncDiary(userId!, diaryEntries); }, [canSync, diaryEntries]);
+  useEffect(() => { if (canSync) void syncProgress(userId!, progress); }, [canSync, progress]);
   const appData = {
     ...snapshot,
     quests,
@@ -347,7 +414,7 @@ export function App() {
         return updated;
       }
       const entry: DiaryEntry = {
-        id: `diary-${Date.now()}`,
+        id: newId(),
         date: TODAY,
         moodEmoji,
         moodLabel,
@@ -664,9 +731,25 @@ export function App() {
     mainQuest.updates.filter((update) => update.date.slice(0, 10) === TODAY).map((update) => ({ mainQuest, content: update.content })),
   );
 
+  // 인증 게이트 (supabase 사용 시): 세션 확인 중 → 스플래시, 미로그인 → 로그인 화면,
+  // 데이터 로딩 중 → 스플래시. 그 뒤 앱 본체를 렌더합니다.
+  if (supabaseOn && !authReady) {
+    return <div className="app-splash">공주님의 왕궁을 여는 중…</div>;
+  }
+  if (supabaseOn && !userId) {
+    return <LoginScreen />;
+  }
+  if (supabaseOn && dataPhase !== "ready") {
+    return <div className="app-splash">공주님의 기록을 불러오는 중…</div>;
+  }
+
   return (
     <div className="app-shell">
-      <GameTopHud princess={snapshot.princess} progress={progress} />
+      <GameTopHud
+        princess={snapshot.princess}
+        progress={progress}
+        onSignOut={supabaseOn ? () => void signOut() : undefined}
+      />
       <SiteNav activeView={activeView} onChange={setActiveView} />
 
       <main className="app-main">
@@ -687,12 +770,13 @@ export function App() {
             onVisitRoom={castleRooms.visitRoom}
           />
         )}
-        {activeView === "office" && (
-          <OfficePage
-            mainQuests={mainQuests}
+        {(activeView === "office" || activeView === "quests") && (
+          <QuestScreen
             quests={quests}
-            events={events}
-            contacts={contacts}
+            mainQuests={mainQuests}
+            onToggleQuest={toggleQuestCompletion}
+            onDeleteQuest={deleteQuest}
+            onAskSerin={() => setActiveView("serin")}
             onToggleChapter={toggleMainQuestChapterHandler}
             onAddUpdate={addMainQuestUpdateHandler}
           />
@@ -728,15 +812,6 @@ export function App() {
         )}
         {activeView === "throne" && <ThronePage data={appData} />}
         {activeView === "relationship" && <RelationshipPage contacts={contacts} mainQuests={mainQuests} />}
-        {activeView === "quests" && (
-          <QuestScreen
-            quests={quests}
-            mainQuests={mainQuests}
-            onToggleQuest={toggleQuestCompletion}
-            onDeleteQuest={deleteQuest}
-            onAskSerin={() => setActiveView("serin")}
-          />
-        )}
         {activeView === "calendar" && (
           <CalendarPage
             events={events}

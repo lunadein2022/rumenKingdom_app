@@ -129,28 +129,30 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
   }
 
   if (parsedIntent.intent === "quest.create") {
-    const quest = parsedIntent.entities.quest as { title?: string; dueDate?: string };
+    const quest = parsedIntent.entities.quest as { title?: string; dueDate?: string; type?: "daily" | "side" };
+    const questType = quest.type === "side" ? "side" : "daily";
+    const typeLabel = questTypeMeta[questType].label;
     return {
       id: actionId,
       intent: "quest.create",
       title: quest.title ?? "새 Quest",
-      summary: `공주님, '${quest.title ?? "이 일"}'을(를) 퀘스트로 등록해드릴까요? 처리하시기 편한 시간을 알려주시면 그에 맞춰 챙겨드릴게요.`,
+      summary: `공주님, '${quest.title ?? "이 일"}'을(를) ${typeLabel} 퀘스트로 등록해드릴까요? 처리하시기 편한 시간을 알려주시면 그에 맞춰 챙겨드릴게요.`,
       confirmLabel: "Quest 생성",
       payload: {
         quest: {
           title: quest.title ?? "새 Quest",
           description: "세린이 대화에서 정리한 Quest입니다.",
-          type: "daily",
+          type: questType,
           priority: "medium",
           progress: 0,
-          expReward: questTypeMeta.daily.baseExp,
-          goldReward: 8,
+          expReward: questTypeMeta[questType].baseExp,
+          goldReward: 0,
           dueDate: quest.dueDate ?? getKoreanToday(),
           rewardClaimed: false,
           source: "serin",
         },
       },
-      logEntries: [{ domain: "quest", label: quest.title ?? "새 Quest", detail: "일일 Quest 생성" }],
+      logEntries: [{ domain: "quest", label: quest.title ?? "새 Quest", detail: `${typeLabel} Quest 생성` }],
     };
   }
 
