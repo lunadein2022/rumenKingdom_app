@@ -49,7 +49,6 @@ import {
 } from "../features/serin/services/serinService";
 import { saveMemory } from "../features/serin/services/serinMemoryService";
 import { buildProcessingNotice, runAttachmentPipeline } from "../features/serin/services/attachmentPipeline";
-import { SerinFloatingWidget } from "../features/serin/components/SerinFloatingWidget";
 import type { SerinActionLogEntry } from "../features/serin/types/serin.types";
 import { addDays, getKoreanToday } from "./dateUtils";
 import { newId } from "./ids";
@@ -852,21 +851,8 @@ export function App() {
           />
         )}
       </main>
-
-      {/* ?몃┛ 硫붿씠?쒕큸: Serin ?붾㈃(?묒젒?? ?먯껜瑜?蹂??뚮뒗 援녹씠 ???꾩슦吏 ?딄퀬,
-          洹???紐⑤뱺 ?붾㈃?먯꽌 ?곗륫 ?섎떒??理쒖냼?붾맂 梨꾨줈 ?④퍡 ?덉뒿?덈떎. */}
-      {activeView !== "serin" && (
-        <SerinFloatingWidget
-          status={serinStatus}
-          hasPendingAction={pendingSerinAction !== null}
-          onOpenSerin={() => setActiveView("serin")}
-          onQuickAsk={(sentence) => {
-            setActiveView("serin");
-            void sendSerinMessage(sentence);
-          }}
-        />
-      )}
     </div>
   );
 }
+
 

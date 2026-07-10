@@ -54,7 +54,7 @@ export function HomeScene({ data, rooms, onNavigate, onToggleQuest }: HomeSceneP
           {todayEvents.slice(0, 5).map((event) => (
             <p key={event.id}><time>{event.isAllDay ? "종일" : event.startAt.slice(11, 16)}</time><span>{event.title}</span><em>{event.location ?? "왕성"}</em></p>
           ))}
-          {todayEvents.length === 0 && <p className="empty-line">오늘 등록된 일정이 없어요.</p>}
+          {todayEvents.length === 0 && <p className="empty-line">이 시간의 왕실 일정은 아직 비어 있어요.</p>}
         </section>
       </aside>
 
@@ -73,22 +73,7 @@ export function HomeScene({ data, rooms, onNavigate, onToggleQuest }: HomeSceneP
             <span>[{quest.type === "daily" ? "일일" : "서브"}] {quest.title}</span>
           </label>
         ))}
-        {visibleQuests.length === 0 && <p className="empty-line">오늘 처리할 Quest가 없어요.</p>}
-      </aside>
-
-      <aside className="palace-panel lobby-right project-panel">
-        <div className="mini-list-head">
-          <h2>진행 중 메인 프로젝트</h2>
-          <button type="button" onClick={() => onNavigate("office")}>전체 보기</button>
-        </div>
-        {activeMainQuests.map((project) => (
-          <article key={project.id} className="project-row">
-            <strong>{project.title}</strong>
-            <span>{project.description}</span>
-            <b><i style={{ width: `${project.progress}%` }} /></b>
-            <em>진행률 {project.progress}%</em>
-          </article>
-        ))}
+        {visibleQuests.length === 0 && <p className="empty-line">오늘의 Quest는 아직 정해지지 않았어요.</p>}
       </aside>
 
       <aside className="palace-panel lobby-right room-entry-panel">
@@ -105,11 +90,7 @@ export function HomeScene({ data, rooms, onNavigate, onToggleQuest }: HomeSceneP
           ))}
         </div>
       </aside>
-
-      <button type="button" className="lobby-serin-avatar-button" onClick={() => onNavigate("serin")}>
-        <img src="/assets/serin-avatar-final.png" alt="세린" />
-        <span>세린과 대화</span>
-      </button>
     </section>
   );
 }
+

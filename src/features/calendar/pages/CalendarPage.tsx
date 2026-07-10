@@ -31,7 +31,7 @@ export function CalendarPage({
   const selectedEvents = useMemo(() => getEventsByDay(events, selectedDate), [events, selectedDate]);
   const todayEvents = useMemo(() => getEventsByDay(events, today), [events, today]);
   const upcoming = useMemo(
-    () => getUpcomingEvents(events, `${today}T00:00:00`).filter((event) => event.startAt.slice(0, 10) > today).slice(0, 6),
+    () => getUpcomingEvents(events, `${today}T00:00:00`).filter((event) => event.startAt.slice(0, 10) > today).slice(0, 5),
     [events, today],
   );
 
@@ -51,9 +51,28 @@ export function CalendarPage({
       <div className="palace-vignette" />
 
       <header className="scene-title calendar-title">
-        <span>✦ 왕실 일정표 <em>Calendar</em></span>
-        <p>공주님의 일정과 약속을 월간 흐름으로 확인합니다.</p>
+        <span>왕실 일정표 <em>Calendar</em></span>
+        <p>월간 흐름과 선택한 날짜의 약속을 한 화면에서 확인합니다.</p>
       </header>
+
+      <aside className="palace-panel calendar-left-panel">
+        <div className="mini-list-head">
+          <h2>오늘의 일정</h2>
+          <button type="button" onClick={() => selectDate(today)}>오늘</button>
+        </div>
+        <strong>{formatKoreanDateLong(today)}</strong>
+        {todayEvents.length === 0 ? <p className="empty-line">오늘의 왕실 일정은 아직 비어 있습니다.</p> : null}
+        {todayEvents.slice(0, 4).map((event) => (
+          <p key={event.id} className="schedule-line">
+            <time>{event.isAllDay ? "종일" : event.startAt.slice(11, 16)}</time>
+            <span>{event.title}</span>
+          </p>
+        ))}
+        <button type="button" className="gold-action calendar-create-toggle" onClick={() => setShowForm((current) => !current)}>
+          {showForm ? "입력 닫기" : "직접 일정 입력"}
+        </button>
+        {showForm && <CalendarEventForm selectedDate={selectedDate} onCreate={handleCreate} />}
+      </aside>
 
       <div className="calendar-stage">
         <div className="calendar-mode-tabs">
@@ -62,9 +81,6 @@ export function CalendarPage({
           <button type="button">일간</button>
           <button type="button">타임라인</button>
         </div>
-        <button type="button" className="gold-action" onClick={() => setShowForm((current) => !current)}>
-          {showForm ? "입력 닫기" : "+ 일정 추가"}
-        </button>
         <div className="calendar-board palace-panel flat-panel">
           <CalendarMonthView
             events={events}
@@ -76,18 +92,7 @@ export function CalendarPage({
         </div>
       </div>
 
-      <aside className="palace-panel calendar-left-panel">
-        <h2>오늘의 일정</h2>
-        <strong>{formatKoreanDateLong(today)}</strong>
-        {todayEvents.length === 0 ? <p className="empty-line">오늘 등록된 일정이 없어요.</p> : null}
-        {todayEvents.map((event) => (
-          <p key={event.id} className="schedule-line"><time>{event.isAllDay ? "종일" : event.startAt.slice(11, 16)}</time><span>{event.title}</span></p>
-        ))}
-        {showForm && <CalendarEventForm selectedDate={selectedDate} onCreate={handleCreate} />}
-      </aside>
-
       <aside className="palace-panel calendar-right-panel">
-        <h2>{formatKoreanDateLong(selectedDate)}</h2>
         <CalendarDayView
           selectedDate={selectedDate}
           events={selectedEvents}
@@ -96,21 +101,13 @@ export function CalendarPage({
           onUpdate={onUpdateEvent}
         />
         <div className="upcoming-list">
-          <h3>다가오는 일정</h3>
+          <h3>다가오는 왕실 일정</h3>
+          {upcoming.length === 0 && <p className="empty-line">예정된 다음 일정이 없습니다.</p>}
           {upcoming.map((event) => (
             <p key={event.id}><time>{event.startAt.slice(5, 10).replace("-", ".")}</time><span>{event.title}</span></p>
           ))}
         </div>
       </aside>
-
-      <div className="serin-helper-card compact">
-        <img src="/assets/serin-avatar-final.png" alt="세린" />
-        <div>
-          <strong>세린이 도와드릴까요?</strong>
-          <button type="button" onClick={() => setShowForm(true)}>오늘 일정 입력하기</button>
-          <button type="button">오늘 뭐 해야 되지?</button>
-        </div>
-      </div>
     </section>
   );
 }

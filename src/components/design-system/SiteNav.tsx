@@ -1,11 +1,11 @@
 ﻿import type { ViewKey } from "../../app/types";
 
-const navItems: Array<{ key: ViewKey; label: string; icon: string }> = [
-  { key: "home", label: "로비", icon: "♜" },
-  { key: "office", label: "집무실", icon: "▣" },
-  { key: "serin", label: "세린", icon: "" },
-  { key: "calendar", label: "왕실 일정표", icon: "▦" },
-  { key: "library", label: "왕국 도서관", icon: "▤" },
+const navItems: Array<{ key: ViewKey; label: string }> = [
+  { key: "home", label: "로비" },
+  { key: "office", label: "집무실" },
+  { key: "serin", label: "세린" },
+  { key: "calendar", label: "왕실 일정표" },
+  { key: "library", label: "왕국 도서관" },
 ];
 
 interface SiteNavProps {
@@ -14,40 +14,26 @@ interface SiteNavProps {
 }
 
 export function SiteNav({ activeView, onChange }: SiteNavProps) {
-  function renderItem(item: { key: ViewKey; label: string; icon: string }) {
-    return (
-      <button
-        key={item.key}
-        type="button"
-        className={item.key === activeView ? "active" : ""}
-        onClick={() => onChange(item.key)}
-      >
-        <span className="game-nav-icon">{item.icon}</span>
-        <span className="game-nav-label">{item.label}</span>
-      </button>
-    );
-  }
-
   return (
     <nav className="game-nav palace-bottom-nav" aria-label="Princess OS navigation">
-      {navItems.map((item) =>
-        item.key === "serin" ? (
-          <button
-            key={item.key}
-            type="button"
-            className={`game-nav-serin ${activeView === "serin" ? "active" : ""}`}
-            onClick={() => onChange("serin")}
-            aria-label="세린"
-          >
+      {navItems.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          className={`${item.key === activeView ? "active" : ""} ${item.key === "serin" ? "game-nav-serin" : ""}`}
+          onClick={() => onChange(item.key)}
+          aria-label={item.label}
+        >
+          {item.key === "serin" ? (
             <span className="game-nav-serin-portrait">
-              <img src="/assets/serin-avatar-final.png" alt="세린" />
+              <img src="/assets/nav-serin-icon.png" alt="" aria-hidden="true" />
             </span>
-            <span className="game-nav-label">세린</span>
-          </button>
-        ) : (
-          renderItem(item)
-        ),
-      )}
+          ) : (
+            <span className="game-nav-icon" aria-hidden="true" />
+          )}
+          <span className="game-nav-label">{item.label}</span>
+        </button>
+      ))}
     </nav>
   );
 }
