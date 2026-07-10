@@ -9,6 +9,7 @@ import type {
   SerinMemory,
 } from "../../../app/types";
 import { Badge } from "../../../components/design-system/Badge";
+import { getKoreanToday } from "../../../app/dateUtils";
 
 interface LibraryPageProps {
   quests: Quest[];
@@ -40,7 +41,7 @@ const folders: Array<{ key: LibraryFolder; label: string }> = [
   { key: "relationship", label: "Relationship" },
 ];
 
-const TODAY = "2026-07-09";
+const TODAY = getKoreanToday();
 
 // Library = 기록 보관소. Notion처럼 검색 → 필터(폴더) → 목록 → 상세 구조입니다.
 // 스크롤 카드 나열이 아니라, 왼쪽 폴더에서 카테고리를 고르고 오른쪽에서

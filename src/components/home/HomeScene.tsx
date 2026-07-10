@@ -1,7 +1,7 @@
 import type { AppMockData, ViewKey } from "../../app/types";
 import type { CastleRoom, CastleRoomKey } from "../../features/castle/types/castle.types";
 import { getEventsByDay } from "../../features/calendar/services/calendarService";
-import { HomeHud } from "./HomeHud";
+import { formatKoreanDateLong, getKoreanToday } from "../../app/dateUtils";
 import { HomeLeftRail } from "./HomeLeftRail";
 import { HomeRightRail } from "./HomeRightRail";
 
@@ -13,7 +13,7 @@ interface HomeSceneProps {
   onToggleQuest: (id: string, completed: boolean) => void;
 }
 
-const TODAY = "2026-07-09";
+const TODAY = getKoreanToday();
 
 function timeGreeting() {
   const hour = new Date().getHours();
@@ -37,21 +37,13 @@ export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onToggleQue
     <section className="palace-hud-scene scene-fullbleed">
       <div className="palace-hud-backdrop" style={{ backgroundImage: 'url("/assets/home-bg.webp")' }} />
 
-      <HomeHud
-        princess={data.princess}
-        progress={data.progress}
-        todayEventCount={todayEvents.length}
-        todayQuestCount={todayQuests.length}
-        activeMainQuestCount={activeMainQuests.length}
-        memoCount={memoCount}
-      />
-
       <div className="palace-hud-figures">
         <img src="/assets/princess-full-transparent.webp" alt="공주" />
         <img src="/assets/serin-full-transparent.webp" alt="세린" />
       </div>
 
       <HomeLeftRail
+        dateLine={formatKoreanDateLong(TODAY)}
         greetingLine={timeGreeting()}
         todayEventCount={todayEvents.length}
         todayQuestCount={todayQuests.length}

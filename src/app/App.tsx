@@ -15,6 +15,7 @@ import type {
   UserProgress,
   ViewKey,
 } from "./types";
+import { GameTopHud } from "../components/design-system/GameTopHud";
 import { SiteNav } from "../components/design-system/SiteNav";
 import { HomeScene } from "../components/home/HomeScene";
 import { QuestScreen } from "../components/modules/QuestScreen";
@@ -50,8 +51,9 @@ import { saveMemory } from "../features/serin/services/serinMemoryService";
 import { buildProcessingNotice, runAttachmentPipeline } from "../features/serin/services/attachmentPipeline";
 import { SerinFloatingWidget } from "../features/serin/components/SerinFloatingWidget";
 import type { SerinActionLogEntry } from "../features/serin/types/serin.types";
+import { addDays, getKoreanToday } from "./dateUtils";
 
-const TODAY = "2026-07-09";
+const TODAY = getKoreanToday();
 
 // 짧은 긍정/부정 답변으로 직전 pendingAction을 이어서 처리하기 위한 감지기.
 // "응", "그래", "당연하지", "부탁해", "등록해", "일정에 넣어" 같은 표현을 포함합니다.
@@ -61,8 +63,10 @@ const SHORT_DECLINE = /(아니|괜찮아|괜찮습니다|취소|하지\s*마|넘
 // "내일 뭐하나", "오늘 일정 있어?", "모레 바빠?" 같은 조회성 질문을 감지합니다.
 // 등록(calendarTriggerPattern)이 아니라 "이미 있는 일정을 물어보는" 경우이므로,
 // 세린이 매번 똑같은 안내문 대신 실제 events 데이터를 기준으로 답합니다.
-const SCHEDULE_QUERY_WORDS = /(뭐\s?하|뭐\s?있|무슨\s?일|일정\s?있|일정\s?뭐|스케줄\s?있|바쁘|바빠)/;
+const SCHEDULE_QUERY_WORDS = /(뭐\s?하|뭐\s?있|무슨\s?일|일정\s?있|일정\s?뭐|일정\s?알려|일정\s?브리핑|스케줄\s?있|스케줄\s?알려|바쁘|바빠)/;
 const SCHEDULE_DAY_WORDS = /(오늘|내일|모레)/;
+// "오늘 뭐 해야 되지?", "할 일 알려줘" 같은 퀘스트 조회 질문 감지기.
+const QUEST_QUERY_WORDS = /(뭐\s?해야|할\s?일\s?(있|뭐|알려)|퀘스트\s?(있|뭐|알려))/;
 
 function isShortReply(text: string) {
   return text.trim().length > 0 && text.trim().length <= 14;
@@ -70,9 +74,9 @@ function isShortReply(text: string) {
 
 function resolveScheduleQuery(content: string): { date: string; label: string } | null {
   if (!SCHEDULE_DAY_WORDS.test(content) || !SCHEDULE_QUERY_WORDS.test(content)) return null;
-  if (content.includes("모레")) return { date: "2026-07-11", label: "모레" };
-  if (content.includes("내일")) return { date: "2026-07-10", label: "내일" };
-  return { date: "2026-07-09", label: "오늘" };
+  if (content.includes("모레")) return { date: addDays(TODAY, 2), label: "모레" };
+  if (content.includes("내일")) return { date: addDays(TODAY, 1), label: "내일" };
+  return { date: TODAY, label: "오늘" };
 }
 
 function buildTimeGreeting(): SerinMessage {
@@ -217,16 +221,8 @@ function createContactFromSerinAction(action: SerinAction): RelationshipContact 
   };
 }
 
-const initialSerinMemories: SerinMemory[] = [
-  {
-    id: "memory-001",
-    memoryType: "routine",
-    content: "공주님은 오전에 중요한 업무를 먼저 끝낼 때 집중도가 높습니다.",
-    importance: "high",
-    source: "system",
-    createdAt: "2026-07-09T09:00:00+09:00",
-  },
-];
+// 세린의 기억도 사용자가 실제로 말한 것만 존재합니다. 초기값은 비어 있습니다.
+const initialSerinMemories: SerinMemory[] = [];
 
 export function App() {
   const snapshot = useMemo(() => getPrincessOsSnapshot(), []);
@@ -296,19 +292,8 @@ export function App() {
     setProgressBase(result.progress);
   }
 
-  function cycleQuest(id: string) {
-    setQuests((current) =>
-      current.map((quest) => {
-        if (quest.id !== id) return quest;
-        const next = quest.status === "pending" ? "inProgress" : quest.status === "inProgress" ? "completed" : "pending";
-        return {
-          ...quest,
-          status: next,
-          completedAt: next === "completed" ? new Date().toISOString() : undefined,
-          rewardClaimed: next === "completed" ? false : quest.rewardClaimed,
-        };
-      }),
-    );
+  function deleteQuest(id: string) {
+    setQuests((current) => current.filter((quest) => quest.id !== id));
   }
 
   function createCalendarEvent(input: CalendarEventInput, linkQuest = false) {
@@ -411,6 +396,26 @@ export function App() {
       }
     }
 
+    // "오늘 뭐 해야 되지?" 같은 퀘스트 조회 질문은 실제 quests 상태를 바로 조회해서
+    // 답합니다. (등록 요청이 아니라 이미 있는 할 일을 물어보는 경우)
+    if (QUEST_QUERY_WORDS.test(content) && !content.includes("등록") && !content.includes("추가")) {
+      const pendingToday = quests.filter((quest) => quest.status !== "completed" && quest.dueDate === TODAY);
+      const reply =
+        pendingToday.length === 0
+          ? "공주님, 오늘 남은 퀘스트가 없어요. 새로 챙길 일이 생기면 편하게 말씀해주세요."
+          : `공주님, 오늘 남은 퀘스트는 ${pendingToday.map((quest) => `'${quest.title}'`).join(", ")}입니다. 하나씩 함께 정리해드릴게요.`;
+      const questQueryMessage: SerinMessage = {
+        id: `m-${Date.now()}-questquery`,
+        sender: "serin",
+        content: reply,
+        createdAt: new Date().toISOString(),
+        messageType: "text",
+      };
+      setMessages((current) => [...current, questQueryMessage]);
+      void saveMessage({ conversationId, ...questQueryMessage });
+      return;
+    }
+
     // "내일 뭐하나" 같은 일정 조회 질문은 AI를 거치지 않고, 실제 events 상태를 바로
     // 조회해서 답합니다. (등록 요청이 아니라 이미 있는 일정을 물어보는 경우)
     const scheduleQuery = resolveScheduleQuery(content);
@@ -447,7 +452,9 @@ export function App() {
         },
         recentHistory,
       );
-      if (content.includes("기억")) {
+      // Claude가 memory.save 액션을 만들어온 경우에는 확인 후 저장되므로,
+      // 여기서는 액션 없이 "기억" 키워드만 있는 경우에만 즉시 저장합니다(이중 저장 방지).
+      if (!result.action && content.includes("기억")) {
         setSerinMemories((current) =>
           saveMemory(current, {
             memoryType: "preference",
@@ -659,6 +666,7 @@ export function App() {
 
   return (
     <div className="app-shell">
+      <GameTopHud princess={snapshot.princess} progress={progress} />
       <SiteNav activeView={activeView} onChange={setActiveView} />
 
       <main className="app-main">
@@ -724,11 +732,9 @@ export function App() {
           <QuestScreen
             quests={quests}
             mainQuests={mainQuests}
-            history={questHistory}
-            progress={progress}
-            completionEvents={completionEvents}
             onToggleQuest={toggleQuestCompletion}
-            onCycleQuest={cycleQuest}
+            onDeleteQuest={deleteQuest}
+            onAskSerin={() => setActiveView("serin")}
           />
         )}
         {activeView === "calendar" && (
@@ -764,10 +770,13 @@ export function App() {
           그 외 모든 화면에서 우측 하단에 최소화된 채로 함께 있습니다. */}
       {activeView !== "serin" && (
         <SerinFloatingWidget
-          lastMessage={messages[messages.length - 1]}
           status={serinStatus}
           hasPendingAction={pendingSerinAction !== null}
           onOpenSerin={() => setActiveView("serin")}
+          onQuickAsk={(sentence) => {
+            setActiveView("serin");
+            void sendSerinMessage(sentence);
+          }}
         />
       )}
     </div>

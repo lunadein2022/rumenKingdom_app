@@ -70,7 +70,7 @@ export function getEventsByDay(events: CalendarEvent[], date: string) {
     .sort((a, b) => a.startAt.localeCompare(b.startAt));
 }
 
-export function getUpcomingEvents(events: CalendarEvent[], nowIso = "2026-07-09T09:00:00") {
+export function getUpcomingEvents(events: CalendarEvent[], nowIso = new Date().toISOString().slice(0, 19)) {
   // TODO: Replace with Supabase Query
   const now = toTime(nowIso);
   return events

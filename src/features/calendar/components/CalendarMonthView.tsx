@@ -1,4 +1,5 @@
 import type { CalendarEvent } from "../types/calendar.types";
+import { getKoreanToday } from "../../../app/dateUtils";
 import { isDateWithinEvent, isMultiDayEvent } from "../services/calendarService";
 
 interface CalendarMonthViewProps {
@@ -10,7 +11,7 @@ interface CalendarMonthViewProps {
 }
 
 const weekLabels = ["일", "월", "화", "수", "목", "금", "토"];
-const today = "2026-07-09";
+const today = getKoreanToday();
 
 function monthLabel(month: string) {
   const [year, rawMonth] = month.split("-");

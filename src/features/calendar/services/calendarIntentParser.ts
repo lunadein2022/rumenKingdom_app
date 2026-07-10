@@ -1,3 +1,4 @@
+import { getKoreanToday } from "../../../app/dateUtils";
 import type { CalendarCategory, CalendarIntentDraft } from "../types/calendar.types";
 
 const weekdayOrder = ["일", "월", "화", "수", "목", "금", "토"];
@@ -98,7 +99,7 @@ function cleanTitle(message: string) {
 const calendarTriggerPattern =
   /(일정|캘린더|스케줄|예약|회의|미팅|약속|추가|등록|잡아|넣어|체크인|여행|휴가)/;
 
-export function parseCalendarIntent(message: string, baseDate = "2026-07-09"): CalendarIntentDraft | null {
+export function parseCalendarIntent(message: string, baseDate = getKoreanToday()): CalendarIntentDraft | null {
   // TODO: Replace mock parser with Serin AI intent parser
   const hasCalendarIntent = calendarTriggerPattern.test(message);
   if (!hasCalendarIntent) return null;

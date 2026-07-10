@@ -30,7 +30,7 @@ const statusLabel: Record<SerinStatus, string> = {
 };
 
 // Serin 화면 = "업무 대시보드"가 아니라 세린과 만나는 왕궁 응접실입니다.
-// Scene First: 배경(응접실)과 세린/공주 캐�릭터가 항상 화면 안에 존재하고,
+// Scene First: 배경(응접실)과 세린/공주 캐릭터가 항상 화면 안에 존재하고,
 // 그 위에 3개 영역(대화 / 추천 문장 / 세린의 기억)만 Glass Overlay로 떠 있습니다.
 // 대화창은 카카오톡 정도의 폭으로 제한해, 배경과 캐릭터가 항상 함께 보입니다.
 export function SerinPage({

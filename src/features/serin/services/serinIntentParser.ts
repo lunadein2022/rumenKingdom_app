@@ -1,3 +1,4 @@
+import { addDays, getKoreanToday } from "../../../app/dateUtils";
 import { parseCalendarIntent } from "../../calendar/services/calendarIntentParser";
 import type { SerinAttachment, SerinParsedIntent, SerinTitledRef } from "../types/serin.types";
 
@@ -7,7 +8,10 @@ function hasAny(message: string, words: string[]) {
 
 function extractTitle(message: string) {
   return message
-    .replace(/내일|오늘|모레|다음주|까지|퀘스트|할\s?일|todo|task|일정|만들어줘|생성해줘|추가해줘|등록해줘|기억해줘|저장해줘|해야겠다|해야돼|해야해|부탁해|부탁|줄래/gi, "")
+    .replace(
+      /내일|오늘|모레|다음주|까지|퀘스트|할\s?일|todo|task|일정|만들어줘|생성해줘|추가해줘|등록해줘|기억해줘|저장해줘|해야\s?(겠다|겠어|돼요|돼|되지|되|해요|해|함)?|부탁해|부탁|줄래/gi,
+      "",
+    )
     .replace(/\s+/g, " ")
     .trim() || "새 요청";
 }
@@ -185,7 +189,7 @@ export function parseIntent(
       entities: {
         quest: {
           title: extractTitle(message),
-          dueDate: message.includes("내일") ? "2026-07-10" : "2026-07-09",
+          dueDate: message.includes("내일") ? addDays(getKoreanToday(), 1) : getKoreanToday(),
         },
       },
       needsConfirmation: true,

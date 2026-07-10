@@ -1,4 +1,5 @@
 import type { CalendarIntentDraft } from "../../../app/types";
+import { getKoreanToday } from "../../../app/dateUtils";
 import { questTypeMeta } from "../../../domain/questDomain";
 import type { SerinAction, SerinParsedIntent } from "../types/serin.types";
 
@@ -144,7 +145,7 @@ export function executeIntent(parsedIntent: SerinParsedIntent): SerinAction | nu
           progress: 0,
           expReward: questTypeMeta.daily.baseExp,
           goldReward: 8,
-          dueDate: quest.dueDate ?? "2026-07-09",
+          dueDate: quest.dueDate ?? getKoreanToday(),
           rewardClaimed: false,
           source: "serin",
         },

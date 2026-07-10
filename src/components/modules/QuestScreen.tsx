@@ -1,164 +1,209 @@
 import { useMemo, useState } from "react";
-import type { MainQuest, Quest, QuestCompletionEvent, QuestHistoryEntry, QuestType, UserProgress } from "../../app/types";
+import type { MainQuest, Quest, QuestType } from "../../app/types";
+import { formatKoreanDateShort, getKoreanToday } from "../../app/dateUtils";
 import { questTypeMeta } from "../../domain/questDomain";
-import { Badge } from "../design-system/Badge";
-import { Button } from "../design-system/Button";
-import { ProgressBar } from "../design-system/ProgressBar";
 
 interface QuestScreenProps {
   quests: Quest[];
   mainQuests: MainQuest[];
-  history: QuestHistoryEntry[];
-  progress: UserProgress;
-  completionEvents: QuestCompletionEvent[];
   onToggleQuest: (id: string, completed: boolean) => void;
-  onCycleQuest: (id: string) => void;
+  onDeleteQuest: (id: string) => void;
+  onAskSerin: () => void;
 }
 
-type QuestTimeScope = "past" | "current" | "future" | "all";
+type QuestTypeFilter = "all" | QuestType;
 
-// 메인퀘스트(=프로젝트)는 Office가 관리합니다. 이 화면은 실행형 퀘스트
-// (서브/일일/반복/스토리)만 실행(체크/완료)하는 공간입니다.
-const questTabs: QuestType[] = ["daily", "routine", "side", "story"];
-const timeTabs: Array<{ key: QuestTimeScope; label: string }> = [
-  { key: "past", label: "이전" },
-  { key: "current", label: "현재" },
-  { key: "future", label: "이후" },
+const typeTabs: Array<{ key: QuestTypeFilter; label: string }> = [
   { key: "all", label: "전체" },
+  { key: "daily", label: "일일" },
+  { key: "routine", label: "반복" },
+  { key: "side", label: "서브" },
+  { key: "story", label: "스토리" },
 ];
-const today = "2026-07-09";
 
 function statusText(status: Quest["status"]) {
-  if (status === "completed") return "왕국도서관";
+  if (status === "completed") return "완료";
   if (status === "inProgress") return "진행 중";
-  return "대기";
+  return "진행 중";
 }
 
-function inScope(quest: Quest, scope: QuestTimeScope) {
-  if (scope === "all") return true;
-  if (scope === "past") return quest.dueDate < today || quest.status === "completed";
-  if (scope === "future") return quest.dueDate > today && quest.status !== "completed";
-  return quest.dueDate === today || quest.status === "inProgress";
-}
+// Quest 화면 = 카드 나열이 아니라 RPG 퀘스트 저널입니다.
+// 왼쪽: 퀘스트 로그(진행 중 / 완료 목록), 중앙: 배경과 공주 캐릭터,
+// 오른쪽: 선택한 퀘스트의 상세와 완료/삭제 액션.
+// 초기 데이터가 없으면 "세린에게 말해보세요" 빈 상태를 보여줍니다.
+export function QuestScreen({ quests, mainQuests, onToggleQuest, onDeleteQuest, onAskSerin }: QuestScreenProps) {
+  const today = getKoreanToday();
+  const [typeFilter, setTypeFilter] = useState<QuestTypeFilter>("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-export function QuestScreen({
-  quests,
-  mainQuests,
-  history,
-  progress,
-  completionEvents,
-  onToggleQuest,
-  onCycleQuest,
-}: QuestScreenProps) {
-  const [activeType, setActiveType] = useState<QuestType>("daily");
-  const [timeScope, setTimeScope] = useState<QuestTimeScope>("current");
-  const [showHistory, setShowHistory] = useState(false);
   const mainQuestTitle = useMemo(() => new Map(mainQuests.map((mq) => [mq.id, mq.title])), [mainQuests]);
-  const visibleQuests = useMemo(
+  const filtered = useMemo(
     () =>
       quests
-        .filter((quest) => quest.type === activeType)
-        .filter((quest) => showHistory || quest.status !== "completed")
-        .filter((quest) => inScope(quest, timeScope))
+        .filter((quest) => typeFilter === "all" || quest.type === typeFilter)
         .sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
-    [activeType, quests, showHistory, timeScope],
+    [quests, typeFilter],
   );
+  const activeQuests = filtered.filter((quest) => quest.status !== "completed");
+  const completedQuests = filtered.filter((quest) => quest.status === "completed");
+  const selected = filtered.find((quest) => quest.id === selectedId) ?? activeQuests[0] ?? completedQuests[0] ?? null;
 
   return (
-    <section className="quest-domain-screen">
-      <header className="quest-domain-hero">
-        <Badge tone="gold">Quest Domain</Badge>
-        <h1>왕실 Quest</h1>
-        <p>메인퀘스트(프로젝트)는 집무실에서 관리하고, 여기서는 서브·일일·반복·스토리 퀘스트를 실행합니다.</p>
-        <div className="quest-hero-stats">
-          <div><strong>{progress.todayProgress}%</strong><span>오늘 진행률</span></div>
-          <div><strong>Lv.{progress.level}</strong><span>레벨</span></div>
-          <div><strong>{progress.todayCompletedQuests}/{progress.todayTotalQuests}</strong><span>오늘 완료</span></div>
-        </div>
-        <ProgressBar value={progress.expRate} label="Quest EXP" />
-      </header>
+    <section className="quest-journal-scene scene-fullbleed">
+      <div className="quest-journal-backdrop" style={{ backgroundImage: 'url("/assets/throne.webp")' }} />
 
-      <nav className="quest-tabs" aria-label="Quest types">
-        {questTabs.map((type) => (
-          <button key={type} type="button" className={activeType === type ? "active" : ""} onClick={() => setActiveType(type)}>
-            <span>{questTypeMeta[type].icon}</span>
-            <span>{questTypeMeta[type].label}</span>
-          </button>
-        ))}
-      </nav>
+      <img className="quest-journal-princess" src="/assets/princess-full-transparent.webp" alt="공주" />
 
-      <nav className="quest-time-tabs" aria-label="Quest timeline">
-        {timeTabs.map((tab) => (
-          <button key={tab.key} type="button" className={timeScope === tab.key ? "active" : ""} onClick={() => setTimeScope(tab.key)}>
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      <aside className="game-panel quest-log-panel">
+        <h2 className="game-panel-title">퀘스트 로그</h2>
 
-      {completionEvents.length > 0 && (
-        <section className="quest-completion-flow" aria-label="Quest completion flow">
-          {completionEvents.map((event) => <span key={event.type}>{event.label}</span>)}
-        </section>
-      )}
-
-      <div className="quest-toolbar">
-        <button type="button" onClick={() => setShowHistory((value) => !value)}>
-          {showHistory ? "진행 Quest 보기" : "완료 보기 · 왕국도서관"}
-        </button>
-      </div>
-
-      <div className="quest-list rpg">
-        {visibleQuests.length === 0 ? (
-          <article className="quest-empty">
-            <strong>이 조건에 맞는 Quest가 없습니다.</strong>
-            <span>종류 또는 시간축을 바꿔 이전/현재/이후 Quest를 확인하세요.</span>
-          </article>
-        ) : (
-          visibleQuests.map((quest) => (
-            <article className={quest.status === "completed" ? "quest-card rpg completed" : "quest-card rpg"} key={quest.id}>
-              <div className="quest-card-head">
-                <div>
-                  <span className="quest-icon">{questTypeMeta[quest.type].icon}</span>
-                  <Badge tone={quest.status === "completed" ? "success" : "soft"}>{statusText(quest.status)}</Badge>
-                </div>
-                <strong>EXP +{quest.expReward}</strong>
-              </div>
-              <h2>{quest.title}</h2>
-              <p>{quest.description}</p>
-              {quest.mainQuestId && mainQuestTitle.get(quest.mainQuestId) && (
-                <span className="quest-chapter">{mainQuestTitle.get(quest.mainQuestId)}</span>
-              )}
-              <div className="quest-meta-row">
-                <span>보상 {quest.rewardItem ?? `${quest.goldReward} Gold`}</span>
-                <span>마감 {quest.dueDate}</span>
-              </div>
-              <ProgressBar value={quest.progress} label={`${quest.title} progress`} />
-              <div className="quest-actions">
-                <Button variant="glass" size="sm" onClick={() => onCycleQuest(quest.id)}>계속</Button>
-                <Button
-                  size="sm"
-                  variant={quest.status === "completed" ? "glass" : "primary"}
-                  onClick={() => onToggleQuest(quest.id, quest.status !== "completed")}
-                >
-                  {quest.status === "completed" ? "완료 취소" : "완료"}
-                </Button>
-              </div>
-            </article>
-          ))
-        )}
-      </div>
-
-      {showHistory && (
-        <section className="quest-history">
-          <h2>왕국도서관 기록</h2>
-          {history.map((item) => (
-            <article key={item.id}>
-              <strong>{item.completedAt.slice(0, 10)} · EXP +{item.rewardExp}</strong>
-              <span>{item.note}</span>
-            </article>
+        <nav className="game-tabs" aria-label="퀘스트 종류">
+          {typeTabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={typeFilter === tab.key ? "active" : ""}
+              onClick={() => setTypeFilter(tab.key)}
+            >
+              {tab.label}
+            </button>
           ))}
-        </section>
-      )}
+        </nav>
+
+        <div className="quest-log-section">
+          <h3>
+            진행 중 <em>{activeQuests.length}</em>
+          </h3>
+          {activeQuests.length === 0 ? (
+            <p className="quest-log-empty">
+              진행 중인 퀘스트가 없습니다.
+              <br />
+              세린에게 해야 할 일을 말해보세요.
+            </p>
+          ) : (
+            <ul className="quest-log-list">
+              {activeQuests.map((quest) => (
+                <li key={quest.id}>
+                  <button
+                    type="button"
+                    className={quest.id === selected?.id ? "active" : ""}
+                    onClick={() => setSelectedId(quest.id)}
+                  >
+                    <span className="quest-log-icon">✦</span>
+                    <span className="quest-log-copy">
+                      <strong>{quest.title}</strong>
+                      <small>
+                        마감일 {formatKoreanDateShort(quest.dueDate)}
+                        {quest.dueDate === today ? " (오늘)" : ""}
+                      </small>
+                    </span>
+                    <em className="quest-log-type">{questTypeMeta[quest.type].label}</em>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="quest-log-section">
+          <h3>
+            완료된 퀘스트 <em>{completedQuests.length}</em>
+          </h3>
+          {completedQuests.length === 0 ? (
+            <p className="quest-log-empty">표시할 완료된 퀘스트가 없습니다.</p>
+          ) : (
+            <ul className="quest-log-list completed">
+              {completedQuests.map((quest) => (
+                <li key={quest.id}>
+                  <button
+                    type="button"
+                    className={quest.id === selected?.id ? "active" : ""}
+                    onClick={() => setSelectedId(quest.id)}
+                  >
+                    <span className="quest-log-icon">✓</span>
+                    <span className="quest-log-copy">
+                      <strong>{quest.title}</strong>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <button type="button" className="game-panel-cta" onClick={onAskSerin}>
+          ✦ 퀘스트 추가 — 세린에게 말하기
+        </button>
+      </aside>
+
+      <aside className="game-panel quest-detail-panel">
+        <h2 className="game-panel-title">퀘스트 상세</h2>
+
+        {!selected ? (
+          <div className="quest-detail-empty">
+            <p>
+              퀘스트가 없습니다.
+              <br />
+              세린에게 해야 할 일을 말해보세요.
+            </p>
+            <button type="button" className="game-panel-cta" onClick={onAskSerin}>
+              세린과 대화하기
+            </button>
+          </div>
+        ) : (
+          <>
+            <h3 className="quest-detail-title">{selected.title}</h3>
+            <span className="quest-detail-type">{questTypeMeta[selected.type].label} 퀘스트</span>
+
+            <dl className="quest-detail-meta">
+              <div>
+                <dt>상태</dt>
+                <dd>{statusText(selected.status)}</dd>
+              </div>
+              <div>
+                <dt>마감일</dt>
+                <dd>
+                  {formatKoreanDateShort(selected.dueDate)}
+                  {selected.dueDate === today ? " (오늘)" : ""}
+                </dd>
+              </div>
+              <div>
+                <dt>보상</dt>
+                <dd>EXP +{selected.expReward}</dd>
+              </div>
+              {selected.mainQuestId && mainQuestTitle.get(selected.mainQuestId) && (
+                <div>
+                  <dt>프로젝트</dt>
+                  <dd>{mainQuestTitle.get(selected.mainQuestId)}</dd>
+                </div>
+              )}
+            </dl>
+
+            {selected.description && <p className="quest-detail-desc">{selected.description}</p>}
+
+            <div className="quest-detail-progress">
+              <span>진행도</span>
+              <div className="quest-detail-progress-track">
+                <div style={{ width: `${selected.progress}%` }} />
+              </div>
+              <em>{selected.progress}%</em>
+            </div>
+
+            <div className="quest-detail-actions">
+              <button
+                type="button"
+                className="game-button primary"
+                onClick={() => onToggleQuest(selected.id, selected.status !== "completed")}
+              >
+                {selected.status === "completed" ? "완료 취소" : "✓ 완료 처리"}
+              </button>
+              <button type="button" className="game-button danger" onClick={() => onDeleteQuest(selected.id)}>
+                삭제
+              </button>
+            </div>
+          </>
+        )}
+      </aside>
     </section>
   );
 }

@@ -1,30 +1,25 @@
 import type { PrincessProfile, UserTitle } from "../app/types";
 
+// 공주 프로필의 시작 상태입니다. 고정된 가짜 성장치(레벨 7, EXP 2160 등)를
+// 두지 않고, 모든 성장은 실제 퀘스트 완료에서만 발생합니다.
 export const mockPrincess: PrincessProfile = {
   displayName: "Princess",
   activeTitle: "루멘의 공주",
-  level: 7,
-  currentExp: 2160,
-  requiredExp: 3000,
+  level: 1,
+  currentExp: 0,
+  requiredExp: 100,
   currentRoom: "lobby",
   stats: {
-    charm: 82,
-    wisdom: 76,
-    courage: 68,
-    diligence: 91,
+    charm: 0,
+    wisdom: 0,
+    courage: 0,
+    diligence: 0,
   },
-  equippedItems: [
-    { slot: "왕관", name: "새벽의 티아라" },
-    { slot: "드레스", name: "로열 블루 드레스" },
-    { slot: "액세서리", name: "루멘 브로치" },
-    { slot: "장식", name: "정원의 리본" },
-  ],
-  serinAffinity: 64,
+  equippedItems: [],
+  serinAffinity: 0,
 };
 
+// 시작 칭호 하나만 지닙니다. 나머지는 실제 조건 달성 시스템이 생기면 추가합니다.
 export const mockTitles: UserTitle[] = [
   { key: "lumen-princess", name: "루멘의 공주", unlocked: true, equipped: true },
-  { key: "library-owner", name: "도서관의 주인", unlocked: true, equipped: false },
-  { key: "garden-keeper", name: "정원의 수호자", unlocked: true, equipped: false },
-  { key: "office-commander", name: "집무실의 지휘관", unlocked: false, equipped: false },
 ];
