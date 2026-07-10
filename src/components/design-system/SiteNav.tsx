@@ -1,16 +1,15 @@
-import type { ViewKey } from "../../app/types";
+﻿import type { ViewKey } from "../../app/types";
 
-// 게임 HUD식 하단 네비게이션 (레퍼런스: 로비 / 집무실 / 세린(중앙 아바타) /
-// 왕실 일정표 / 왕국 도서관). 퀘스트는 별도 공간이 아니라 집무실이 담당하고,
-// 침실/정원/왕좌 등 방 이동은 로비의 왕궁 지도가 담당합니다.
 const leftItems: Array<{ key: ViewKey; label: string; icon: string }> = [
   { key: "home", label: "로비", icon: "♜" },
-  { key: "office", label: "집무실", icon: "✒" },
+  { key: "office", label: "집무실", icon: "▣" },
 ];
 
 const rightItems: Array<{ key: ViewKey; label: string; icon: string }> = [
   { key: "calendar", label: "왕실 일정표", icon: "▦" },
   { key: "library", label: "왕국 도서관", icon: "▤" },
+  { key: "bedroom", label: "공주의 침실", icon: "▥" },
+  { key: "throne", label: "왕좌의 방", icon: "♛" },
 ];
 
 interface SiteNavProps {
@@ -34,10 +33,8 @@ export function SiteNav({ activeView, onChange }: SiteNavProps) {
   }
 
   return (
-    <nav className="game-nav" aria-label="Princess OS navigation">
+    <nav className="game-nav palace-bottom-nav" aria-label="Princess OS navigation">
       {leftItems.map(renderItem)}
-
-      {/* 중앙: 세린 아바타. 다른 항목보다 크게, 원형 초상으로. */}
       <button
         type="button"
         className={`game-nav-serin ${activeView === "serin" ? "active" : ""}`}
@@ -49,7 +46,6 @@ export function SiteNav({ activeView, onChange }: SiteNavProps) {
         </span>
         <span className="game-nav-label">세린</span>
       </button>
-
       {rightItems.map(renderItem)}
     </nav>
   );

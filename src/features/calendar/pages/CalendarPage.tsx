@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { formatKoreanDateLong, getKoreanToday } from "../../../app/dateUtils";
 import type { CalendarEvent, CalendarEventInput } from "../types/calendar.types";
 import { CalendarDayView } from "../components/CalendarDayView";
@@ -16,9 +16,6 @@ interface CalendarPageProps {
   onCreateEvent: (input: CalendarEventInput, linkQuest: boolean) => void;
 }
 
-// 왕실 일정표 — 좌(오늘의 일정) / 중앙(달력) / 우(선택 날짜 상세 + 다가오는 일정)
-// 3단 구성입니다. 달력은 실제 캘린더처럼 요일 정렬 + 칸 안 일정 제목 칩으로
-// 보여줍니다. 세린을 통한 등록이 기본이고, "+ 일정 추가"로 직접 등록도 가능합니다.
 export function CalendarPage({
   events,
   selectedDate,
@@ -34,7 +31,7 @@ export function CalendarPage({
   const selectedEvents = useMemo(() => getEventsByDay(events, selectedDate), [events, selectedDate]);
   const todayEvents = useMemo(() => getEventsByDay(events, today), [events, today]);
   const upcoming = useMemo(
-    () => getUpcomingEvents(events, `${today}T00:00:00`).filter((event) => event.startAt.slice(0, 10) > today).slice(0, 3),
+    () => getUpcomingEvents(events, `${today}T00:00:00`).filter((event) => event.startAt.slice(0, 10) > today).slice(0, 6),
     [events, today],
   );
 
@@ -49,42 +46,26 @@ export function CalendarPage({
   }
 
   return (
-    <section className="royal-calendar-page">
-      <div className="royal-calendar-layout">
-        <aside className="game-panel royal-calendar-side">
-          <h1 className="game-panel-title">왕실 일정표</h1>
-          <p className="royal-calendar-copy">공주의 모든 일정과 약속을 관리하세요.</p>
+    <section className="palace-scene calendar-scene scene-fullbleed">
+      <div className="palace-bg" style={{ backgroundImage: 'url("/assets/palace-main.webp")' }} />
+      <div className="palace-vignette" />
 
-          <div className="royal-calendar-today">
-            <h3>{formatKoreanDateLong(today)}</h3>
-            <h4>
-              오늘의 일정 <em>{todayEvents.length}건</em>
-            </h4>
-            {todayEvents.length === 0 ? (
-              <p className="quest-log-empty">오늘 등록된 일정이 없습니다.</p>
-            ) : (
-              <ul className="royal-calendar-today-list">
-                {todayEvents.map((event) => (
-                  <li key={event.id}>
-                    <time>{event.isAllDay ? "종일" : event.startAt.slice(11, 16)}</time>
-                    <div>
-                      <strong>{event.title}</strong>
-                      {event.location && <small>{event.location}</small>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+      <header className="scene-title calendar-title">
+        <span>✦ 왕실 일정표 <em>Calendar</em></span>
+        <p>공주님의 일정과 약속을 월간 흐름으로 확인합니다.</p>
+      </header>
 
-          <button type="button" className="game-panel-cta" onClick={() => setShowForm((current) => !current)}>
-            {showForm ? "입력 닫기" : "＋ 일정 추가"}
-          </button>
-
-          {showForm && <CalendarEventForm selectedDate={selectedDate} onCreate={handleCreate} />}
-        </aside>
-
-        <div className="royal-calendar-center">
+      <div className="calendar-stage">
+        <div className="calendar-mode-tabs">
+          <button className="active" type="button">월간</button>
+          <button type="button">주간</button>
+          <button type="button">일간</button>
+          <button type="button">타임라인</button>
+        </div>
+        <button type="button" className="gold-action" onClick={() => setShowForm((current) => !current)}>
+          {showForm ? "입력 닫기" : "+ 일정 추가"}
+        </button>
+        <div className="calendar-board palace-panel flat-panel">
           <CalendarMonthView
             events={events}
             selectedDate={selectedDate}
@@ -93,38 +74,42 @@ export function CalendarPage({
             onChangeMonth={setVisibleMonth}
           />
         </div>
+      </div>
 
-        <aside className="game-panel royal-calendar-side">
-          <h2 className="game-panel-title">{formatKoreanDateLong(selectedDate)}</h2>
-          <CalendarDayView
-            selectedDate={selectedDate}
-            events={selectedEvents}
-            onComplete={onCompleteEvent}
-            onCancel={onCancelEvent}
-            onUpdate={onUpdateEvent}
-          />
+      <aside className="palace-panel calendar-left-panel">
+        <h2>오늘의 일정</h2>
+        <strong>{formatKoreanDateLong(today)}</strong>
+        {todayEvents.length === 0 ? <p className="empty-line">오늘 등록된 일정이 없어요.</p> : null}
+        {todayEvents.map((event) => (
+          <p key={event.id} className="schedule-line"><time>{event.isAllDay ? "종일" : event.startAt.slice(11, 16)}</time><span>{event.title}</span></p>
+        ))}
+        {showForm && <CalendarEventForm selectedDate={selectedDate} onCreate={handleCreate} />}
+      </aside>
 
-          <div className="royal-calendar-upcoming">
-            <h4>
-              다가오는 일정 <em>{upcoming.length}건</em>
-            </h4>
-            {upcoming.length === 0 ? (
-              <p className="quest-log-empty">다가오는 일정이 없습니다.</p>
-            ) : (
-              <ul>
-                {upcoming.map((event) => (
-                  <li key={event.id}>
-                    <time>
-                      {event.startAt.slice(5, 10).replace("-", ".")}
-                      {event.isAllDay ? "" : ` ${event.startAt.slice(11, 16)}`}
-                    </time>
-                    <strong>{event.title}</strong>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </aside>
+      <aside className="palace-panel calendar-right-panel">
+        <h2>{formatKoreanDateLong(selectedDate)}</h2>
+        <CalendarDayView
+          selectedDate={selectedDate}
+          events={selectedEvents}
+          onComplete={onCompleteEvent}
+          onCancel={onCancelEvent}
+          onUpdate={onUpdateEvent}
+        />
+        <div className="upcoming-list">
+          <h3>다가오는 일정</h3>
+          {upcoming.map((event) => (
+            <p key={event.id}><time>{event.startAt.slice(5, 10).replace("-", ".")}</time><span>{event.title}</span></p>
+          ))}
+        </div>
+      </aside>
+
+      <div className="serin-helper-card compact">
+        <img src="/assets/serin-bust-transparent.webp" alt="세린" />
+        <div>
+          <strong>세린이 도와드릴까요?</strong>
+          <button type="button" onClick={() => setShowForm(true)}>오늘 일정 입력하기</button>
+          <button type="button">오늘 뭐 해야 되지?</button>
+        </div>
       </div>
     </section>
   );

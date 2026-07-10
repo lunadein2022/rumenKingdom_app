@@ -1,9 +1,7 @@
-import type { AppMockData, ViewKey } from "../../app/types";
+﻿import type { AppMockData, ViewKey } from "../../app/types";
 import type { CastleRoom, CastleRoomKey } from "../../features/castle/types/castle.types";
 import { getEventsByDay } from "../../features/calendar/services/calendarService";
-import { formatKoreanDateLong, getKoreanToday } from "../../app/dateUtils";
-import { HomeLeftRail } from "./HomeLeftRail";
-import { HomeRightRail } from "./HomeRightRail";
+import { getKoreanToday } from "../../app/dateUtils";
 
 interface HomeSceneProps {
   data: AppMockData;
@@ -15,57 +13,117 @@ interface HomeSceneProps {
 
 const TODAY = getKoreanToday();
 
-function timeGreeting() {
+function greeting() {
   const hour = new Date().getHours();
-  if (hour < 11) return "공주님, 좋은 아침이에요. 오늘도 함께 힘내요!";
-  if (hour < 18) return "공주님, 좋은 오후예요. 오늘도 함께 힘내요!";
-  return "공주님, 오늘 하루도 정말 수고하셨어요.";
+  if (hour < 11) return "좋은 아침이에요, 공주님.";
+  if (hour < 18) return "오늘도 루멘을 빛내는 하루가 될 거예요.";
+  return "좋은 저녁이에요, 공주님. 오늘도 정말 수고하셨어요.";
 }
 
-// Home = 왕궁 로비. 화면의 주인공은 배경(Scene)이고, UI는 그 위에 떠 있는
-// Glass Overlay입니다. 카드로 화면을 가리지 않습니다. 공주와 세린은 항상
-// Scene 안에 존재합니다. Home 자체에는 기능을 직접 담지 않고, 최소 브리핑과
-// Castle 이동만 제공합니다.
 export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onToggleQuest }: HomeSceneProps) {
   const todayEvents = getEventsByDay(data.events, TODAY).sort((a, b) => a.startAt.localeCompare(b.startAt));
   const todayQuests = data.quests.filter((quest) => quest.dueDate === TODAY);
-  const alertCount = todayEvents.filter((event) => Boolean(event.reminderMinutes)).length;
-  const activeMainQuests = data.mainQuests.filter((mainQuest) => mainQuest.status === "active");
+  const activeMainQuests = data.mainQuests.filter((mainQuest) => mainQuest.status === "active").slice(0, 3);
+  const visibleQuests = todayQuests.slice(0, 4);
   const memoCount = data.serinMessages.filter((message) => message.sender === "serin").length;
 
   return (
-    <section className="palace-hud-scene scene-fullbleed">
-      <div className="palace-hud-backdrop" style={{ backgroundImage: 'url("/assets/home-bg.webp")' }} />
+    <section className="palace-scene palace-lobby scene-fullbleed">
+      <div className="palace-bg" style={{ backgroundImage: 'url("/assets/home-bg.webp")' }} />
+      <div className="palace-vignette" />
 
-      {/* 중앙 인물 = 공주(파란 드레스) 한 명입니다. 세린(검정+흰색 메이드복)은
-          이 장면이 아니라 우측 하단 메이드봇 위젯으로 존재합니다. */}
-      <div className="palace-hud-figures">
-        <img src="/assets/princess-full-transparent.webp" alt="공주" />
+      <div className="lobby-characters" aria-hidden="true">
+        <img className="lobby-princess" src="/assets/princess-full-transparent.webp" alt="" />
+        <img className="lobby-serin" src="/assets/serin-full-transparent.webp" alt="" />
       </div>
 
-      <HomeLeftRail
-        dateLine={formatKoreanDateLong(TODAY)}
-        greetingLine={timeGreeting()}
-        todayEventCount={todayEvents.length}
-        todayQuestCount={todayQuests.length}
-        alertCount={alertCount}
-        memoCount={memoCount}
-        todayEvents={todayEvents}
-        todayQuests={todayQuests}
-        onNavigate={onNavigate}
-        onToggleQuest={onToggleQuest}
-      />
+      <aside className="palace-panel lobby-left brief-panel">
+        <span className="panel-eyebrow">♕ 오늘 브리핑</span>
+        <h1>{greeting()}</h1>
+        <p>오늘도 공주님의 왕국을 차분히 정리해둘게요.</p>
+        <div className="brief-stats">
+          <article><span>오늘 일정</span><strong>{todayEvents.length}건</strong></article>
+          <article><span>오늘 Quest</span><strong>{todayQuests.length}개</strong></article>
+          <article><span>진행 프로젝트</span><strong>{activeMainQuests.length}개</strong></article>
+          <article><span>세린 메모</span><strong>{memoCount}개</strong></article>
+        </div>
+        <section className="mini-list">
+          <div className="mini-list-head">
+            <h2>오늘의 일정</h2>
+            <button type="button" onClick={() => onNavigate("calendar")}>전체 보기</button>
+          </div>
+          {todayEvents.slice(0, 5).map((event) => (
+            <p key={event.id}><time>{event.isAllDay ? "종일" : event.startAt.slice(11, 16)}</time><span>{event.title}</span><em>{event.location ?? "왕성"}</em></p>
+          ))}
+          {todayEvents.length === 0 && <p className="empty-line">오늘 등록된 일정이 없어요.</p>}
+        </section>
+      </aside>
 
-      <HomeRightRail
-        rooms={rooms}
-        currentRoomKey={currentRoomKey}
-        activeMainQuests={activeMainQuests}
-        onNavigate={onNavigate}
-      />
+      <aside className="palace-panel lobby-left quest-panel">
+        <div className="mini-list-head">
+          <h2>오늘의 Quest</h2>
+          <button type="button" onClick={() => onNavigate("office")}>전체 보기</button>
+        </div>
+        {visibleQuests.map((quest) => (
+          <label key={quest.id} className="quest-check-line">
+            <input
+              type="checkbox"
+              checked={quest.status === "completed"}
+              onChange={(event) => onToggleQuest(quest.id, event.target.checked)}
+            />
+            <span>[{quest.type === "daily" ? "일일" : "서브"}] {quest.title}</span>
+          </label>
+        ))}
+        {visibleQuests.length === 0 && <p className="empty-line">오늘 처리할 Quest가 없어요.</p>}
+      </aside>
 
-      <button type="button" className="home-castle-enter" onClick={() => onNavigate("castle")}>
-        왕성으로 이동 →
-      </button>
+      <aside className="palace-panel lobby-right project-panel">
+        <div className="mini-list-head">
+          <h2>진행 중 메인 프로젝트</h2>
+          <button type="button" onClick={() => onNavigate("office")}>전체 보기</button>
+        </div>
+        {activeMainQuests.map((project) => (
+          <article key={project.id} className="project-row">
+            <strong>{project.title}</strong>
+            <span>{project.description}</span>
+            <b><i style={{ width: `${project.progress}%` }} /></b>
+            <em>진행률 {project.progress}%</em>
+          </article>
+        ))}
+      </aside>
+
+      <aside className="palace-panel lobby-right memory-panel">
+        <div className="mini-list-head">
+          <h2>세린의 기억</h2>
+          <button type="button" onClick={() => onNavigate("serin")}>대화하기</button>
+        </div>
+        <p><strong>루틴</strong><span>매일 아침 왕국 흐름 확인</span></p>
+        <p><strong>최근 기억</strong><span>{data.serinMessages[data.serinMessages.length - 1]?.content ?? "공주님의 하루를 곁에서 챙기겠습니다."}</span></p>
+      </aside>
+
+      <div className="serin-helper-card">
+        <img src="/assets/serin-bust-transparent.webp" alt="세린" />
+        <div>
+          <strong>세린</strong>
+          <p>세린이 도와드릴까요?</p>
+          <button type="button" onClick={() => onNavigate("calendar")}>오늘 일정 알려줘</button>
+          <button type="button" onClick={() => onNavigate("office")}>오늘 뭐 해야 되지?</button>
+          <button type="button" onClick={() => onNavigate("serin")}>세린과 대화하기</button>
+        </div>
+      </div>
+
+      <div className="room-fast-travel" aria-label="왕궁 빠른 이동">
+        {rooms.slice(0, 6).map((room) => (
+          <button
+            key={room.key}
+            type="button"
+            className={room.key === currentRoomKey ? "active" : ""}
+            onClick={() => onNavigate(room.route)}
+          >
+            {room.name}
+          </button>
+        ))}
+      </div>
     </section>
   );
 }

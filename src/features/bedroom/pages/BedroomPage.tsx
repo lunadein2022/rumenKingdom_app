@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import type { CalendarEvent, DiaryEntry, MainQuest, Quest, SerinProfile } from "../../../app/types";
 import { Button } from "../../../components/design-system/Button";
 
@@ -11,30 +11,20 @@ interface BedroomPageProps {
   onSaveDiary: (content: string, moodEmoji: string, moodLabel: string) => void;
   onUpdateDiary?: (id: string, content: string, moodEmoji: string, moodLabel: string) => void;
   onDeleteDiary?: (id: string) => void;
-  // 세린이 "어제 일기 수정할게" 같은 diary.update 확인 후 어느 탭/날짜를 열어야
-  // 하는지 알려주는 신호입니다. 소비하고 나면 onFocusConsumed로 초기화합니다.
   focusTarget?: "today" | "yesterday" | null;
   onFocusConsumed?: () => void;
   todayDate?: string;
 }
 
 const moods: Array<{ emoji: string; label: string }> = [
-  { emoji: "🙂", label: "평온" },
-  { emoji: "😊", label: "기쁨" },
-  { emoji: "😮‍💨", label: "피곤" },
-  { emoji: "😔", label: "속상" },
+  { emoji: "☁", label: "보랏빛 하루" },
+  { emoji: "☀", label: "기쁨" },
+  { emoji: "☔", label: "차분함" },
+  { emoji: "☾", label: "몽온" },
 ];
 
 type BedroomTab = "today" | "past";
 
-// Bedroom = 다이어리 공간입니다. 오늘 일정/완료 퀘스트/프로젝트 업데이트를
-// 자동으로 모아 보여주고, 느낀 점을 기록하면 AI가 요약(mock)해줍니다.
-// "오늘 기록 보기" / "지난 일기 보기" 두 탭으로 나뉘어, 작성(오늘)과 열람(지난
-// 일기)의 역할을 분리합니다. 실제 저장/보관은 왕국도서관과 공유하되, 침실은
-// "쓰는 곳", 도서관은 "찾는 곳"으로 역할을 나눕니다.
-//
-// 오늘 기록/지난 일기 모두 수정·삭제가 가능하고, 지난 일기는 날짜/기분/내용
-// 키워드로 검색할 수 있습니다 (실제 영속화 전까지는 세션 상태 기준 CRUD).
 export function BedroomPage({
   serin,
   diaryEntries,
@@ -52,256 +42,97 @@ export function BedroomPage({
   const [mood, setMood] = useState(moods[0]);
   const [tab, setTab] = useState<BedroomTab>("today");
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
-  const [editingTodayEntry, setEditingTodayEntry] = useState(false);
-  const [pastEditId, setPastEditId] = useState<string | null>(null);
-  const [pastEditContent, setPastEditContent] = useState("");
-  const [pastEditMood, setPastEditMood] = useState(moods[0]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const latestEntry = diaryEntries[0];
   const todayEntry = todayDate ? diaryEntries.find((entry) => entry.date === todayDate) : undefined;
-  const allPastEntries = diaryEntries.filter((entry) => entry.date !== todayDate);
-  const keyword = searchQuery.trim().toLowerCase();
-  const pastEntries = keyword
-    ? allPastEntries.filter(
-        (entry) =>
-          entry.date.toLowerCase().includes(keyword) ||
-          entry.moodLabel.toLowerCase().includes(keyword) ||
-          entry.content.toLowerCase().includes(keyword),
-      )
-    : allPastEntries;
-  const selectedEntry = pastEntries.find((entry) => entry.id === selectedEntryId) ?? pastEntries[0];
+  const pastEntries = diaryEntries.filter((entry) => entry.date !== todayDate);
+  const selectedPast = pastEntries.find((entry) => entry.id === selectedEntryId) ?? pastEntries[0];
 
-  // 세린이 "어제 일기 수정할게"라고 확인하면 이 컴포넌트가 자동으로 지난 일기
-  // 탭으로 전환되고, 가능하면 해당 날짜 항목을 펼쳐 보여줍니다.
   useEffect(() => {
     if (!focusTarget) return;
-    if (focusTarget === "today") {
-      setTab("today");
-    } else {
-      setTab("past");
-      const yesterdayEntry = allPastEntries[0];
-      if (yesterdayEntry) setSelectedEntryId(yesterdayEntry.id);
-    }
+    setTab(focusTarget === "today" ? "today" : "past");
     onFocusConsumed?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusTarget]);
+  }, [focusTarget, onFocusConsumed]);
 
-  function handleSave() {
-    if (!content.trim()) return;
-    onSaveDiary(content.trim(), mood.emoji, mood.label);
+  const draft = [
+    todayEvents.length ? `오늘은 ${todayEvents.map((event) => event.title).join(", ")} 일정이 있었어요.` : "오늘은 조용히 흐름을 정리한 날이에요.",
+    todayCompletedQuests.length ? `${todayCompletedQuests.length}개의 Quest를 완료했어요.` : "완료한 Quest는 아직 없지만, 쉬어가는 시간도 기록이에요.",
+    mainQuestUpdatesToday.length ? `프로젝트 업데이트: ${mainQuestUpdatesToday.map((item) => item.content).join(" / ")}` : "프로젝트는 내일 다시 차분히 이어가면 됩니다.",
+  ].join("\n");
+
+  function save() {
+    const text = content.trim() || draft;
+    if (editingId && onUpdateDiary) {
+      onUpdateDiary(editingId, text, mood.emoji, mood.label);
+      setEditingId(null);
+    } else {
+      onSaveDiary(text, mood.emoji, mood.label);
+    }
     setContent("");
-    setEditingTodayEntry(false);
   }
 
-  function startEditToday() {
-    if (!todayEntry) return;
-    setContent(todayEntry.content);
-    const matchedMood = moods.find((option) => option.label === todayEntry.moodLabel) ?? moods[0];
-    setMood(matchedMood);
-    setEditingTodayEntry(true);
-  }
-
-  function startEditPast(entry: DiaryEntry) {
-    setPastEditId(entry.id);
-    setPastEditContent(entry.content);
-    setPastEditMood(moods.find((option) => option.label === entry.moodLabel) ?? moods[0]);
-  }
-
-  function savePastEdit() {
-    if (!pastEditId || !pastEditContent.trim() || !onUpdateDiary) return;
-    onUpdateDiary(pastEditId, pastEditContent.trim(), pastEditMood.emoji, pastEditMood.label);
-    setPastEditId(null);
-  }
-
-  function handleDeletePast(id: string) {
-    if (!onDeleteDiary) return;
-    onDeleteDiary(id);
-    if (selectedEntryId === id) setSelectedEntryId(null);
-    if (pastEditId === id) setPastEditId(null);
+  function editEntry(entry: DiaryEntry) {
+    setEditingId(entry.id);
+    setContent(entry.content);
+    setMood(moods.find((option) => option.label === entry.moodLabel) ?? moods[0]);
+    setTab("today");
   }
 
   return (
-    <section className="bedroom-scene-full scene-fullbleed">
-      <div className="bedroom-scene-backdrop" style={{ backgroundImage: 'url("/assets/bedroom.webp")' }} />
-      <img className="bedroom-princess-full" src="/assets/princess-full-transparent.webp" alt="침실의 공주" />
+    <section className="palace-scene bedroom-scene scene-fullbleed">
+      <div className="palace-bg" style={{ backgroundImage: 'url("/assets/bedroom.webp")' }} />
+      <div className="palace-vignette" />
+      <img className="bedroom-serin" src="/assets/serin-full-transparent.webp" alt="세린" />
 
-      <div className="bedroom-copy-overlay">
-        <span>공주의 침실</span>
-        <h1>오늘도 수고하셨어요.</h1>
-      </div>
+      <header className="scene-title bedroom-title">
+        <span>♕ 공주의 침실 <em>Princess Bedroom</em></span>
+        <p>오늘의 하루를 기록하고, 세린과 함께 일기를 완성해 보세요.</p>
+      </header>
 
-      <div className="bedroom-speech-bubble">
-        <strong>{serin.name}</strong>
-        <p>
-          {tab === "today"
-            ? "오늘을 기록해볼까요? 오늘 있었던 일들을 먼저 모아봤어요."
-            : "지난 일기들을 모아뒀어요. 다시 읽고 싶은 날을 골라보세요."}
-        </p>
-      </div>
-
-      <div className="bedroom-diary-panel">
-        <div className="bedroom-diary-tabs">
-          <button type="button" className={tab === "today" ? "active" : ""} onClick={() => setTab("today")}>
-            오늘 기록 보기
-          </button>
-          <button type="button" className={tab === "past" ? "active" : ""} onClick={() => setTab("past")}>
-            지난 일기 보기 ({allPastEntries.length})
-          </button>
+      <aside className="palace-panel bedroom-left-panel">
+        <h2>2026년 7월</h2>
+        <div className="mini-calendar-grid">
+          {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <span key={day} className={day === 10 ? "active" : ""}>{day}</span>)}
         </div>
-
-        {tab === "today" && (
-          <>
-            {todayEntry && !editingTodayEntry && (
-              <section className="bedroom-ai-summary">
-                <div className="bedroom-entry-head">
-                  <h2>오늘 이미 작성한 일기</h2>
-                  <div className="bedroom-entry-actions">
-                    <button type="button" onClick={startEditToday}>수정</button>
-                    {onDeleteDiary && (
-                      <button type="button" onClick={() => onDeleteDiary(todayEntry.id)}>삭제</button>
-                    )}
-                  </div>
-                </div>
-                <p>{todayEntry.moodEmoji} {todayEntry.content}</p>
-                {todayEntry.aiSummary && <p className="small-copy">AI 요약: {todayEntry.aiSummary}</p>}
-              </section>
-            )}
-
-            <section className="bedroom-auto-summary">
-              <h2>오늘 자동 요약</h2>
-              <div>
-                <h3>오늘 일정</h3>
-                {todayEvents.length === 0 ? <p className="small-copy">오늘 일정이 없습니다.</p> : todayEvents.map((event) => <p key={event.id}>• {event.title}</p>)}
-              </div>
-              <div>
-                <h3>오늘 완료</h3>
-                {todayCompletedQuests.length === 0 ? <p className="small-copy">오늘 완료한 항목이 없습니다.</p> : todayCompletedQuests.map((quest) => <p key={quest.id}>• {quest.title}</p>)}
-              </div>
-              <div>
-                <h3>오늘 프로젝트 업데이트</h3>
-                {mainQuestUpdatesToday.length === 0 ? (
-                  <p className="small-copy">오늘 등록된 프로젝트 업데이트가 없습니다.</p>
-                ) : (
-                  mainQuestUpdatesToday.map((item, index) => (
-                    <p key={index}>• {item.mainQuest.title} — {item.content}</p>
-                  ))
-                )}
-              </div>
-            </section>
-
-            {(!todayEntry || editingTodayEntry) && (
-              <section className="bedroom-write-panel">
-                <h2>{todayEntry ? "오늘 기록 수정하기" : "느낀 점"}</h2>
-                <div className="bedroom-mood-row">
-                  {moods.map((option) => (
-                    <button
-                      key={option.label}
-                      type="button"
-                      className={option.label === mood.label ? "active" : ""}
-                      onClick={() => setMood(option)}
-                    >
-                      {option.emoji} {option.label}
-                    </button>
-                  ))}
-                </div>
-                <textarea
-                  placeholder="오늘 하루는 어땠나요?"
-                  value={content}
-                  onChange={(event) => setContent(event.target.value)}
-                />
-                <div className="bedroom-write-actions">
-                  <Button onClick={handleSave}>{todayEntry ? "수정 저장하기" : "일기 저장하기"}</Button>
-                  {editingTodayEntry && (
-                    <button type="button" className="bedroom-cancel-edit" onClick={() => { setEditingTodayEntry(false); setContent(""); }}>
-                      취소
-                    </button>
-                  )}
-                </div>
-              </section>
-            )}
-
-            {latestEntry?.aiSummary && !todayEntry && (
-              <section className="bedroom-ai-summary">
-                <h2>AI 오늘 요약</h2>
-                <p>{latestEntry.aiSummary}</p>
-              </section>
-            )}
-          </>
-        )}
-
-        {tab === "past" && (
-          <div className="bedroom-past-entry-list">
-            <input
-              type="search"
-              className="bedroom-diary-search"
-              placeholder="날짜, 기분, 내용으로 검색"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              aria-label="지난 일기 검색"
-            />
-            {allPastEntries.length === 0 ? (
-              <p className="small-copy">아직 지난 일기가 없습니다. 오늘부터 하나씩 쌓아보세요.</p>
-            ) : pastEntries.length === 0 ? (
-              <p className="small-copy">검색 결과가 없습니다.</p>
-            ) : (
-              <>
-                {pastEntries.map((entry) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className={entry.id === selectedEntry?.id ? "active" : ""}
-                    onClick={() => setSelectedEntryId(entry.id)}
-                  >
-                    <strong>{entry.date}</strong>
-                    <span>{entry.moodEmoji} {entry.moodLabel}</span>
-                  </button>
-                ))}
-                {selectedEntry && pastEditId !== selectedEntry.id && (
-                  <section className="bedroom-ai-summary">
-                    <div className="bedroom-entry-head">
-                      <h2>{selectedEntry.date}의 기록</h2>
-                      <div className="bedroom-entry-actions">
-                        {onUpdateDiary && <button type="button" onClick={() => startEditPast(selectedEntry)}>수정</button>}
-                        {onDeleteDiary && <button type="button" onClick={() => handleDeletePast(selectedEntry.id)}>삭제</button>}
-                      </div>
-                    </div>
-                    <p>{selectedEntry.content}</p>
-                    {selectedEntry.aiSummary && <p className="small-copy">AI 요약: {selectedEntry.aiSummary}</p>}
-                  </section>
-                )}
-                {selectedEntry && pastEditId === selectedEntry.id && (
-                  <section className="bedroom-write-panel">
-                    <h2>{selectedEntry.date} 기록 수정하기</h2>
-                    <div className="bedroom-mood-row">
-                      {moods.map((option) => (
-                        <button
-                          key={option.label}
-                          type="button"
-                          className={option.label === pastEditMood.label ? "active" : ""}
-                          onClick={() => setPastEditMood(option)}
-                        >
-                          {option.emoji} {option.label}
-                        </button>
-                      ))}
-                    </div>
-                    <textarea
-                      value={pastEditContent}
-                      onChange={(event) => setPastEditContent(event.target.value)}
-                    />
-                    <div className="bedroom-write-actions">
-                      <Button onClick={savePastEdit}>수정 저장하기</Button>
-                      <button type="button" className="bedroom-cancel-edit" onClick={() => setPastEditId(null)}>
-                        취소
-                      </button>
-                    </div>
-                  </section>
-                )}
-              </>
-            )}
+        <section>
+          <h3>오늘의 요약</h3>
+          <p>일정 <strong>{todayEvents.length}건</strong></p>
+          <p>완료한 Quest <strong>{todayCompletedQuests.length}개</strong></p>
+          <p>기록한 업데이트 <strong>{mainQuestUpdatesToday.length}개</strong></p>
+        </section>
+        <section>
+          <h3>오늘의 기분</h3>
+          <div className="mood-row">
+            {moods.map((item) => <button key={item.label} type="button" className={item.label === mood.label ? "active" : ""} onClick={() => setMood(item)}>{item.emoji} {item.label}</button>)}
           </div>
-        )}
-      </div>
+        </section>
+      </aside>
+
+      <main className="bedroom-draft-card">
+        <div className="diary-steps"><span>1 오늘 일정 확인</span><b>2 세린의 일기 초안</b><span>3 공주의 수정 & 저장</span></div>
+        <header>
+          <img src="/assets/serin-bust-transparent.webp" alt="세린" />
+          <div><h1>세린의 일기 초안 ✨</h1><p>공주님의 하루를 정리해 보았어요.</p></div>
+          <button type="button" onClick={() => setContent(draft)}>다시 생성</button>
+        </header>
+        <textarea value={content} onChange={(event) => setContent(event.target.value)} placeholder={draft} />
+        <div className="activity-strip">
+          {todayEvents.slice(0, 3).map((event) => <article key={event.id}><time>{event.startAt.slice(11, 16)}</time><strong>{event.title}</strong><span>{event.location}</span></article>)}
+          {todayCompletedQuests.slice(0, 3).map((quest) => <article key={quest.id}><time>✓</time><strong>{quest.title}</strong><span>Quest 완료</span></article>)}
+        </div>
+        <div className="diary-actions"><Button variant="glass" onClick={() => setContent("")}>수정하기</Button><Button onClick={save}>저장하기</Button></div>
+      </main>
+
+      <aside className="palace-panel bedroom-right-panel">
+        <div className="mini-list-head"><h2>이전 일기</h2><button type="button" onClick={() => setTab("past")}>전체 보기</button></div>
+        {pastEntries.slice(0, 5).map((entry) => (
+          <button key={entry.id} type="button" className={entry.id === selectedPast?.id ? "active" : ""} onClick={() => setSelectedEntryId(entry.id)}>
+            <span>{entry.date}</span><strong>{entry.content.slice(0, 24)}</strong><em>{entry.moodEmoji} {entry.moodLabel}</em>
+          </button>
+        ))}
+        {selectedPast && tab === "past" && <section className="past-preview"><h3>{selectedPast.date}</h3><p>{selectedPast.content}</p><button type="button" onClick={() => editEntry(selectedPast)}>수정</button>{onDeleteDiary && <button type="button" onClick={() => onDeleteDiary(selectedPast.id)}>삭제</button>}</section>}
+        <section className="serin-bedroom-help"><strong>{serin.name}이 도와드릴까요?</strong><button type="button" onClick={() => setContent(draft)}>일기 초안 다시 작성</button><button type="button" onClick={() => setTab("past")}>지난 일기 보기</button></section>
+      </aside>
     </section>
   );
 }

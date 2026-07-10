@@ -1,14 +1,5 @@
-import { useMemo, useState } from "react";
-import type {
-  CalendarEvent,
-  DiaryEntry,
-  MainQuest,
-  Quest,
-  QuestHistoryEntry,
-  RelationshipContact,
-  SerinMemory,
-} from "../../../app/types";
-import { Badge } from "../../../components/design-system/Badge";
+﻿import { useMemo, useState } from "react";
+import type { CalendarEvent, DiaryEntry, MainQuest, Quest, QuestHistoryEntry, RelationshipContact, SerinMemory } from "../../../app/types";
 import { getKoreanToday } from "../../../app/dateUtils";
 
 interface LibraryPageProps {
@@ -21,190 +12,114 @@ interface LibraryPageProps {
   diaryEntries: DiaryEntry[];
 }
 
-type LibraryFolder = "diary" | "meeting" | "project" | "aiSummary" | "questHistory" | "calendarHistory" | "memory" | "relationship";
+type LibraryFolder = "project" | "daily" | "side" | "relationship" | "diaryPast" | "diaryPresent" | "memory";
+type PeriodFilter = "all" | "past" | "present" | "future";
 
-interface LibraryEntry {
-  id: string;
-  title: string;
-  meta: string;
-  body: string;
-}
+interface LibraryEntry { id: string; title: string; meta: string; body: string; date?: string; }
 
-const folders: Array<{ key: LibraryFolder; label: string }> = [
-  { key: "diary", label: "Diary" },
-  { key: "meeting", label: "Meeting" },
-  { key: "project", label: "Project" },
-  { key: "aiSummary", label: "AI Summary" },
-  { key: "questHistory", label: "Quest History" },
-  { key: "calendarHistory", label: "Calendar History" },
-  { key: "memory", label: "Memory" },
-  { key: "relationship", label: "Relationship" },
+const folders: Array<{ key: LibraryFolder; title: string; subtitle: string; color: string }> = [
+  { key: "project", title: "메인 프로젝트", subtitle: "Main Project", color: "violet" },
+  { key: "daily", title: "일일 퀘스트", subtitle: "Daily Quest", color: "blue" },
+  { key: "side", title: "서브 퀘스트", subtitle: "Sub Quest", color: "green" },
+  { key: "relationship", title: "명함첩", subtitle: "Relationship", color: "red" },
+  { key: "diaryPast", title: "다이어리 (전)", subtitle: "Diary Past", color: "brown" },
+  { key: "diaryPresent", title: "다이어리 (현)", subtitle: "Diary Present", color: "navy" },
+  { key: "memory", title: "세린 기억", subtitle: "Memory", color: "purple" },
 ];
 
 const TODAY = getKoreanToday();
 
-// Library = 기록 보관소. Notion처럼 검색 → 필터(폴더) → 목록 → 상세 구조입니다.
-// 스크롤 카드 나열이 아니라, 왼쪽 폴더에서 카테고리를 고르고 오른쪽에서
-// 목록/상세를 확인하는 구조입니다.
 export function LibraryPage({ quests, questHistory, events, memories, mainQuests, contacts, diaryEntries }: LibraryPageProps) {
-  const [folder, setFolder] = useState<LibraryFolder>("diary");
+  const [folder, setFolder] = useState<LibraryFolder>("project");
+  const [period, setPeriod] = useState<PeriodFilter>("all");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const keyword = query.trim().toLowerCase();
 
   const entriesByFolder: Record<LibraryFolder, LibraryEntry[]> = useMemo(() => {
-    const diary: LibraryEntry[] = diaryEntries.map((entry) => ({
-      id: entry.id,
-      title: `${entry.date} · ${entry.moodLabel} ${entry.moodEmoji}`,
-      meta: entry.date,
-      body: entry.aiSummary ? `${entry.content}\n\nAI 요약: ${entry.aiSummary}` : entry.content,
-    }));
+    return {
+      project: mainQuests.map((project) => ({ id: project.id, title: project.title, meta: `${project.progress}% · ${project.status}`, body: project.description, date: project.updatedAt.slice(0, 10) })),
+      daily: quests.filter((quest) => quest.type === "daily").map((quest) => ({ id: quest.id, title: quest.title, meta: quest.status, body: quest.description, date: quest.dueDate })),
+      side: quests.filter((quest) => quest.type === "side").map((quest) => ({ id: quest.id, title: quest.title, meta: quest.status, body: quest.description, date: quest.dueDate })),
+      relationship: contacts.map((contact) => ({ id: contact.id, title: contact.name, meta: contact.organization ?? "인연록", body: contact.memo ?? contact.aiSummary ?? "", date: TODAY })),
+      diaryPast: diaryEntries.filter((entry) => entry.date < TODAY).map((entry) => ({ id: entry.id, title: `${entry.date} 일기`, meta: entry.moodLabel, body: entry.content, date: entry.date })),
+      diaryPresent: diaryEntries.filter((entry) => entry.date >= TODAY).map((entry) => ({ id: entry.id, title: `${entry.date} 일기`, meta: entry.moodLabel, body: entry.content, date: entry.date })),
+      memory: memories.map((memory) => ({ id: memory.id, title: memory.memoryType, meta: memory.importance, body: memory.content, date: memory.createdAt.slice(0, 10) })),
+    };
+  }, [contacts, diaryEntries, mainQuests, memories, questHistory, quests]);
 
-    const meeting: LibraryEntry[] = events
-      .filter((event) => event.category === "meeting")
-      .map((event) => ({
-        id: event.id,
-        title: event.title,
-        meta: `${event.startAt.slice(0, 10)} ${event.startAt.slice(11, 16)}`,
-        body: event.description,
-      }));
-
-    const project: LibraryEntry[] = mainQuests.map((mainQuest) => ({
-      id: mainQuest.id,
-      title: mainQuest.title,
-      meta: `${mainQuest.progress}% · ${mainQuest.status === "completed" ? "완료" : mainQuest.status === "onHold" ? "보류" : "진행 중"}`,
-      body: mainQuest.description,
-    }));
-
-    const aiSummary: LibraryEntry[] = [
-      ...diaryEntries
-        .filter((entry) => entry.aiSummary)
-        .map((entry) => ({ id: `diary-${entry.id}`, title: `다이어리 요약 · ${entry.date}`, meta: "AI", body: entry.aiSummary! })),
-      ...contacts
-        .filter((contact) => contact.aiSummary)
-        .map((contact) => ({ id: `contact-${contact.id}`, title: `${contact.name} 대화 요약`, meta: "AI", body: contact.aiSummary! })),
-      ...mainQuests.flatMap((mainQuest) =>
-        mainQuest.updates
-          .filter((update) => update.author === "serin")
-          .map((update) => ({
-            id: `mqu-${update.id}`,
-            title: `${mainQuest.title} 업데이트 요약`,
-            meta: update.date.slice(0, 10),
-            body: update.content,
-          })),
-      ),
-    ];
-
-    const questHistoryEntries: LibraryEntry[] = questHistory.map((item) => ({
-      id: item.id,
-      title: item.note,
-      meta: item.completedAt.slice(0, 10),
-      body: `EXP +${item.rewardExp}${item.rewardItem ? ` · ${item.rewardItem}` : ""}`,
-    }));
-
-    const calendarHistory: LibraryEntry[] = events
-      .filter((event) => event.startAt.slice(0, 10) < TODAY || event.status === "completed")
-      .sort((a, b) => b.startAt.localeCompare(a.startAt))
-      .map((event) => ({
-        id: event.id,
-        title: event.title,
-        meta: event.startAt.slice(0, 10),
-        body: `${event.location ?? "루멘 왕성"} · ${event.description}`,
-      }));
-
-    const memory: LibraryEntry[] = memories.map((item) => ({
-      id: item.id,
-      title: item.memoryType,
-      meta: item.importance,
-      body: item.content,
-    }));
-
-    const relationship: LibraryEntry[] = contacts.map((contact) => ({
-      id: contact.id,
-      title: contact.name,
-      meta: contact.organization ?? "",
-      body: contact.memo ?? "",
-    }));
-
-    return { diary, meeting, project, aiSummary, questHistory: questHistoryEntries, calendarHistory, memory, relationship };
-  }, [contacts, diaryEntries, events, mainQuests, memories, questHistory, quests]);
-
-  const visibleEntries = entriesByFolder[folder].filter(
-    (entry) => !keyword || entry.title.toLowerCase().includes(keyword) || entry.body.toLowerCase().includes(keyword),
-  );
-  const selected = visibleEntries.find((entry) => entry.id === selectedId) ?? visibleEntries[0] ?? null;
-
-  function selectFolder(next: LibraryFolder) {
-    setFolder(next);
-    setSelectedId(null);
-  }
+  const keyword = query.trim().toLowerCase();
+  const filteredEntries = entriesByFolder[folder].filter((entry) => {
+    const matchesKeyword = !keyword || entry.title.toLowerCase().includes(keyword) || entry.body.toLowerCase().includes(keyword);
+    const date = entry.date ?? TODAY;
+    const matchesPeriod = period === "all" || (period === "past" && date < TODAY) || (period === "present" && date === TODAY) || (period === "future" && date > TODAY);
+    return matchesKeyword && matchesPeriod;
+  });
+  const selected = filteredEntries.find((entry) => entry.id === selectedId) ?? filteredEntries[0] ?? null;
+  const totalRecords = Object.values(entriesByFolder).reduce((sum, items) => sum + items.length, 0) + events.length + questHistory.length;
 
   return (
-    <section className="library-page-v2 scene-fullbleed">
-      <div className="library-scene-backdrop" style={{ backgroundImage: 'url("/assets/library.webp")' }} />
-      <div className="library-scene-content">
-      <header className="library-hero">
-        <Badge tone="royal">Kingdom Library</Badge>
-        <h1>왕국 도서관</h1>
-        <p>Diary, Meeting, Project, AI Summary, Quest History, Calendar History, Memory, Relationship이 보관되는 기록 보관소입니다.</p>
+    <section className="palace-scene library-scene scene-fullbleed">
+      <div className="palace-bg" style={{ backgroundImage: 'url("/assets/library.webp")' }} />
+      <div className="palace-vignette" />
+      <img className="library-princess" src="/assets/princess-bust-transparent.webp" alt="공주" />
+
+      <header className="scene-title library-title">
+        <span>♕ 왕국 도서관 <em>Royal Library</em></span>
+        <p>공주의 모든 기록과 지식이 보관된 곳입니다.</p>
       </header>
 
-      <div className="library-search-bar">
-        <input
-          type="search"
-          placeholder="도서관 전체 검색"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          aria-label="왕국도서관 검색"
-        />
-      </div>
+      <aside className="palace-panel library-filter-panel">
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="검색어를 입력하세요" />
+        <label>기간
+          <select value={period} onChange={(event) => setPeriod(event.target.value as PeriodFilter)}>
+            <option value="all">전체 기간</option>
+            <option value="past">과거</option>
+            <option value="present">현재</option>
+            <option value="future">미래</option>
+          </select>
+        </label>
+        <button type="button" onClick={() => { setQuery(""); setPeriod("all"); }}>초기화</button>
+      </aside>
 
-      <div className="library-notion-layout">
-        <nav className="library-folder-nav" aria-label="도서관 폴더">
+      <main className="palace-panel library-main-panel ornamental-panel">
+        <h2>카테고리</h2>
+        <div className="library-book-row">
           {folders.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={item.key === folder ? "active" : ""}
-              onClick={() => selectFolder(item.key)}
-            >
-              <span>{item.label}</span>
-              <em>{entriesByFolder[item.key].length}</em>
+            <button key={item.key} type="button" className={`library-book ${item.color} ${folder === item.key ? "active" : ""}`} onClick={() => { setFolder(item.key); setSelectedId(null); }}>
+              <span>♕</span>
+              <strong>{item.title}</strong>
+              <em>{item.subtitle}</em>
+              <b>{entriesByFolder[item.key].length.toLocaleString()}</b>
+              <small>개 기록</small>
             </button>
           ))}
-        </nav>
+        </div>
 
-        <div className="library-entry-list">
-          {visibleEntries.length === 0 ? (
-            <p className="small-copy">이 조건에 맞는 기록이 없습니다.</p>
-          ) : (
-            visibleEntries.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                className={entry.id === selected?.id ? "active" : ""}
-                onClick={() => setSelectedId(entry.id)}
-              >
-                <strong>{entry.title}</strong>
-                <span>{entry.meta}</span>
+        <section className="recent-records">
+          <div className="mini-list-head"><h2>최근 열람한 기록</h2><button type="button">전체 보기</button></div>
+          <div className="record-strip">
+            {filteredEntries.slice(0, 6).map((entry) => (
+              <button key={entry.id} type="button" onClick={() => setSelectedId(entry.id)} className={entry.id === selected?.id ? "active" : ""}>
+                <strong>{entry.title}</strong><span>{entry.meta}</span><small>{entry.date}</small>
               </button>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        </section>
 
-        <div className="library-entry-detail">
-          {selected ? (
-            <>
-              <h2>{selected.title}</h2>
-              <span>{selected.meta}</span>
-              <p>{selected.body || "내용이 없습니다."}</p>
-            </>
-          ) : (
-            <p className="small-copy">왼쪽에서 기록을 선택하세요.</p>
-          )}
-        </div>
-      </div>
-      </div>
+        <section className="library-detail-preview">
+          <h2>{selected?.title ?? "기록이 없습니다"}</h2>
+          <p>{selected?.body ?? "선택한 조건에 맞는 기록이 아직 없습니다."}</p>
+        </section>
+
+        <section className="library-stats-grid">
+          <article><span>총 기록 수</span><strong>{totalRecords.toLocaleString()}</strong></article>
+          <article><span>메인 프로젝트</span><strong>{mainQuests.length}</strong></article>
+          <article><span>일일 Quest</span><strong>{quests.filter((q) => q.type === "daily").length}</strong></article>
+          <article><span>서브 Quest</span><strong>{quests.filter((q) => q.type === "side").length}</strong></article>
+          <article><span>명함첩</span><strong>{contacts.length}</strong></article>
+          <article><span>다이어리</span><strong>{diaryEntries.length}</strong></article>
+        </section>
+      </main>
     </section>
   );
 }
