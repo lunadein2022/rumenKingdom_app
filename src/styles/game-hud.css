@@ -3441,3 +3441,293 @@ body {
     grid-auto-rows: minmax(74px, auto);
   }
 }
+
+/* =====================================================================
+   UI Layout Contract v2: real 3-row app grid + original PNG chrome.
+   Top/bottom chrome are normal grid rows, not fixed overlays.
+   ===================================================================== */
+:root {
+  --top-bar-height: clamp(92px, 8.6vw, 148px);
+  --bottom-bar-height: clamp(92px, 8vw, 138px);
+  --safe-area-x: clamp(48px, 4vw, 72px);
+  --safe-area-y: clamp(20px, 2.5vh, 32px);
+  --content-max-width: 1680px;
+  --content-inner-pad: clamp(12px, 1.2vw, 28px);
+
+  --layout-top: 0px;
+  --layout-bottom: 0px;
+  --layout-side: max(var(--safe-area-x), calc((100vw - var(--content-max-width)) / 2 + var(--safe-area-x)));
+  --layout-gap: clamp(16px, 1.35vw, 24px);
+  --layout-left: clamp(286px, 19vw, 350px);
+  --layout-right: clamp(304px, 21vw, 388px);
+  --layout-panel-pad: clamp(16px, 1.15vw, 22px);
+  --layout-stage-top: calc(var(--safe-area-y) + var(--content-inner-pad));
+  --layout-stage-bottom: calc(var(--safe-area-y) + var(--content-inner-pad));
+  --layout-stage-height: calc(100% - var(--layout-stage-top) - var(--layout-stage-bottom));
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.app-shell {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  min-width: 320px;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: var(--top-bar-height) minmax(0, 1fr) var(--bottom-bar-height);
+  overflow: hidden;
+  background: #050711;
+}
+
+.top-bar,
+.bottom-bar {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 100;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: block;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  pointer-events: auto;
+}
+
+.top-bar-image,
+.bottom-bar-image,
+.palace-top-banner-image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  min-width: 0;
+  object-fit: contain;
+  object-repeat: no-repeat;
+  transform: none;
+  filter: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.top-bar-image {
+  object-position: center top;
+}
+
+.bottom-bar-image {
+  object-position: center bottom;
+}
+
+.top-bar-time,
+.palace-top-banner-time {
+  position: absolute;
+  left: var(--safe-area-x);
+  top: 50%;
+  transform: translateY(-24%);
+  z-index: 2;
+  color: #f7d990;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(13px, 0.95vw, 18px);
+  font-weight: 800;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 0 14px rgba(240, 213, 138, 0.34);
+}
+
+.app-main,
+.main-viewport {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.scene-fullbleed {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+}
+
+.palace-scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: var(--safe-area-y) var(--safe-area-x);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.palace-bg,
+.page-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 0;
+}
+
+.content-safe-area,
+.content-safe-area-inner {
+  box-sizing: border-box;
+}
+
+.content-safe-area {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  padding: var(--safe-area-y) var(--safe-area-x);
+}
+
+.content-safe-area-inner {
+  position: relative;
+  width: 100%;
+  max-width: var(--content-max-width);
+  height: 100%;
+  margin: 0 auto;
+}
+
+.bottom-bar.game-nav.palace-bottom-nav {
+  position: relative !important;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  display: block;
+}
+
+.bottom-bar-items {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: min(980px, calc(100% - var(--safe-area-x) * 2));
+  height: min(72px, calc(100% - 20px));
+  transform: translate(-50%, -42%);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  gap: clamp(8px, 1.2vw, 18px);
+}
+
+.bottom-bar-items button,
+.bottom-bar-items .game-nav-serin {
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.game-nav-icon {
+  width: clamp(32px, 2.5vw, 44px);
+  height: clamp(32px, 2.5vw, 44px);
+}
+
+.game-nav-serin-portrait {
+  width: clamp(44px, 3.6vw, 62px);
+  height: clamp(44px, 3.6vw, 62px);
+}
+
+.scene-title,
+.brief-panel,
+.library-filter-panel,
+.calendar-left-panel,
+.office-project-list,
+.bedroom-left-panel,
+.throne-left-decision {
+  left: calc(var(--layout-side) + var(--content-inner-pad));
+  top: var(--layout-stage-top);
+}
+
+.project-panel,
+.room-entry-panel,
+.calendar-right-panel,
+.office-side-status,
+.bedroom-right-panel,
+.throne-right-status {
+  right: calc(var(--layout-side) + var(--content-inner-pad));
+  top: var(--layout-stage-top);
+}
+
+.calendar-stage,
+.office-detail-panel,
+.library-main-panel,
+.bedroom-draft-card {
+  top: var(--layout-stage-top);
+  bottom: var(--layout-stage-bottom);
+}
+
+.lobby-princess,
+.character-image {
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  height: min(92%, 760px);
+  width: auto;
+  max-width: 46vw;
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.library-princess {
+  bottom: var(--safe-area-y);
+}
+
+@media (max-width: 1200px) {
+  :root {
+    --top-bar-height: 82px;
+    --bottom-bar-height: 96px;
+    --safe-area-x: 36px;
+    --safe-area-y: 24px;
+    --layout-side: var(--safe-area-x);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --top-bar-height: 68px;
+    --bottom-bar-height: 82px;
+    --safe-area-x: 16px;
+    --safe-area-y: 16px;
+    --content-inner-pad: 0px;
+    --layout-side: var(--safe-area-x);
+  }
+
+  .bottom-bar-items {
+    width: calc(100% - var(--safe-area-x) * 2);
+    height: min(58px, calc(100% - 14px));
+  }
+
+  .game-nav-label {
+    font-size: 9px;
+  }
+}

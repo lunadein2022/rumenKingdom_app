@@ -15,25 +15,28 @@ interface SiteNavProps {
 
 export function SiteNav({ activeView, onChange }: SiteNavProps) {
   return (
-    <nav className="game-nav palace-bottom-nav" aria-label="Princess OS navigation">
-      {navItems.map((item) => (
-        <button
-          key={item.key}
-          type="button"
-          className={`${item.key === activeView ? "active" : ""} ${item.key === "serin" ? "game-nav-serin" : ""}`}
-          onClick={() => onChange(item.key)}
-          aria-label={item.label}
-        >
-          {item.key === "serin" ? (
-            <span className="game-nav-serin-portrait">
-              <img src="/assets/nav-serin-icon.png" alt="" aria-hidden="true" />
-            </span>
-          ) : (
-            <span className="game-nav-icon" aria-hidden="true" />
-          )}
-          <span className="game-nav-label">{item.label}</span>
-        </button>
-      ))}
+    <nav className="bottom-bar game-nav palace-bottom-nav" aria-label="Princess OS navigation">
+      <img className="bottom-bar-image" src="/assets/bottom-bar.png" alt="" aria-hidden="true" />
+      <div className="bottom-bar-items">
+        {navItems.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            className={`${item.key === activeView ? "active" : ""} ${item.key === "serin" ? "game-nav-serin" : ""}`}
+            onClick={() => onChange(item.key)}
+            aria-label={item.label}
+          >
+            {item.key === "serin" ? (
+              <span className="game-nav-serin-portrait">
+                <img src="/assets/nav-serin-icon.png" alt="" aria-hidden="true" />
+              </span>
+            ) : (
+              <span className="game-nav-icon" aria-hidden="true" />
+            )}
+            <span className="game-nav-label">{item.label}</span>
+          </button>
+        ))}
+      </div>
     </nav>
   );
 }

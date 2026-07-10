@@ -17,9 +17,9 @@ export function GameTopHud(_props: GameTopHudProps) {
   }, []);
 
   return (
-    <header className="palace-top-hud palace-top-banner" aria-label="루멘왕국 공주의 하루 상단 배너">
-      <img className="palace-top-banner-image" src="/assets/lumen-top-banner.png" alt="루멘왕국 공주의 하루" />
-      <time className="palace-top-banner-time" dateTime={now}>{now}</time>
+    <header className="top-bar palace-top-hud" aria-label="루멘왕국 공주의 하루 상단바">
+      <img className="top-bar-image" src="/assets/top-bar.png" alt="루멘왕국 공주의 하루" />
+      <time className="top-bar-time" dateTime={now}>{now}</time>
     </header>
   );
 }

@@ -759,9 +759,7 @@ export function App() {
         progress={progress}
         onSignOut={supabaseOn ? () => void signOut() : undefined}
       />
-      <SiteNav activeView={activeView} onChange={setActiveView} />
-
-      <main className="app-main">
+      <main className="app-main main-viewport">
         {activeView === "home" && (
           <HomeScene
             data={appData}
@@ -851,8 +849,10 @@ export function App() {
           />
         )}
       </main>
+      <SiteNav activeView={activeView} onChange={setActiveView} />
     </div>
   );
 }
+
 
 
