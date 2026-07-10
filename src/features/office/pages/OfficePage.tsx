@@ -36,8 +36,7 @@ export function OfficePage({ mainQuests, quests, events, contacts, onToggleChapt
     <section className="palace-scene office-scene scene-fullbleed">
       <div className="palace-bg" style={{ backgroundImage: 'url("/assets/office.webp")' }} />
       <div className="palace-vignette" />
-      <img className="office-princess" src="/assets/princess-bust-transparent.webp" alt="공주" />
-      <img className="office-serin" src="/assets/serin-full-transparent.webp" alt="세린" />
+      <img className="office-princess" src="/assets/princess-full-final.png" alt="공주" />
 
       <header className="scene-title office-title">
         <span>♕ 집무실 <em>Office</em></span>

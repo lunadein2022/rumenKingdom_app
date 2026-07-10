@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { CalendarEvent, MainQuest, PrincessProfile, RelationshipContact, SerinMessage, SerinProfile } from "../../../app/types";
 import { SerinChatThread } from "./SerinChatThread";
 import { SerinInputBar } from "./SerinInputBar";
-import { SerinMemoryPanel } from "./SerinMemoryPanel";
 import { SerinQuickActions } from "./SerinQuickActions";
 import type { SerinAction, SerinMemory, SerinStatus } from "../types/serin.types";
 
@@ -24,14 +23,11 @@ interface SerinPageProps {
 
 const statusLabel: Record<SerinStatus, string> = {
   idle: "대기 중",
-  thinking: "생각하는 중…",
+  thinking: "생각하는 중",
   speaking: "말하는 중",
-  error: "잠시 흐트러짐",
+  error: "잠시 흔들림",
 };
 
-// Serin 화면 = 세린과 만나는 왕궁 응접실입니다. 이 공간의 주인은 세린이므로
-// 공주 이미지는 두지 않고, 화면 중앙(왼쪽 패널과 채팅창 사이)에 세린만 크게
-// 배치합니다. 어떤 패널/카드도 세린을 가리지 않습니다(세린이 항상 위 레이어).
 export function SerinPage({
   serin,
   messages,
@@ -39,6 +35,7 @@ export function SerinPage({
   pendingAction,
   memories,
   mainQuests,
+  events,
   contacts,
   onSendMessage,
   onConfirmAction,
@@ -51,10 +48,15 @@ export function SerinPage({
     <section className="serin-scene scene-fullbleed">
       <div className="serin-scene-backdrop" style={{ backgroundImage: 'url("/assets/ballroom.webp")' }} />
 
-      <img className="serin-scene-figure" src="/assets/serin-full-transparent.webp" alt="세린" />
+      <img className="serin-scene-figure" src="/assets/serin-full-final.png" alt="세린" />
 
       <div className="serin-scene-rail">
-        <SerinMemoryPanel memories={memories} peopleCount={contacts.length} projectCount={mainQuests.length} />
+        <section className="serin-identity-panel">
+          <img src="/assets/serin-avatar-final.png" alt="세린" />
+          <strong>{serin.name}</strong>
+          <p>공주님의 말을 듣고, 일정과 Quest를 조심스럽게 정리합니다.</p>
+          <span>프로젝트 {mainQuests.length}개 · 일정 {events.length}개 · 인연 {contacts.length}명 · 참고 메모 {memories.length}개</span>
+        </section>
         <SerinQuickActions onPick={(sentence) => setPrefill(sentence)} />
       </div>
 

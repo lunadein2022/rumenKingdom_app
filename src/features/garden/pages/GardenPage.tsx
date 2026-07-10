@@ -12,7 +12,7 @@ export function GardenPage({ serin, onBackToCastle }: GardenPageProps) {
     <section className="garden-scene-full scene-fullbleed">
       <div className="garden-scene-backdrop" style={{ backgroundImage: 'url("/assets/garden.webp")' }} />
 
-      <img className="garden-princess-full" src="/assets/princess-full-transparent.webp" alt="정원에 선 공주" />
+      <img className="garden-princess-full" src="/assets/princess-full-final.png" alt="정원에 선 공주" />
 
       <div className="garden-copy-overlay">
         <span>왕궁 정원</span>

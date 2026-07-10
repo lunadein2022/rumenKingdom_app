@@ -104,7 +104,7 @@ export function CalendarPage({
       </aside>
 
       <div className="serin-helper-card compact">
-        <img src="/assets/serin-bust-transparent.webp" alt="세린" />
+        <img src="/assets/serin-avatar-final.png" alt="세린" />
         <div>
           <strong>세린이 도와드릴까요?</strong>
           <button type="button" onClick={() => setShowForm(true)}>오늘 일정 입력하기</button>

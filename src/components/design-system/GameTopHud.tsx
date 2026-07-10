@@ -19,7 +19,7 @@ export function GameTopHud({ princess, progress, onSignOut }: GameTopHudProps) {
   return (
     <header className="palace-top-hud">
       <div className="palace-brand">
-        <span className="palace-brand-mark">♛</span>
+        <img className="palace-logo-mark" src="/assets/lumen-princess-logo.png" alt="루멘왕국 공주의 하루" />
         <div>
           <strong>PRINCESS OS</strong>
           <small>{princess.activeTitle}</small>

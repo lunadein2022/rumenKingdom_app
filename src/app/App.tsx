@@ -798,7 +798,6 @@ export function App() {
             quests={quests}
             questHistory={questHistory}
             events={events}
-            memories={serinMemories}
             mainQuests={mainQuests}
             contacts={contacts}
             diaryEntries={diaryEntries}

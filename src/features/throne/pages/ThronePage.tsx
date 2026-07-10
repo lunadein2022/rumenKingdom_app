@@ -24,7 +24,7 @@ export function ThronePage({ data }: ThronePageProps) {
     <section className="palace-scene throne-scene scene-fullbleed">
       <div className="palace-bg" style={{ backgroundImage: 'url("/assets/throne.webp")' }} />
       <div className="palace-vignette" />
-      <img className="throne-princess" src="/assets/princess-full-transparent.webp" alt="공주" />
+      <img className="throne-princess" src="/assets/princess-full-final.png" alt="공주" />
 
       <header className="scene-title throne-title">
         <span>♕ 왕좌의 방 <em>Throne Room</em></span>

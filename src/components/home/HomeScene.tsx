@@ -20,12 +20,12 @@ function greeting() {
   return "좋은 저녁이에요, 공주님. 오늘도 정말 수고하셨어요.";
 }
 
-export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onToggleQuest }: HomeSceneProps) {
+export function HomeScene({ data, rooms, onNavigate, onToggleQuest }: HomeSceneProps) {
   const todayEvents = getEventsByDay(data.events, TODAY).sort((a, b) => a.startAt.localeCompare(b.startAt));
   const todayQuests = data.quests.filter((quest) => quest.dueDate === TODAY);
   const activeMainQuests = data.mainQuests.filter((mainQuest) => mainQuest.status === "active").slice(0, 3);
   const visibleQuests = todayQuests.slice(0, 4);
-  const memoCount = data.serinMessages.filter((message) => message.sender === "serin").length;
+  const privateRooms = rooms.filter((room) => room.route === "bedroom" || room.route === "garden" || room.route === "throne");
 
   return (
     <section className="palace-scene palace-lobby scene-fullbleed">
@@ -33,8 +33,7 @@ export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onToggleQue
       <div className="palace-vignette" />
 
       <div className="lobby-characters" aria-hidden="true">
-        <img className="lobby-princess" src="/assets/princess-full-transparent.webp" alt="" />
-        <img className="lobby-serin" src="/assets/serin-full-transparent.webp" alt="" />
+        <img className="lobby-princess" src="/assets/princess-full-final.png" alt="" />
       </div>
 
       <aside className="palace-panel lobby-left brief-panel">
@@ -45,7 +44,7 @@ export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onToggleQue
           <article><span>오늘 일정</span><strong>{todayEvents.length}건</strong></article>
           <article><span>오늘 Quest</span><strong>{todayQuests.length}개</strong></article>
           <article><span>진행 프로젝트</span><strong>{activeMainQuests.length}개</strong></article>
-          <article><span>세린 메모</span><strong>{memoCount}개</strong></article>
+          <article><span>왕궁 기록</span><strong>{data.diaryEntries.length}개</strong></article>
         </div>
         <section className="mini-list">
           <div className="mini-list-head">
@@ -92,38 +91,25 @@ export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onToggleQue
         ))}
       </aside>
 
-      <aside className="palace-panel lobby-right memory-panel">
+      <aside className="palace-panel lobby-right room-entry-panel">
         <div className="mini-list-head">
-          <h2>세린의 기억</h2>
-          <button type="button" onClick={() => onNavigate("serin")}>대화하기</button>
+          <h2>왕궁 안쪽으로 이동</h2>
+          <button type="button" onClick={() => onNavigate("castle")}>전체 지도</button>
         </div>
-        <p><strong>루틴</strong><span>매일 아침 왕국 흐름 확인</span></p>
-        <p><strong>최근 기억</strong><span>{data.serinMessages[data.serinMessages.length - 1]?.content ?? "공주님의 하루를 곁에서 챙기겠습니다."}</span></p>
+        <div className="room-entry-grid">
+          {privateRooms.map((room) => (
+            <button key={room.key} type="button" onClick={() => onNavigate(room.route)}>
+              <strong>{room.name}</strong>
+              <span>{room.subtitle}</span>
+            </button>
+          ))}
+        </div>
       </aside>
 
-      <div className="serin-helper-card">
-        <img src="/assets/serin-bust-transparent.webp" alt="세린" />
-        <div>
-          <strong>세린</strong>
-          <p>세린이 도와드릴까요?</p>
-          <button type="button" onClick={() => onNavigate("calendar")}>오늘 일정 알려줘</button>
-          <button type="button" onClick={() => onNavigate("office")}>오늘 뭐 해야 되지?</button>
-          <button type="button" onClick={() => onNavigate("serin")}>세린과 대화하기</button>
-        </div>
-      </div>
-
-      <div className="room-fast-travel" aria-label="왕궁 빠른 이동">
-        {rooms.slice(0, 6).map((room) => (
-          <button
-            key={room.key}
-            type="button"
-            className={room.key === currentRoomKey ? "active" : ""}
-            onClick={() => onNavigate(room.route)}
-          >
-            {room.name}
-          </button>
-        ))}
-      </div>
+      <button type="button" className="lobby-serin-avatar-button" onClick={() => onNavigate("serin")}>
+        <img src="/assets/serin-avatar-final.png" alt="세린" />
+        <span>세린과 대화</span>
+      </button>
     </section>
   );
 }

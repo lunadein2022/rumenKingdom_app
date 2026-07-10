@@ -82,8 +82,6 @@ export function BedroomPage({
     <section className="palace-scene bedroom-scene scene-fullbleed">
       <div className="palace-bg" style={{ backgroundImage: 'url("/assets/bedroom.webp")' }} />
       <div className="palace-vignette" />
-      <img className="bedroom-serin" src="/assets/serin-full-transparent.webp" alt="세린" />
-
       <header className="scene-title bedroom-title">
         <span>♕ 공주의 침실 <em>Princess Bedroom</em></span>
         <p>오늘의 하루를 기록하고, 세린과 함께 일기를 완성해 보세요.</p>
@@ -111,7 +109,7 @@ export function BedroomPage({
       <main className="bedroom-draft-card">
         <div className="diary-steps"><span>1 오늘 일정 확인</span><b>2 세린의 일기 초안</b><span>3 공주의 수정 & 저장</span></div>
         <header>
-          <img src="/assets/serin-bust-transparent.webp" alt="세린" />
+          <img src="/assets/serin-avatar-final.png" alt="세린" />
           <div><h1>세린의 일기 초안 ✨</h1><p>공주님의 하루를 정리해 보았어요.</p></div>
           <button type="button" onClick={() => setContent(draft)}>다시 생성</button>
         </header>
