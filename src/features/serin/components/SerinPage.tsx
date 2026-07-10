@@ -29,19 +29,16 @@ const statusLabel: Record<SerinStatus, string> = {
   error: "잠시 흐트러짐",
 };
 
-// Serin 화면 = "업무 대시보드"가 아니라 세린과 만나는 왕궁 응접실입니다.
-// Scene First: 배경(응접실)과 세린/공주 캐릭터가 항상 화면 안에 존재하고,
-// 그 위에 3개 영역(대화 / 추천 문장 / 세린의 기억)만 Glass Overlay로 떠 있습니다.
-// 대화창은 카카오톡 정도의 폭으로 제한해, 배경과 캐릭터가 항상 함께 보입니다.
+// Serin 화면 = 세린과 만나는 왕궁 응접실입니다. 이 공간의 주인은 세린이므로
+// 공주 이미지는 두지 않고, 화면 중앙(왼쪽 패널과 채팅창 사이)에 세린만 크게
+// 배치합니다. 어떤 패널/카드도 세린을 가리지 않습니다(세린이 항상 위 레이어).
 export function SerinPage({
-  princess,
   serin,
   messages,
   status,
   pendingAction,
   memories,
   mainQuests,
-  events,
   contacts,
   onSendMessage,
   onConfirmAction,
@@ -54,18 +51,7 @@ export function SerinPage({
     <section className="serin-scene scene-fullbleed">
       <div className="serin-scene-backdrop" style={{ backgroundImage: 'url("/assets/ballroom.webp")' }} />
 
-      <header className="serin-scene-topbar">
-        <span className="serin-scene-crest">♛ {princess.activeTitle}</span>
-        <span className={`serin-scene-status ${status}`}>
-          <em />
-          {serin.name} · {statusLabel[status]}
-        </span>
-      </header>
-
-      <div className="serin-scene-figures">
-        <img src="/assets/serin-full-transparent.webp" alt="세린" />
-        <img src="/assets/princess-full-transparent.webp" alt="공주" />
-      </div>
+      <img className="serin-scene-figure" src="/assets/serin-full-transparent.webp" alt="세린" />
 
       <div className="serin-scene-rail">
         <SerinMemoryPanel memories={memories} peopleCount={contacts.length} projectCount={mainQuests.length} />
@@ -73,6 +59,10 @@ export function SerinPage({
       </div>
 
       <div className="serin-scene-chat">
+        <div className={`serin-chat-status ${status}`}>
+          <em />
+          {serin.name} · {statusLabel[status]}
+        </div>
         <SerinChatThread
           messages={messages}
           pendingAction={pendingAction}

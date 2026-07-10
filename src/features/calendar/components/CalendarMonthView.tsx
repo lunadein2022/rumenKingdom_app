@@ -83,6 +83,10 @@ export function CalendarMonthView({ events, selectedDate, visibleMonth, onSelect
         {weekLabels.map((label) => <span key={label}>{label}</span>)}
       </div>
       <div className="calendar-grid">
+        {/* 실제 달력처럼 1일이 해당 요일 칸에서 시작하도록, 첫 주의 빈 칸을 채웁니다. */}
+        {Array.from({ length: new Date(`${visibleMonth}-01T00:00:00`).getDay() }, (_, index) => (
+          <span key={`empty-${index}`} className="calendar-empty-cell" aria-hidden="true" />
+        ))}
         {Array.from({ length: daysInMonth(visibleMonth) }, (_, index) => index + 1).map((day) => {
           const date = toDate(visibleMonth, day);
           const span = multiDaySpans[date];

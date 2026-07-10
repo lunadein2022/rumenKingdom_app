@@ -104,34 +104,18 @@
   );
 }
 
-.serin-scene-topbar {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  right: 16px;
-  z-index: 6;
+/* 채팅 패널 상단의 세린 상태 칩 (대기/생각 중/말하는 중) */
+.serin-chat-status {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 18px;
-  border-radius: 999px;
-  background: rgba(16, 25, 54, 0.42);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #fff;
+  gap: 6px;
+  padding: 4px 10px;
+  color: rgba(255, 255, 255, 0.85);
   font-size: 12px;
   font-weight: 800;
 }
 
-.serin-scene-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.serin-scene-status em {
+.serin-chat-status em {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -139,43 +123,31 @@
   font-style: normal;
 }
 
-.serin-scene-status.thinking em,
-.serin-scene-status.speaking em {
+.serin-chat-status.thinking em,
+.serin-chat-status.speaking em {
   background: var(--gold-500);
   animation: serin-pulse 880ms var(--ease-soft) infinite alternate;
 }
 
-.serin-scene-status.error em {
+.serin-chat-status.error em {
   background: #d94848;
 }
 
-/* Character Presence — 세린이 이 공간의 주인이므로 앞쪽/크게, 공주는 곁에
-   작게 함께 있습니다. */
-.serin-scene-figures {
+/* Character Presence — 이 공간의 주인은 세린 한 명입니다. 왼쪽 패널과 오른쪽
+   채팅창 사이(가용 공간의 중앙)에 크게 서 있고, 어떤 패널/카드에도 가려지지
+   않도록 항상 위 레이어에 둡니다(pointer-events: none이라 조작은 방해하지 않음). */
+.serin-scene-figure {
   position: absolute;
-  left: 0;
-  right: 440px;
+  left: 46%;
   bottom: 0;
-  z-index: 1;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.serin-scene-figures img:first-child {
-  z-index: 2;
-  width: min(32%, 320px);
+  transform: translateX(-50%);
+  z-index: 8;
+  width: min(38%, 420px);
+  max-height: 86%;
   object-fit: contain;
-  filter: drop-shadow(0 20px 30px rgba(7, 11, 26, 0.4));
-}
-
-.serin-scene-figures img:last-child {
-  z-index: 1;
-  width: min(18%, 170px);
-  margin-left: -16px;
-  object-fit: contain;
-  opacity: 0.92;
-  filter: drop-shadow(0 16px 24px rgba(7, 11, 26, 0.35));
+  object-position: bottom center;
+  pointer-events: none;
+  filter: drop-shadow(0 20px 30px rgba(7, 11, 26, 0.45));
 }
 
 /* 왼쪽 레일: 세린의 기억 + 추천 문장, 딱 이 둘만 */
@@ -218,17 +190,15 @@
     padding: 72px 12px 16px;
   }
 
-  .serin-scene-topbar {
-    flex-wrap: wrap;
-    row-gap: 6px;
-  }
-
-  .serin-scene-figures {
+  .serin-scene-figure {
     position: relative;
+    display: block;
     left: auto;
-    right: auto;
     bottom: auto;
-    margin: 4px 0 12px;
+    transform: none;
+    margin: 4px auto 12px;
+    width: min(58%, 260px);
+    max-height: none;
   }
 
   .serin-scene-rail {

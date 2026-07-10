@@ -674,6 +674,73 @@ body {
 }
 
 /* ---------------------------------------------------------------------
+   Character Presence 원칙 — 캘린더를 제외한 모든 화면에서 인물(공주/세린)은
+   중앙에 크게, 어떤 텍스트/컴포넌트/카드에도 가려지지 않습니다.
+   인물 레이어는 패널보다 위(단, pointer-events: none으로 조작은 통과).
+   --------------------------------------------------------------------- */
+/* 홈: 공주는 하단 네비 위 ~36px에 서 있고, 크기는 퀘스트 화면의 공주와 같습니다. */
+.palace-hud-figures {
+  z-index: 7;
+  bottom: 122px;
+  pointer-events: none;
+}
+
+.palace-hud-figures img:first-child {
+  width: min(34%, 360px);
+}
+
+/* 퀘스트: 공주가 하단 네비에 가려지지 않도록 네비 위 ~20px에 세웁니다. */
+.quest-journal-princess {
+  z-index: 5;
+  bottom: 106px;
+  pointer-events: none;
+}
+
+/* 세린 화면: 세린은 네비에 살짝 겹쳐도 되지만 지금보다 20~30px 위로. */
+.serin-scene-figure {
+  bottom: 28px;
+}
+
+.bedroom-princess-full,
+.garden-princess-full {
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* 침실: 공주를 왼쪽 구석이 아니라 (다이어리 패널을 제외한) 가용 공간의
+   중앙에 크게 세웁니다. */
+.bedroom-princess-full {
+  left: 27%;
+  transform: translateX(-50%);
+  width: min(44%, 330px);
+}
+
+/* 집무실/도서관/왕좌/인연록/왕성처럼 콘텐츠형 화면에도 공주가 항상 중앙에
+   존재합니다. 화면에 고정되어 스크롤을 따라오며, 패널보다 위 레이어지만
+   클릭은 통과시킵니다. 상단 HUD/하단 네비(z 40)보다는 아래입니다. */
+.scene-center-princess {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: min(28vw, 330px);
+  max-height: 70vh;
+  object-fit: contain;
+  object-position: bottom center;
+  pointer-events: none;
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.5));
+}
+
+@media (max-width: 980px) {
+  .scene-center-princess {
+    width: min(44vw, 220px);
+    max-height: 44vh;
+    opacity: 0.9;
+  }
+}
+
+/* ---------------------------------------------------------------------
    기존 화면 오버라이드 — Home 패널/세린 독을 게임 패널 톤으로 정렬.
    --------------------------------------------------------------------- */
 .home-hud-panel {
@@ -753,4 +820,113 @@ body {
 
 .serin-maidbot-popover-head strong {
   color: #f2deaa;
+}
+
+/* ---------------------------------------------------------------------
+   가시성 수정 모음 (다크 테마 위에서 안 보이던 것들)
+   --------------------------------------------------------------------- */
+
+/* 세린 대화창: body가 밝은 글자색이 되면서 흰 말풍선 위 글씨가 함께 연해졌던
+   문제. 말풍선 안은 항상 진한 글자색을 강제합니다. */
+.chat-bubble {
+  color: var(--text-primary);
+}
+
+.chat-bubble span {
+  opacity: 1;
+  color: var(--royal-600);
+}
+
+.chat-bubble p {
+  color: var(--text-primary);
+}
+
+.chat-bubble.princess,
+.chat-bubble.princess span,
+.chat-bubble.princess p {
+  color: #fff;
+}
+
+.chat-bubble.serin.action-log,
+.chat-bubble.serin.action-log p {
+  color: #4a3a12;
+}
+
+/* 각 장소의 제목/설명: 어두운 배경 위 회색 글씨 → 흰색 계열로. */
+.castle-hero h1,
+.office-hero h1,
+.library-hero h1,
+.throne-hero h1,
+.relationship-hero h1 {
+  color: #fff;
+}
+
+.castle-hero p,
+.office-hero p,
+.library-hero p,
+.throne-hero p,
+.relationship-hero p {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ---------------------------------------------------------------------
+   캘린더: 실제 달력처럼 — 요일 정렬(빈 칸), 숫자는 칸의 좌상단, 칸은 세로로
+   여유 있게. 일정 개수는 칸 안에 작은 배지로.
+   --------------------------------------------------------------------- */
+.calendar-grid button {
+  aspect-ratio: auto;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+.calendar-grid button > span {
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.calendar-grid button small {
+  margin: 0;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(65, 105, 225, 0.16);
+  color: var(--royal-700);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.calendar-grid button.selected small {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.calendar-empty-cell {
+  min-height: 72px;
+}
+
+@media (max-width: 760px) {
+  .calendar-grid button,
+  .calendar-empty-cell {
+    min-height: 52px;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   모바일: 세린 대화 입력창이 하단 네비에 가려 채팅이 불가능하던 문제.
+   장면 하단 여백을 네비 높이만큼 확보합니다.
+   --------------------------------------------------------------------- */
+@media (max-width: 979px) {
+  .serin-scene {
+    padding-bottom: calc(130px + env(safe-area-inset-bottom));
+  }
+
+  .serin-scene-figure {
+    bottom: auto;
+  }
 }

@@ -27,9 +27,9 @@ export function ThronePage({ data }: ThronePageProps) {
   return (
     <section className="throne-domain-page scene-fullbleed">
       <div className="throne-scene-backdrop" style={{ backgroundImage: 'url("/assets/throne.webp")' }} />
+      <img className="scene-center-princess" src="/assets/princess-full-transparent.webp" alt="공주" />
       <div className="throne-scene-content">
       <header className="throne-hero">
-        <img src="/assets/princess-full-transparent.webp" alt="공주 전신" />
         <div>
           <Badge tone="gold">{princess.activeTitle}</Badge>
           <h1>{princess.displayName} Lv.{progress.level}</h1>

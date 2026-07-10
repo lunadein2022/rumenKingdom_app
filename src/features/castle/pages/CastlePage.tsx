@@ -29,6 +29,7 @@ export function CastlePage({ rooms, currentRoomKey, onNavigate, onVisitRoom }: C
 
   return (
     <section className="castle-domain-page scene-fullbleed">
+      <img className="scene-center-princess" src="/assets/princess-full-transparent.webp" alt="공주" />
       <header className="castle-hero">
         <Badge tone="gold">Castle</Badge>
         <h1>루멘 왕성</h1>

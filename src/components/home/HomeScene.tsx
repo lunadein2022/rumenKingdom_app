@@ -37,9 +37,10 @@ export function HomeScene({ data, rooms, currentRoomKey, onNavigate, onToggleQue
     <section className="palace-hud-scene scene-fullbleed">
       <div className="palace-hud-backdrop" style={{ backgroundImage: 'url("/assets/home-bg.webp")' }} />
 
+      {/* 중앙 인물 = 공주(파란 드레스) 한 명입니다. 세린(검정+흰색 메이드복)은
+          이 장면이 아니라 우측 하단 메이드봇 위젯으로 존재합니다. */}
       <div className="palace-hud-figures">
         <img src="/assets/princess-full-transparent.webp" alt="공주" />
-        <img src="/assets/serin-full-transparent.webp" alt="세린" />
       </div>
 
       <HomeLeftRail
