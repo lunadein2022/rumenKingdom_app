@@ -1,0 +1,80 @@
+import { useState, type FormEvent } from 'react'
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Sparkles } from 'lucide-react'
+import { isSupabaseConfigured, supabase } from '../lib/supabase'
+
+export function LoginScreen({ onGuest }: { onGuest: () => void }) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    setMessage('')
+    if (!supabase) {
+      setMessage('Supabase 환경 변수를 설정하면 왕국 계정으로 로그인할 수 있어요.')
+      return
+    }
+
+    setLoading(true)
+    const result = mode === 'login'
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
+    setLoading(false)
+
+    if (result.error) setMessage(result.error.message)
+    else if (mode === 'signup') setMessage('확인 메일을 보냈어요. 인증 후 왕국에 입장해 주세요.')
+  }
+
+  const signInWithGoogle = async () => {
+    if (!supabase) {
+      setMessage('Supabase 환경 변수를 먼저 설정해 주세요.')
+      return
+    }
+    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
+    if (error) setMessage(error.message)
+  }
+
+  const resetPassword = async () => {
+    if (!supabase || !email.trim()) { setMessage('비밀번호를 재설정할 이메일을 먼저 입력해 주세요.'); return }
+    setLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
+    setLoading(false)
+    setMessage(error ? error.message : '비밀번호 재설정 메일을 보냈어요.')
+  }
+
+  return (
+    <div className="login-shell">
+      <div className="login-brand-side">
+        <img className="login-main-logo" src="/assets/brand/main-logo.webp" alt="루멘왕국, 공주의 하루" />
+        <div className="login-welcome-copy">
+          <span><Sparkles size={14} /> PRINCESS OS</span>
+          <p>공주님의 하루를 시작할 시간이에요.</p>
+        </div>
+        <img className="login-princess" src="/assets/characters/princess-full.webp" alt="루멘왕국의 공주" />
+      </div>
+
+      <main className="login-card glass-panel">
+        <span className="eyebrow">WELCOME TO RUMEN</span>
+        <h1>{mode === 'login' ? '다시 오셨군요, 공주님' : '왕국 계정 만들기'}</h1>
+        <p>{mode === 'login' ? '오늘의 일정과 퀘스트가 기다리고 있어요.' : '루멘왕국에서 공주님의 첫날을 시작해 보세요.'}</p>
+
+        <form onSubmit={submit}>
+          <label>이메일<div className="login-input"><Mail size={16} /><input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="princess@example.com" required /></div></label>
+          <label>비밀번호<div className="login-input"><LockKeyhole size={16} /><input type={showPassword ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8자 이상 입력해 주세요" minLength={8} required /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? '비밀번호 숨기기' : '비밀번호 보기'}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></div></label>
+          {mode === 'login' && <button type="button" className="forgot-password" onClick={resetPassword}>비밀번호를 잊으셨나요?</button>}
+          {message && <div className="login-message" role="status">{message}</div>}
+          <button className="login-submit" type="submit" disabled={loading}>{loading ? '왕실 문을 여는 중...' : mode === 'login' ? '루멘왕국 입장하기' : '계정 만들기'}<ArrowRight size={16} /></button>
+        </form>
+
+        <div className="login-divider"><span>또는</span></div>
+        <button className="google-login" onClick={signInWithGoogle}><b>G</b> Google 계정으로 계속하기</button>
+        <button className="mode-switch" onClick={() => { setMode((value) => value === 'login' ? 'signup' : 'login'); setMessage('') }}>{mode === 'login' ? '처음 오셨나요? 왕국 계정 만들기' : '이미 계정이 있나요? 로그인하기'}</button>
+        {!isSupabaseConfigured && <button className="guest-entry" onClick={onGuest}>데모로 먼저 둘러보기</button>}
+        <small className="login-copyright">Copyright © RUMEN KINGDOM · All Rights Reserved.</small>
+      </main>
+    </div>
+  )
+}
