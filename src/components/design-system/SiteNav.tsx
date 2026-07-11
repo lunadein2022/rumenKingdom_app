@@ -16,7 +16,9 @@ interface SiteNavProps {
 export function SiteNav({ activeView, onChange }: SiteNavProps) {
   return (
     <nav className="bottom-bar game-nav palace-bottom-nav" aria-label="Princess OS navigation">
-      <img className="bottom-bar-image" src="/assets/bottom-bar.png" alt="" aria-hidden="true" />
+      <div className="chrome-frame bottom-bar-frame">
+        <img className="bottom-bar-image" src="/assets/bottom-bar.png" alt="" aria-hidden="true" />
+      </div>
       <div className="bottom-bar-items">
         {navItems.map((item) => (
           <button

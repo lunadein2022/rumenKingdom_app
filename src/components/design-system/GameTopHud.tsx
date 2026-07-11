@@ -18,7 +18,9 @@ export function GameTopHud(_props: GameTopHudProps) {
 
   return (
     <header className="top-bar palace-top-hud" aria-label="루멘왕국 공주의 하루 상단바">
-      <img className="top-bar-image" src="/assets/top-bar.png" alt="루멘왕국 공주의 하루" />
+      <div className="chrome-frame top-bar-frame">
+        <img className="top-bar-image" src="/assets/top-bar.png" alt="Princess OS" />
+      </div>
       <time className="top-bar-time" dateTime={now}>{now}</time>
     </header>
   );

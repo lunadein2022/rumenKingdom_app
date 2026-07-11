@@ -3278,6 +3278,8 @@ body {
   --layout-left: clamp(286px, 19vw, 350px);
   --layout-right: clamp(304px, 21vw, 388px);
   --layout-panel-pad: clamp(16px, 1.15vw, 22px);
+  --top-chrome-height: clamp(82px, 7.4vw, 124px);
+  --bottom-chrome-height: clamp(92px, 8vw, 136px);
 }
 
 html,
@@ -3321,22 +3323,47 @@ body,
   line-height: 0;
 }
 
+.top-bar,
+.palace-top-hud {
+  height: var(--top-chrome-height);
+  flex-basis: var(--top-chrome-height);
+}
+
+.bottom-bar,
+.palace-bottom-nav {
+  height: var(--bottom-chrome-height);
+  flex-basis: var(--bottom-chrome-height);
+}
+
+.chrome-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  line-height: 0;
+}
+
 .top-bar-image,
 .bottom-bar-image,
 .palace-top-banner-image {
-  position: static;
+  position: absolute;
+  top: 50%;
+  left: 50%;
   display: block;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   height: auto;
-  max-width: none;
+  max-height: none;
   min-width: 0;
   flex: 0 0 auto;
   object-fit: initial;
-  transform: none;
+  transform: translate(-50%, -50%);
   filter: none;
   user-select: none;
   pointer-events: none;
 }
+
 
 .top-bar-time,
 .palace-top-banner-time {
@@ -3488,7 +3515,6 @@ body,
   right: auto;
   bottom: auto;
   width: 100%;
-  height: auto;
   padding: 0;
   transform: none;
 }
