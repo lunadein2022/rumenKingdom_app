@@ -17,26 +17,17 @@ export function SiteNav({ activeView, onChange }: SiteNavProps) {
   return (
     <nav className="bottom-bar game-nav palace-bottom-nav" aria-label="Princess OS navigation">
       <div className="chrome-frame bottom-bar-frame">
-        <img className="bottom-bar-image" src="/assets/bottom-bar.png" alt="" aria-hidden="true" />
+        <img className="bottom-bar-image" src="/assets/bottom-bar-final.png" alt="" aria-hidden="true" />
       </div>
-      <div className="bottom-bar-items">
+      <div className="bottom-bar-hit-areas" aria-label="Palace navigation menu">
         {navItems.map((item) => (
           <button
             key={item.key}
             type="button"
-            className={`${item.key === activeView ? "active" : ""} ${item.key === "serin" ? "game-nav-serin" : ""}`}
             onClick={() => onChange(item.key)}
             aria-label={item.label}
-          >
-            {item.key === "serin" ? (
-              <span className="game-nav-serin-portrait">
-                <img src="/assets/nav-serin-icon.png" alt="" aria-hidden="true" />
-              </span>
-            ) : (
-              <span className="game-nav-icon" aria-hidden="true" />
-            )}
-            <span className="game-nav-label">{item.label}</span>
-          </button>
+            aria-current={item.key === activeView ? "page" : undefined}
+          />
         ))}
       </div>
     </nav>

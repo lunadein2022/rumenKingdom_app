@@ -115,7 +115,7 @@ export function QuestScreen({
   return (
     <section className="quest-journal-scene scene-fullbleed">
       <div className="quest-journal-backdrop" style={{ backgroundImage: 'url("/assets/office.webp")' }} />
-      <img className="quest-journal-princess" src="/assets/princess-full-transparent.webp" alt="공주" />
+      <img className="quest-journal-princess" src="/assets/princess-full-final.png" alt="공주" />
 
       <aside className="game-panel quest-log-panel">
         <h2 className="game-panel-title">집무실</h2>

@@ -1700,8 +1700,11 @@
    세린 멘트도 카드가 아니라 말풍선 오버레이로만 뜹니다. */
 .garden-scene-full {
   position: relative;
-  min-height: calc(100vh - 56px);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .garden-scene-backdrop {
@@ -1721,10 +1724,10 @@
 .garden-princess-full {
   position: absolute;
   left: 50%;
-  bottom: 0;
+  bottom: var(--layout-stage-bottom);
   z-index: 1;
   width: min(60%, 360px);
-  max-height: 88%;
+  max-height: var(--layout-stage-height);
   object-fit: contain;
   object-position: bottom center;
   transform: translateX(-50%);
@@ -1733,8 +1736,8 @@
 
 .garden-copy-overlay {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: var(--layout-stage-top);
+  left: var(--layout-side);
   z-index: 2;
   max-width: 260px;
   color: #fff;
@@ -1756,8 +1759,8 @@
 /* 정원은 말풍선이 주인공입니다 — 흰 카드가 아니라 옅은 Glass 말풍선. */
 .garden-speech-bubble {
   position: absolute;
-  left: 22px;
-  bottom: 78px;
+  left: var(--layout-side);
+  bottom: var(--layout-stage-bottom);
   z-index: 2;
   max-width: min(72%, 300px);
   padding: 12px 16px;
@@ -1782,8 +1785,8 @@
 
 .garden-back-button {
   position: absolute;
-  right: 18px;
-  bottom: 18px;
+  right: var(--layout-side);
+  bottom: var(--layout-stage-bottom);
   z-index: 2;
   min-height: 40px;
   padding: 0 16px;

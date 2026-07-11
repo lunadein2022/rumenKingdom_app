@@ -19,7 +19,7 @@ export function RelationshipPage({ contacts, mainQuests }: RelationshipPageProps
 
   return (
     <section className="relationship-domain-page">
-      <img className="scene-center-princess" src="/assets/princess-full-transparent.webp" alt="공주" />
+      <img className="scene-center-princess" src="/assets/princess-full-final.png" alt="공주" />
       <header className="relationship-hero">
         <Badge tone="royal">Relationship</Badge>
         <h1>인연록</h1>
