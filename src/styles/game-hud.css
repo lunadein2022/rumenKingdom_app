@@ -13,29 +13,6 @@ body {
   color: #e8ecf8;
 }
 
-/* 고정 상단 HUD(52px)와 하단 네비(84px)를 위한 본문 여백 */
-.app-main {
-  min-height: 100dvh;
-  padding: 72px 32px 120px;
-}
-
-.scene-fullbleed {
-  margin: -72px -32px -120px;
-  width: calc(100% + 64px);
-  min-height: 100dvh;
-}
-
-@media (max-width: 760px) {
-  .app-main {
-    padding: 64px 12px calc(104px + env(safe-area-inset-bottom));
-  }
-
-  .scene-fullbleed {
-    margin: -64px -12px calc(-104px - env(safe-area-inset-bottom));
-    width: calc(100% + 24px);
-  }
-}
-
 /* ---------------------------------------------------------------------
    공용 게임 패널 — 반투명 남색 + 금색 테두리 + 코너 문양.
    SaaS 카드처럼 보이지 않도록 라운드를 줄이고 장식선을 씁니다.
@@ -1369,10 +1346,6 @@ body {
    - Global HUD elements are reduced by roughly 15%.
    - Bottom navigation is limited to Lobby / Office / Serin / Calendar / Library.
    --------------------------------------------------------------------- */
-.palace-scene {
-  padding: 76px 42px 104px;
-}
-
 .palace-panel {
   border-radius: 15px;
 }
@@ -1397,11 +1370,6 @@ body {
   display: none;
 }
 
-.palace-top-hud {
-  height: 50px;
-  padding: 0 22px;
-}
-
 .palace-clock {
   font-size: 15px;
 }
@@ -1413,21 +1381,6 @@ body {
 
 .palace-exp {
   width: 170px;
-}
-
-.app-main {
-  padding: 50px 0 86px;
-}
-
-.scene-fullbleed {
-  margin: -50px 0 -86px;
-}
-
-.game-nav.palace-bottom-nav {
-  width: min(1180px, calc(100% - 120px));
-  height: 72px;
-  grid-template-columns: repeat(5, 1fr);
-  border-radius: 28px 28px 0 0;
 }
 
 .game-nav-icon {
@@ -1537,7 +1490,7 @@ body {
 .lobby-serin,
 .office-serin,
 .bedroom-serin {
-  display: none !important;
+  display: none;
 }
 
 .lobby-serin-avatar-button {
@@ -1976,24 +1929,7 @@ body {
   color: var(--palace-text);
 }
 
-.app-main {
-  min-height: 100dvh;
-  padding: 56px 0 96px;
-}
 
-.scene-fullbleed {
-  margin: -56px 0 -96px;
-  width: 100%;
-  min-height: 100dvh;
-}
-
-.palace-scene {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  min-height: 100dvh;
-  padding: 82px 48px 118px;
-}
 
 .palace-bg,
 .palace-vignette {
@@ -2069,22 +2005,6 @@ body {
   margin: 6px 0 0;
   color: rgba(255,255,255,0.84);
   font-size: 15px;
-}
-
-.palace-top-hud {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 80;
-  display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto minmax(360px, 1fr);
-  align-items: center;
-  height: 56px;
-  padding: 0 28px;
-  border-bottom: 1px solid rgba(240, 213, 138, 0.22);
-  background: linear-gradient(180deg, rgba(7, 8, 17, 0.96), rgba(7, 8, 17, 0.72));
-  backdrop-filter: blur(16px);
 }
 
 .palace-brand,
@@ -2174,26 +2094,6 @@ body {
   border-radius: 999px;
   background: rgba(255,255,255,0.06);
   color: var(--palace-muted);
-}
-
-.game-nav.palace-bottom-nav {
-  position: fixed;
-  left: 50%;
-  bottom: 0;
-  z-index: 85;
-  width: min(1440px, calc(100% - 80px));
-  height: 84px;
-  transform: translateX(-50%);
-  display: grid;
-  grid-template-columns: repeat(2, 1fr) 130px repeat(4, 1fr);
-  align-items: stretch;
-  padding: 0 24px;
-  border: 1px solid rgba(240, 213, 138, 0.24);
-  border-bottom: 0;
-  border-radius: 36px 36px 0 0;
-  background: linear-gradient(180deg, rgba(14, 16, 30, 0.86), rgba(9, 10, 20, 0.96));
-  backdrop-filter: blur(20px);
-  box-shadow: 0 -20px 80px rgba(0,0,0,0.48);
 }
 
 .game-nav button,
@@ -2587,12 +2487,9 @@ body {
 .throne-stats-ribbon strong { display:block; color: var(--palace-gold); font-size: 14px; }
 
 @media (max-width: 1180px) {
-  .palace-scene { padding: 78px 18px 112px; }
-  .palace-top-hud { grid-template-columns: 1fr auto; height: 58px; padding: 0 16px; }
   .palace-clock { display: none; }
   .palace-level { font-size: 12px; }
   .palace-exp { width: 120px; }
-  .game-nav.palace-bottom-nav { width: 100%; height: 78px; border-radius: 22px 22px 0 0; grid-template-columns: repeat(6, 1fr); padding: 0 8px; }
   .game-nav-serin-portrait { display: none; }
   .game-nav-serin { padding-top: 0; }
   .brief-panel,.quest-panel,.project-panel,.memory-panel,.calendar-left-panel,.calendar-right-panel,.office-project-list,.office-detail-panel,.office-side-status,.library-filter-panel,.library-main-panel,.bedroom-left-panel,.bedroom-draft-card,.bedroom-right-panel,.throne-left-decision,.throne-right-status,.throne-growth-card,.throne-stats-ribbon {
@@ -2617,23 +2514,6 @@ body {
 /* Palace top banner asset pass */
 :root {
   --palace-top-banner-height: clamp(92px, 8.8vw, 132px);
-}
-
-.palace-top-hud.palace-top-banner {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 90;
-  display: block;
-  height: var(--palace-top-banner-height);
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  pointer-events: none;
-  overflow: hidden;
 }
 
 .palace-top-banner-image {
@@ -2661,14 +2541,6 @@ body {
   font-weight: 800;
   letter-spacing: 0.02em;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 0 14px rgba(240, 213, 138, 0.34);
-}
-
-.app-main {
-  padding-top: var(--palace-top-banner-height);
-}
-
-.scene-fullbleed {
-  margin-top: calc(var(--palace-top-banner-height) * -1);
 }
 
 .scene-title {
@@ -2716,32 +2588,6 @@ body {
   --layout-stage-height: calc(100dvh - var(--layout-stage-top) - var(--layout-stage-bottom));
 }
 
-.app-shell {
-  width: 100%;
-  min-width: 320px;
-  min-height: 100dvh;
-  overflow-x: clip;
-  background: #070813;
-}
-
-.app-main {
-  min-height: 100dvh;
-  padding: 0;
-}
-
-.scene-fullbleed {
-  width: 100%;
-  min-height: 100dvh;
-  margin: 0;
-}
-
-.palace-scene {
-  position: relative;
-  min-height: 100dvh;
-  padding: var(--layout-stage-top) var(--layout-side) var(--layout-stage-bottom);
-  overflow: hidden;
-}
-
 .palace-scene::after {
   content: "";
   position: absolute;
@@ -2782,30 +2628,8 @@ body {
   padding: var(--layout-panel-pad);
 }
 
-.palace-top-hud.palace-top-banner {
-  height: var(--layout-top);
-}
-
 .palace-top-banner-image {
   width: min(100vw, 2048px);
-}
-
-.game-nav.palace-bottom-nav {
-  left: 50%;
-  bottom: max(0px, env(safe-area-inset-bottom));
-  z-index: 95;
-  width: min(1420px, calc(100% - var(--layout-side) * 2));
-  height: var(--layout-bottom);
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  align-items: center;
-  padding: 0 clamp(34px, 4vw, 70px);
-  border: 0;
-  border-radius: 0;
-  background: center / 100% 100% no-repeat url('/assets/bottom-nav-template.png');
-  box-shadow: none;
-  backdrop-filter: none;
-  transform: translateX(-50%);
 }
 
 .game-nav button,
@@ -2988,7 +2812,7 @@ body {
 /* Layout contract implementation pass: Lobby / Calendar / Library */
 .serin-helper-card,
 .lobby-serin-avatar-button {
-  display: none !important;
+  display: none;
 }
 
 .brief-panel {
@@ -3443,27 +3267,17 @@ body {
 }
 
 /* =====================================================================
-   UI Layout Contract v2: real 3-row app grid + original PNG chrome.
-   Top/bottom chrome are normal grid rows, not fixed overlays.
+   UI Layout Contract v3: original PNG chrome + flex main viewport.
+   The top and bottom PNG canvases are intentional layout rows.
    ===================================================================== */
 :root {
-  --top-bar-height: clamp(92px, 8.6vw, 148px);
-  --bottom-bar-height: clamp(92px, 8vw, 138px);
   --safe-area-x: clamp(48px, 4vw, 72px);
-  --safe-area-y: clamp(20px, 2.5vh, 32px);
+  --safe-area-y: clamp(20px, 2.4vh, 32px);
   --content-max-width: 1680px;
-  --content-inner-pad: clamp(12px, 1.2vw, 28px);
-
-  --layout-top: 0px;
-  --layout-bottom: 0px;
-  --layout-side: max(var(--safe-area-x), calc((100vw - var(--content-max-width)) / 2 + var(--safe-area-x)));
   --layout-gap: clamp(16px, 1.35vw, 24px);
   --layout-left: clamp(286px, 19vw, 350px);
   --layout-right: clamp(304px, 21vw, 388px);
   --layout-panel-pad: clamp(16px, 1.15vw, 22px);
-  --layout-stage-top: calc(var(--safe-area-y) + var(--content-inner-pad));
-  --layout-stage-bottom: calc(var(--safe-area-y) + var(--content-inner-pad));
-  --layout-stage-height: calc(100% - var(--layout-stage-top) - var(--layout-stage-bottom));
 }
 
 html,
@@ -3481,53 +3295,47 @@ body,
   height: 100dvh;
   min-width: 320px;
   min-height: 0;
-  display: grid;
-  grid-template-rows: var(--top-bar-height) minmax(0, 1fr) var(--bottom-bar-height);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   background: #050711;
 }
 
 .top-bar,
-.bottom-bar {
-  position: relative !important;
-  inset: auto !important;
+.bottom-bar,
+.palace-top-hud,
+.palace-bottom-nav {
+  position: relative;
   z-index: 100;
   width: 100%;
-  height: 100%;
+  min-width: 0;
   min-height: 0;
+  flex: 0 0 auto;
   display: block;
-  overflow: hidden;
+  overflow: visible;
   border: 0;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
-  pointer-events: auto;
+  line-height: 0;
 }
 
 .top-bar-image,
 .bottom-bar-image,
 .palace-top-banner-image {
-  position: absolute;
-  inset: 0;
+  position: static;
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
   max-width: none;
   min-width: 0;
-  object-fit: contain;
-  object-repeat: no-repeat;
+  flex: 0 0 auto;
+  object-fit: initial;
   transform: none;
   filter: none;
   user-select: none;
   pointer-events: none;
-}
-
-.top-bar-image {
-  object-position: center top;
-}
-
-.bottom-bar-image {
-  object-position: center bottom;
 }
 
 .top-bar-time,
@@ -3535,12 +3343,13 @@ body,
   position: absolute;
   left: var(--safe-area-x);
   top: 50%;
-  transform: translateY(-24%);
   z-index: 2;
+  transform: translateY(-50%);
   color: #f7d990;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(13px, 0.95vw, 18px);
   font-weight: 800;
+  line-height: 1;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 0 14px rgba(240, 213, 138, 0.34);
 }
 
@@ -3550,24 +3359,20 @@ body,
   width: 100%;
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  flex: 1 1 auto;
   padding: 0;
   overflow: hidden;
 }
 
-.scene-fullbleed {
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  margin: 0;
-}
-
+.scene-fullbleed,
 .palace-scene {
   position: relative;
   width: 100%;
   height: 100%;
   min-height: 0;
-  padding: var(--safe-area-y) var(--safe-area-x);
+  margin: 0;
+  padding: 0;
   overflow: hidden;
   isolation: isolate;
 }
@@ -3583,9 +3388,8 @@ body,
   z-index: 0;
 }
 
-.content-safe-area,
-.content-safe-area-inner {
-  box-sizing: border-box;
+.palace-vignette {
+  z-index: 1;
 }
 
 .content-safe-area {
@@ -3594,6 +3398,7 @@ body,
   width: 100%;
   height: 100%;
   padding: var(--safe-area-y) var(--safe-area-x);
+  box-sizing: border-box;
 }
 
 .content-safe-area-inner {
@@ -3602,22 +3407,90 @@ body,
   max-width: var(--content-max-width);
   height: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.lobby-layout {
+  position: relative;
+  width: 100%;
+  max-width: var(--content-max-width);
+  height: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(280px, var(--layout-left)) minmax(0, 1fr) minmax(280px, var(--layout-right));
+  gap: var(--layout-gap);
+  align-items: start;
+}
+
+.lobby-left-stack {
+  position: relative;
+  z-index: 20;
+  grid-column: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 1.1vw, 18px);
+}
+
+.lobby-brief-card,
+.lobby-quest-card,
+.lobby-room-card {
+  position: relative;
+  inset: auto;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  transform: none;
+  margin: 0;
+  padding: var(--layout-panel-pad);
+  box-sizing: border-box;
+}
+
+.lobby-brief-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lobby-room-card {
+  z-index: 20;
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lobby-character-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.lobby-princess {
+  position: absolute;
+  left: 50%;
+  right: auto;
+  bottom: 0;
+  width: auto;
+  height: min(94%, 760px);
+  max-width: 46vw;
+  max-height: none;
+  transform: translateX(-50%);
+  object-fit: contain;
+  object-position: center bottom;
+  z-index: 6;
 }
 
 .bottom-bar.game-nav.palace-bottom-nav {
-  position: relative !important;
+  position: relative;
   left: auto;
+  right: auto;
   bottom: auto;
-  transform: none;
   width: 100%;
-  height: 100%;
+  height: auto;
   padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-  display: block;
+  transform: none;
 }
 
 .bottom-bar-items {
@@ -3626,18 +3499,17 @@ body,
   top: 50%;
   z-index: 2;
   width: min(980px, calc(100% - var(--safe-area-x) * 2));
-  height: min(72px, calc(100% - 20px));
-  transform: translate(-50%, -42%);
+  transform: translate(-50%, -12%);
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   gap: clamp(8px, 1.2vw, 18px);
+  line-height: 1;
 }
 
 .bottom-bar-items button,
 .bottom-bar-items .game-nav-serin {
   min-width: 0;
-  height: 100%;
   display: grid;
   place-items: center;
   align-content: center;
@@ -3648,83 +3520,68 @@ body,
 }
 
 .game-nav-icon {
-  width: clamp(32px, 2.5vw, 44px);
-  height: clamp(32px, 2.5vw, 44px);
+  width: clamp(30px, 2.2vw, 42px);
+  height: clamp(30px, 2.2vw, 42px);
 }
 
 .game-nav-serin-portrait {
-  width: clamp(44px, 3.6vw, 62px);
-  height: clamp(44px, 3.6vw, 62px);
-}
-
-.scene-title,
-.brief-panel,
-.library-filter-panel,
-.calendar-left-panel,
-.office-project-list,
-.bedroom-left-panel,
-.throne-left-decision {
-  left: calc(var(--layout-side) + var(--content-inner-pad));
-  top: var(--layout-stage-top);
-}
-
-.project-panel,
-.room-entry-panel,
-.calendar-right-panel,
-.office-side-status,
-.bedroom-right-panel,
-.throne-right-status {
-  right: calc(var(--layout-side) + var(--content-inner-pad));
-  top: var(--layout-stage-top);
-}
-
-.calendar-stage,
-.office-detail-panel,
-.library-main-panel,
-.bedroom-draft-card {
-  top: var(--layout-stage-top);
-  bottom: var(--layout-stage-bottom);
-}
-
-.lobby-princess,
-.character-image {
-  left: 50%;
-  bottom: 0;
-  transform: translateX(-50%);
-  height: min(92%, 760px);
-  width: auto;
-  max-width: 46vw;
-  object-fit: contain;
-  object-position: center bottom;
-}
-
-.library-princess {
-  bottom: var(--safe-area-y);
+  width: clamp(46px, 3.4vw, 60px);
+  height: clamp(46px, 3.4vw, 60px);
 }
 
 @media (max-width: 1200px) {
   :root {
-    --top-bar-height: 82px;
-    --bottom-bar-height: 96px;
     --safe-area-x: 36px;
-    --safe-area-y: 24px;
-    --layout-side: var(--safe-area-x);
+    --safe-area-y: 22px;
+  }
+
+  .lobby-layout {
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  }
+
+  .lobby-room-card {
+    grid-column: 1;
+  }
+
+  .lobby-princess {
+    left: 64%;
+    max-width: 50vw;
   }
 }
 
 @media (max-width: 768px) {
   :root {
-    --top-bar-height: 68px;
-    --bottom-bar-height: 82px;
-    --safe-area-x: 16px;
-    --safe-area-y: 16px;
-    --content-inner-pad: 0px;
-    --layout-side: var(--safe-area-x);
+    --safe-area-x: 18px;
+    --safe-area-y: 18px;
+  }
+
+  .top-bar-time {
+    left: 18px;
+    font-size: 12px;
+  }
+
+  .lobby-layout {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+
+  .lobby-left-stack,
+  .lobby-room-card {
+    width: 100%;
+  }
+
+  .lobby-princess {
+    left: 50%;
+    height: 58%;
+    max-width: 78vw;
+    opacity: 0.92;
   }
 
   .bottom-bar-items {
     width: calc(100% - var(--safe-area-x) * 2);
-    height: min(58px, calc(100% - 14px));
+    transform: translate(-50%, -8%);
   }
 
   .game-nav-label {

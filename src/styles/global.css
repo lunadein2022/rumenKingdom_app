@@ -53,33 +53,16 @@ p {
 .app-shell {
   position: relative;
   width: 100%;
-  min-height: 100dvh;
 }
 
 .app-main {
-  min-height: 100dvh;
-  padding: 28px 32px 40px;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
 }
 
-/* Home/Castle/Bedroom/Garden처럼 화면 전체를 채우는 Scene 섹션은 .app-main의
-   여백을 상쇄해 화면 가장자리까지 배경이 이어지는 full-bleed 섹션이 됩니다.
-   카드 안에 이미지를 넣는 것이 아니라, 배경 자체가 화면 전체를 채웁니다. */
 .scene-fullbleed {
-  margin: -28px -32px 0;
-  width: calc(100% + 64px);
-}
-
-/* 모바일은 "확인용" 반응형입니다. 데스크톱 프레임을 억지로 430px 앱처럼
-   가두지 않고, 같은 웹사이트가 좁은 화면에서 1열로 접히는 형태입니다. */
-@media (max-width: 760px) {
-  .app-main {
-    padding: 12px 12px calc(88px + env(safe-area-inset-bottom));
-  }
-
-  .scene-fullbleed {
-    margin: -12px -12px 0;
-    width: calc(100% + 24px);
-  }
+  width: 100%;
 }
 
 .screen-stack {
