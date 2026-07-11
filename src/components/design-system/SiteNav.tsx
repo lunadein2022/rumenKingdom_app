@@ -16,19 +16,19 @@ interface SiteNavProps {
 export function SiteNav({ activeView, onChange }: SiteNavProps) {
   return (
     <nav className="bottom-bar game-nav palace-bottom-nav" aria-label="Princess OS navigation">
-      <div className="chrome-frame bottom-bar-frame">
+      <div className="bottom-overlay-inner">
         <img className="bottom-bar-image" src="/assets/bottom-bar-final.png" alt="" aria-hidden="true" />
-      </div>
-      <div className="bottom-bar-hit-areas" aria-label="Palace navigation menu">
-        {navItems.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => onChange(item.key)}
-            aria-label={item.label}
-            aria-current={item.key === activeView ? "page" : undefined}
-          />
-        ))}
+        <div className="bottom-nav-hit-area" aria-label="Palace navigation menu">
+          {navItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onChange(item.key)}
+              aria-label={item.label}
+              aria-current={item.key === activeView ? "page" : undefined}
+            />
+          ))}
+        </div>
       </div>
     </nav>
   );
