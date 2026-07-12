@@ -18,7 +18,7 @@ export interface CalendarEvent {
 
 export type QuestPriority = 'high' | 'medium' | 'low'
 export type QuestType = 'daily' | 'sub'
-export type QuestStatus = 'planned' | 'active' | 'completed'
+export type QuestStatus = 'planned' | 'active' | 'completed' | 'archived'
 
 export interface Quest {
   id: string

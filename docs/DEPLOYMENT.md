@@ -4,9 +4,10 @@
 
 1. Create a Supabase project.
 2. Run `supabase/schema.sql` in the SQL editor.
-3. Enable the desired Auth provider in Supabase Authentication.
-4. Copy `.env.example` to `.env.local` for local development.
-5. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+3. Run `supabase/migrations/202607120001_canonical_data_model.sql` to add the canonical unified quest model, ownership-safe relations, settings, reminders, and private room backgrounds without deleting legacy rows.
+4. Enable the desired Auth provider in Supabase Authentication.
+5. Copy `.env.example` to `.env.local` for local development.
+6. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
 
 The browser only receives the Supabase anon key. Row Level Security in the schema limits every table to the signed-in user.
 

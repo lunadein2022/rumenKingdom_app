@@ -201,3 +201,14 @@
 - Advanced browser caches to the `v2` data generation so every currently registered account starts with an empty account-scoped local kingdom after deployment. Older shared or per-account caches remain unread and are not silently assigned to any user.
 - Added `supabase/reset_all_app_data.sql` as an explicit one-time destructive reset that clears application rows for all users while preserving `auth.users` and resetting profile display copy.
 - The reset SQL intentionally does not delete Storage objects directly. The private `rita-attachments` bucket must be emptied through Supabase Storage to avoid orphaning physical objects.
+
+## 2026-07 canonical data model and ownership boundary
+
+- Added `docs/ERD.md` and `docs/DATA_MODEL.md` as the source of truth for entities, relationships, lifecycle rules, the 06:00 service-day boundary, Library projections, and Storage paths.
+- Confirmed that a main quest is an optional project link rather than the parent table for every execution item, and selected a unified `quests` table with `daily`/`sub` kinds to match the existing frontend domain model.
+- Added repository contracts for projects, quests, calendars, diaries, memoranda, relationships, notifications, and settings so UI work can remain independent of Zustand versus Supabase data sources.
+- Added a rerunnable, non-destructive canonical migration. It copies legacy `daily_quests` and `sub_quests` into `quests`, preserves the legacy tables during repository cutover, and adds memoranda, diary snapshots, calendar categories, recurrence exceptions, reminders, user settings, and room backgrounds.
+- Added composite ownership foreign keys such as `(main_quest_id, user_id) -> main_quests(id, user_id)` so records that individually pass RLS still cannot reference another account's parent record.
+- Added RLS to every newly introduced user table and a private `room-backgrounds` Storage bucket whose path must begin with the authenticated user's id.
+- Kept diary quest snapshots after a source quest is deleted and detached quests/memoranda when their linked project is removed.
+- Extended the one-time account reset script to cover the canonical tables while continuing to preserve `auth.users`.
