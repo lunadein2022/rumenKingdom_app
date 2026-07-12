@@ -16,6 +16,8 @@ import { RitaPage } from '../features/rita/RitaPage'
 import { ThronePage } from '../features/throne/ThronePage'
 import { navigation, pageIdFromPath, pagePaths } from './navigation'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { LoaderCircle, X } from 'lucide-react'
+import { useKingdomStore } from '../store'
 
 export function AppRouter({ demoMode, onResetDemo, onSignOut }: { demoMode: boolean; onResetDemo: () => void; onSignOut: () => Promise<void> }) {
   return <Routes><Route element={<AppLayout demoMode={demoMode} onSignOut={onSignOut}/>}>
@@ -45,7 +47,9 @@ function AppLayout({ demoMode, onSignOut }: { demoMode: boolean; onSignOut: () =
   const [mobileNav, setMobileNav] = useState(false)
   const topLevel = Object.values(pagePaths).includes(location.pathname)
   const showPageHeading = topLevel && page !== 'lobby' && page !== 'garden'
-  return <div className={`app-shell page-${page}`}><RouteEffects/><div className="ambient ambient-one"/><div className="ambient ambient-two"/><AppHeader demoMode={demoMode} page={page} onMenu={() => setMobileNav((value) => !value)} onSignOut={onSignOut}/>{mobileNav && <nav className="mobile-nav glass-panel" aria-label="모바일 메뉴">{navigation.map((item) => { const Icon = item.icon; return <NavLink key={item.id} to={item.path} end={item.path === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileNav(false)}><Icon size={15}/>{item.label}</NavLink> })}<NavLink className="nav-item" to="/rita" onClick={() => setMobileNav(false)}>리타</NavLink><NavLink className="nav-item" to="/throne" onClick={() => setMobileNav(false)}>왕좌의 방</NavLink><button className="nav-item" onClick={() => void onSignOut()}>{demoMode ? '로그인하기' : '로그아웃'}</button></nav>}<main className="main-wrap">{showPageHeading && <PageHeading page={page}/>}<Outlet/></main><footer><span>Copyright © RUMEN KINGDOM</span><span>All Rights Reserved.</span></footer></div>
+  const recordSync = useKingdomStore((state) => state.recordSync)
+  const clearRecordSync = useKingdomStore((state) => state.clearRecordSync)
+  return <div className={`app-shell page-${page}`}><RouteEffects/><div className="ambient ambient-one"/><div className="ambient ambient-two"/><AppHeader demoMode={demoMode} page={page} onMenu={() => setMobileNav((value) => !value)} onSignOut={onSignOut}/>{mobileNav && <nav className="mobile-nav glass-panel" aria-label="모바일 메뉴">{navigation.map((item) => { const Icon = item.icon; return <NavLink key={item.id} to={item.path} end={item.path === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileNav(false)}><Icon size={15}/>{item.label}</NavLink> })}<NavLink className="nav-item" to="/rita" onClick={() => setMobileNav(false)}>리타</NavLink><NavLink className="nav-item" to="/throne" onClick={() => setMobileNav(false)}>왕좌의 방</NavLink><button className="nav-item" onClick={() => void onSignOut()}>{demoMode ? '로그인하기' : '로그아웃'}</button></nav>}<main className="main-wrap">{showPageHeading && <PageHeading page={page}/>}<Outlet/></main><footer><span>Copyright © RUMEN KINGDOM</span><span>All Rights Reserved.</span></footer>{recordSync.status !== 'idle' && <div className={`calendar-sync ${recordSync.status}`} role="status">{recordSync.status === 'saving' && <LoaderCircle size={15} className="spin"/>}<span>{recordSync.message}</span>{recordSync.status !== 'saving' && <button onClick={clearRecordSync} aria-label="저장 알림 닫기"><X size={14}/></button>}</div>}</div>
 }
 
 function RouteEffects() {

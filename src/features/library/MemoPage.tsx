@@ -33,7 +33,7 @@ export function MemoPage() {
 
   if (!isNew && !memo) return <div><BackButton fallback="/library/memos"/><section className="panel glass-panel"><EmptyState title="메모를 찾을 수 없어요" action="비망록으로" onAction={() => navigate('/library/memos', { replace: true })}/></section></div>
 
-  const save = () => {
+  const save = async () => {
     const input = {
       title: title.trim(), content: content.trim(), tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
       projectId: projectId || undefined, important, favorite, status,
@@ -42,14 +42,13 @@ export function MemoPage() {
       sourceAttachment: memo?.sourceAttachment ?? draft?.sourceAttachment,
     }
     if (!input.title || !input.content) return
-    if (memo) { updateMemo(memo.id, input); setEditing(false) }
-    else { const id = addMemo(input); navigate(`/library/memos/${id}`, { replace: true, state: null }) }
+    if (memo) { if (await updateMemo(memo.id, input)) setEditing(false) }
+    else { const id = await addMemo(input); if (id) navigate(`/library/memos/${id}`, { replace: true, state: null }) }
   }
 
-  const remove = () => {
+  const remove = async () => {
     if (memo && confirm(`“${memo.title}” 메모를 삭제할까요?`)) {
-      deleteMemo(memo.id)
-      navigate('/library/memos', { replace: true })
+      if (await deleteMemo(memo.id)) navigate('/library/memos', { replace: true })
     }
   }
 
@@ -61,7 +60,7 @@ export function MemoPage() {
     <article className="memo-detail panel glass-panel parchment-panel">
       <div className="memo-head">
         <div><span className="eyebrow">ROYAL MEMORANDUM</span><h2>{isNew ? '새 비망록' : memo?.title}</h2><p>{memo?.source === 'rita' || draft ? '리타가 정리한 메모' : '공주님이 직접 남긴 메모'}</p></div>
-        {!isNew && !editing && <div><button onClick={() => { const next = !favorite; setFavorite(next); if (memo) updateMemo(memo.id, { favorite: next }) }} aria-label="즐겨찾기"><Star size={18} fill={favorite ? 'currentColor' : 'none'}/></button><button onClick={() => setEditing(true)}><Pencil size={16}/> 편집</button></div>}
+        {!isNew && !editing && <div><button onClick={async () => { const next = !favorite; if (memo && await updateMemo(memo.id, { favorite: next })) setFavorite(next) }} aria-label="즐겨찾기"><Star size={18} fill={favorite ? 'currentColor' : 'none'}/></button><button onClick={() => setEditing(true)}><Pencil size={16}/> 편집</button></div>}
       </div>
       {draft && isNew && <div className="rita-draft-notice"><Check size={16}/><span>리타가 파일을 읽고 정리한 초안입니다. 확인 후 저장해 주세요.</span></div>}
       {editing ? <div className="record-form">

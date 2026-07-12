@@ -4,6 +4,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { navigation } from '../app/navigation'
 import { useKingdomStore } from '../store'
 import type { PageId } from '../types'
+import { useServiceDate } from '../lib/useServiceDate'
 
 export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boolean; page: PageId; onMenu: () => void; onSignOut: () => Promise<void> }) {
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boo
   const [searchOpen, setSearchOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const serviceToday = useServiceDate()
   const normalized = query.trim().toLocaleLowerCase('ko')
   const results = useMemo(() => [
     ...events.map((item) => ({ id: item.id, title: item.title, meta: `${item.date} · 일정`, path: `/calendar/event/${item.id}`, date: item.date })),
@@ -41,7 +43,7 @@ export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boo
         <button className="header-shortcut logout-shortcut" aria-label={demoMode ? '로그인하기' : '로그아웃'} onClick={() => void onSignOut()}><LogOut size={17}/><span>{demoMode ? '로그인' : '로그아웃'}</span></button>
         <button className="menu-button" aria-label="메뉴" onClick={onMenu}><Menu size={20}/></button>
       </div>
-      {notificationOpen && <aside className="notification-popover glass-panel"><div><b>왕실 알림</b><button onClick={() => setNotificationOpen(false)} aria-label="알림 닫기"><X size={14}/></button></div><p>오늘 일정 {events.filter((event) => { const today = new Date().toISOString().slice(0, 10); return event.date <= today && (event.endDate ?? event.date) >= today }).length}건 · 미완료 퀘스트 {quests.filter((quest) => !quest.done).length}건</p><p>확인할 비망록 {memos.filter((memo) => memo.status === 'review').length}건</p></aside>}
+      {notificationOpen && <aside className="notification-popover glass-panel"><div><b>왕실 알림</b><button onClick={() => setNotificationOpen(false)} aria-label="알림 닫기"><X size={14}/></button></div><p>오늘 일정 {events.filter((event) => event.date <= serviceToday && (event.endDate ?? event.date) >= serviceToday).length}건 · 미완료 퀘스트 {quests.filter((quest) => !quest.done).length}건</p><p>확인할 비망록 {memos.filter((memo) => memo.status === 'review').length}건</p></aside>}
     </header>
     {searchOpen && <div className="search-overlay" onMouseDown={() => setSearchOpen(false)}><section className="global-search glass-panel" role="dialog" aria-modal="true" aria-labelledby="global-search-title" onMouseDown={(event) => event.stopPropagation()}><div className="global-search-input"><Search size={20}/><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="일정, 퀘스트, 인연, 메모 검색" aria-label="전체 검색"/><button onClick={() => setSearchOpen(false)} aria-label="검색 닫기"><X size={18}/></button></div><h2 id="global-search-title" className="sr-only">전체 검색</h2><div className="global-results">{normalized ? results.length ? results.map((result) => <button key={`${result.path}-${result.id}`} onClick={() => selectResult(result)}><b>{result.title}</b><small>{result.meta}</small></button>) : <p>검색 결과가 없습니다.</p> : <p>찾고 싶은 기록의 제목이나 내용을 입력하세요.</p>}</div></section></div>}
   </>

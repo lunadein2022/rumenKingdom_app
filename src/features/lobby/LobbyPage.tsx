@@ -5,14 +5,15 @@ import { RitaFace } from '../../components/RitaFace'
 import { EmptyState, SectionTitle } from '../../components/Common'
 import { projectProgress, useKingdomStore } from '../../store'
 import { lobbyGreetingLead } from '../../lib/serviceTime'
+import { useServiceDate } from '../../lib/useServiceDate'
 import type { Quest } from '../../types'
 
 export function LobbyPage() {
   const navigate = useNavigate()
   const { events, quests, projects } = useKingdomStore()
-  const today = seoulToday()
+  const today = useServiceDate()
   const todayEvents = events.filter((event) => event.date <= today && (event.endDate ?? event.date) >= today)
-  const todayQuests = quests.filter(isTodayQuest)
+  const todayQuests = quests.filter((quest) => isTodayQuest(quest, today))
   const openTodayQuests = todayQuests.filter((quest) => !quest.done)
   const activeProjects = projects.filter((project) => project.status === 'active')
   const dueToday = quests.filter((quest) => !quest.done && (quest.scheduledDate === today || quest.due.startsWith('오늘')))
@@ -68,12 +69,6 @@ function LobbyVital({ label, value }: { label: string; value: number }) {
   return <span><b>{value}</b><small>{label}</small></span>
 }
 
-function seoulToday() {
-  const parts = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
-  const read = (type: string) => parts.find((part) => part.type === type)?.value ?? ''
-  return `${read('year')}-${read('month')}-${read('day')}`
-}
-
-function isTodayQuest(quest: Quest) {
-  return quest.scheduledDate === seoulToday() || quest.due.startsWith('오늘')
+function isTodayQuest(quest: Quest, today: string) {
+  return quest.scheduledDate === today || quest.due.startsWith('오늘')
 }

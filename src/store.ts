@@ -8,7 +8,8 @@ import { createMemo as createMemoRow, listMemos, removeMemo as removeMemoRow, up
 import { createRelationship as createRelationshipRow, listRelationships, removeRelationship as removeRelationshipRow, updateRelationship as updateRelationshipRow } from './services/relationshipRepository'
 import { createDiary as createDiaryRow, listDiaries, removeDiary as removeDiaryRow, updateDiary as updateDiaryRow } from './services/diaryRepository'
 import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, Project, Quest, Relationship } from './types'
-import { setActiveAccountScope } from './lib/accountScope'
+import { getActiveAccountScope, setActiveAccountScope } from './lib/accountScope'
+import { serviceDate } from './lib/serviceTime'
 
 type ProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 type QuestInput = Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
@@ -25,6 +26,7 @@ interface KingdomState {
   relationships: Relationship[]
   diaries: DiaryEntry[]
   calendarSync: { status: 'idle' | 'saving' | 'saved' | 'error'; message: string }
+  recordSync: { status: 'idle' | 'saving' | 'saved' | 'error'; message: string }
   setSelectedDate: (date: string) => void
   addEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<{ event: CalendarEvent; storage: 'cloud' | 'local' }>
   updateEvent: (id: string, event: Omit<CalendarEvent, 'id'>) => void
@@ -38,29 +40,30 @@ interface KingdomState {
   hydrateDiaries: () => Promise<void>
   clearCalendarSync: () => void
   resetForAccount: (demo: boolean) => void
-  toggleQuest: (id: string) => void
-  addQuest: (quest: QuestInput) => string
-  updateQuest: (id: string, quest: Partial<Quest>) => void
-  deleteQuest: (id: string) => void
-  addProject: (project: ProjectInput) => string
-  updateProject: (id: string, project: Partial<ProjectInput>) => void
-  deleteProject: (id: string) => void
-  setProjectStatus: (id: string, status: Project['status']) => void
-  addMemo: (memo: MemoInput) => string
-  updateMemo: (id: string, memo: Partial<MemoInput>) => void
-  deleteMemo: (id: string) => void
-  addRelationship: (relationship: RelationshipInput) => string
-  updateRelationship: (id: string, relationship: Partial<RelationshipInput>) => void
-  deleteRelationship: (id: string) => void
-  upsertDiary: (entry: DiaryInput) => string
-  deleteDiary: (id: string) => void
-  toggleLibraryFavorite: (type: LibraryRecordType, id: string) => void
+  clearRecordSync: () => void
+  toggleQuest: (id: string) => Promise<boolean>
+  addQuest: (quest: QuestInput) => Promise<string | null>
+  updateQuest: (id: string, quest: Partial<Quest>) => Promise<boolean>
+  deleteQuest: (id: string) => Promise<boolean>
+  addProject: (project: ProjectInput) => Promise<string | null>
+  updateProject: (id: string, project: Partial<ProjectInput>) => Promise<boolean>
+  deleteProject: (id: string) => Promise<boolean>
+  setProjectStatus: (id: string, status: Project['status']) => Promise<boolean>
+  addMemo: (memo: MemoInput) => Promise<string | null>
+  updateMemo: (id: string, memo: Partial<MemoInput>) => Promise<boolean>
+  deleteMemo: (id: string) => Promise<boolean>
+  addRelationship: (relationship: RelationshipInput) => Promise<string | null>
+  updateRelationship: (id: string, relationship: Partial<RelationshipInput>) => Promise<boolean>
+  deleteRelationship: (id: string) => Promise<boolean>
+  upsertDiary: (entry: DiaryInput) => Promise<string | null>
+  deleteDiary: (id: string) => Promise<boolean>
+  toggleLibraryFavorite: (type: LibraryRecordType, id: string) => Promise<boolean>
 }
 
 const timestamp = () => new Date().toISOString()
 const currentMonth = new Date()
 const monthDate = (day: number) => format(setDate(currentMonth, day), 'yyyy-MM-dd')
-const today = format(new Date(), 'yyyy-MM-dd')
+const today = serviceDate()
 const createdAt = timestamp()
 
 const initialEvents: CalendarEvent[] = [
@@ -121,11 +124,17 @@ const accountData = (demo: boolean) => ({
   relationships: demo ? [...initialRelationships] : [],
   diaries: demo ? [...initialDiaries] : [],
   calendarSync: { status: 'idle' as const, message: '' },
+  recordSync: { status: 'idle' as const, message: '' },
 })
+
+const cloudAccountActive = () => getActiveAccountScope().startsWith('user:')
+const assertStoredWhenRequired = (stored: boolean) => {
+  if (cloudAccountActive() && !stored) throw new Error('인증된 클라우드 저장소에 연결되지 않았습니다.')
+}
 
 export function projectProgress(project: Project, quests: Quest[]) {
   const linked = quests.filter((quest) => quest.projectId === project.id)
-  if (!linked.length) return 0
+  if (!linked.length) return Math.min(100, Math.max(0, project.progress || 0))
   return Math.round((linked.filter((quest) => quest.done || quest.status === 'completed').length / linked.length) * 100)
 }
 
@@ -139,7 +148,7 @@ type PersistedState = {
   diaries?: DiaryEntry[]
 }
 
-export const useKingdomStore = create<KingdomState>()(persist((set) => ({
+export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
   selectedDate: today,
   events: initialEvents,
   quests: initialQuests,
@@ -148,6 +157,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
   relationships: initialRelationships,
   diaries: initialDiaries,
   calendarSync: { status: 'idle', message: '' },
+  recordSync: { status: 'idle', message: '' },
   setSelectedDate: (selectedDate) => set({ selectedDate }),
   addEvent: (event) => {
     const optimisticId = crypto.randomUUID()
@@ -194,7 +204,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
     void updateCalendarEventDate(id, date, nextEndDate).then(() => set({ calendarSync: { status: 'saved', message: '일정 날짜를 변경했어요.' } })).catch(() => set((state) => ({ events: previous ? state.events.map((event) => event.id === id ? previous as CalendarEvent : event) : state.events, calendarSync: { status: 'error', message: '날짜를 변경하지 못해 이전 위치로 되돌렸어요.' } })))
   },
   hydrateEvents: async () => { try { const savedEvents = await listCalendarEvents(); if (savedEvents) set({ events: savedEvents }) } catch { set({ calendarSync: { status: 'error', message: '왕국 일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' } }) } },
-  hydrateProjects: async () => { try { const savedProjects = await listProjects(); if (savedProjects) set({ projects: savedProjects }) } catch { /* keep local projects on failure */ } },
+  hydrateProjects: async () => { try { const savedProjects = await listProjects(); if (savedProjects) set({ projects: savedProjects }) } catch { set({ recordSync: { status: 'error', message: '메인퀘스트를 불러오지 못했어요.' } }) } },
   hydrateQuests: async () => {
     try {
       const savedQuests = await listQuests()
@@ -204,95 +214,198 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
           project: quest.projectId ? state.projects.find((project) => project.id === quest.projectId)?.title : undefined,
         })),
       }))
-    } catch { /* keep local quests on failure */ }
+    } catch { set({ recordSync: { status: 'error', message: '퀘스트를 불러오지 못했어요.' } }) }
   },
-  hydrateMemos: async () => { try { const saved = await listMemos(); if (saved) set({ memos: saved }) } catch { /* keep local memos on failure */ } },
-  hydrateRelationships: async () => { try { const saved = await listRelationships(); if (saved) set({ relationships: saved }) } catch { /* keep local relationships on failure */ } },
-  hydrateDiaries: async () => { try { const saved = await listDiaries(); if (saved) set({ diaries: saved }) } catch { /* keep local diaries on failure */ } },
+  hydrateMemos: async () => { try { const saved = await listMemos(); if (saved) set({ memos: saved }) } catch { set({ recordSync: { status: 'error', message: '비망록을 불러오지 못했어요.' } }) } },
+  hydrateRelationships: async () => { try { const saved = await listRelationships(); if (saved) set({ relationships: saved }) } catch { set({ recordSync: { status: 'error', message: '인연록을 불러오지 못했어요.' } }) } },
+  hydrateDiaries: async () => { try { const saved = await listDiaries(); if (saved) set({ diaries: saved }) } catch { set({ recordSync: { status: 'error', message: '다이어리를 불러오지 못했어요.' } }) } },
   clearCalendarSync: () => set({ calendarSync: { status: 'idle', message: '' } }),
+  clearRecordSync: () => set({ recordSync: { status: 'idle', message: '' } }),
   resetForAccount: (demo) => set(accountData(demo)),
-  toggleQuest: (id) => {
-    let nextStatus: Quest['status'] = 'active'
-    let nextCompletedAt: string | undefined
-    set((state) => ({ quests: state.quests.map((quest) => {
-      if (quest.id !== id) return quest
-      const nextDone = !quest.done
-      nextStatus = nextDone ? 'completed' : 'active'
-      nextCompletedAt = nextDone ? timestamp() : undefined
-      return { ...quest, done: nextDone, status: nextStatus, completedAt: nextCompletedAt, updatedAt: timestamp() }
-    }) }))
-    void updateQuestRow(id, { status: nextStatus, completedAt: nextCompletedAt }).catch(() => {})
+  toggleQuest: async (id) => {
+    const previous = get().quests.find((quest) => quest.id === id)
+    if (!previous) return false
+    const nextDone = !previous.done
+    const nextStatus: Quest['status'] = nextDone ? 'completed' : 'active'
+    const nextCompletedAt = nextDone ? timestamp() : undefined
+    set((state) => ({ quests: state.quests.map((quest) => quest.id === id ? { ...quest, done: nextDone, status: nextStatus, completedAt: nextCompletedAt, updatedAt: timestamp() } : quest), recordSync: { status: 'saving', message: '퀘스트 상태를 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await updateQuestRow(id, { status: nextStatus, completedAt: nextCompletedAt }))
+      set({ recordSync: { status: 'saved', message: '퀘스트 상태를 저장했어요.' } })
+      return true
+    } catch {
+      set((state) => ({ quests: state.quests.map((quest) => quest.id === id ? previous : quest), recordSync: { status: 'error', message: '퀘스트 상태를 저장하지 못해 되돌렸어요.' } }))
+      return false
+    }
   },
-  addQuest: (quest) => {
+  addQuest: async (quest) => {
     const id = crypto.randomUUID()
     const now = timestamp()
     const full: Quest = { ...quest, id, completedAt: quest.done ? now : undefined, createdAt: now, updatedAt: now }
-    set((state) => ({ quests: [...state.quests, full] }))
-    void createQuestRow(full).catch(() => {})
-    return id
+    set((state) => ({ quests: [...state.quests, full], recordSync: { status: 'saving', message: '퀘스트를 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await createQuestRow(full))
+      set({ recordSync: { status: 'saved', message: '퀘스트를 저장했어요.' } })
+      return id
+    } catch {
+      set((state) => ({ quests: state.quests.filter((item) => item.id !== id), recordSync: { status: 'error', message: '퀘스트를 저장하지 못했어요.' } }))
+      return null
+    }
   },
-  updateQuest: (id, quest) => {
-    set((state) => ({ quests: state.quests.map((item) => item.id === id ? { ...item, ...quest, updatedAt: timestamp() } : item) }))
-    void updateQuestRow(id, quest).catch(() => {})
+  updateQuest: async (id, quest) => {
+    const previous = get().quests.find((item) => item.id === id)
+    if (!previous) return false
+    set((state) => ({ quests: state.quests.map((item) => item.id === id ? { ...item, ...quest, updatedAt: timestamp() } : item), recordSync: { status: 'saving', message: '퀘스트 변경사항을 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await updateQuestRow(id, quest))
+      set({ recordSync: { status: 'saved', message: '퀘스트 변경사항을 저장했어요.' } })
+      return true
+    } catch {
+      set((state) => ({ quests: state.quests.map((item) => item.id === id ? previous : item), recordSync: { status: 'error', message: '퀘스트 변경사항을 저장하지 못해 되돌렸어요.' } }))
+      return false
+    }
   },
-  deleteQuest: (id) => {
-    set((state) => ({ quests: state.quests.filter((quest) => quest.id !== id) }))
-    void removeQuestRow(id).catch(() => {})
+  deleteQuest: async (id) => {
+    const previous = get().quests
+    if (!previous.some((quest) => quest.id === id)) return false
+    set({ quests: previous.filter((quest) => quest.id !== id), recordSync: { status: 'saving', message: '퀘스트를 삭제하고 있어요.' } })
+    try {
+      assertStoredWhenRequired(await removeQuestRow(id))
+      set({ recordSync: { status: 'saved', message: '퀘스트를 삭제했어요.' } })
+      return true
+    } catch {
+      set({ quests: previous, recordSync: { status: 'error', message: '퀘스트를 삭제하지 못해 복원했어요.' } })
+      return false
+    }
   },
-  addProject: (project) => {
+  addProject: async (project) => {
     const id = crypto.randomUUID()
     const now = timestamp()
     const full: Project = { ...project, id, createdAt: now, updatedAt: now }
-    set((state) => ({ projects: [...state.projects, full] }))
-    void createProjectRow(full).catch(() => {})
-    return id
+    set((state) => ({ projects: [...state.projects, full], recordSync: { status: 'saving', message: '메인퀘스트를 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await createProjectRow(full))
+      set({ recordSync: { status: 'saved', message: '메인퀘스트를 저장했어요.' } })
+      return id
+    } catch {
+      set((state) => ({ projects: state.projects.filter((item) => item.id !== id), recordSync: { status: 'error', message: '메인퀘스트를 저장하지 못했어요.' } }))
+      return null
+    }
   },
-  updateProject: (id, project) => {
-    set((state) => ({ projects: state.projects.map((item) => item.id === id ? { ...item, ...project, updatedAt: timestamp() } : item) }))
-    void updateProjectRow(id, project).catch(() => {})
+  updateProject: async (id, project) => {
+    const previous = get().projects.find((item) => item.id === id)
+    if (!previous) return false
+    set((state) => ({ projects: state.projects.map((item) => item.id === id ? { ...item, ...project, updatedAt: timestamp() } : item), recordSync: { status: 'saving', message: '메인퀘스트를 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await updateProjectRow(id, project))
+      set({ recordSync: { status: 'saved', message: '메인퀘스트를 저장했어요.' } })
+      return true
+    } catch {
+      set((state) => ({ projects: state.projects.map((item) => item.id === id ? previous : item), recordSync: { status: 'error', message: '메인퀘스트를 저장하지 못해 되돌렸어요.' } }))
+      return false
+    }
   },
-  deleteProject: (id) => {
-    set((state) => ({ projects: state.projects.filter((item) => item.id !== id), quests: state.quests.map((quest) => quest.projectId === id ? { ...quest, projectId: undefined, project: undefined } : quest) }))
-    void removeProjectRow(id).catch(() => {})
+  deleteProject: async (id) => {
+    const previousProjects = get().projects
+    const previousQuests = get().quests
+    const previousMemos = get().memos
+    if (!previousProjects.some((item) => item.id === id)) return false
+    set({ projects: previousProjects.filter((item) => item.id !== id), quests: previousQuests.map((quest) => quest.projectId === id ? { ...quest, projectId: undefined, project: undefined } : quest), memos: previousMemos.map((memo) => memo.projectId === id ? { ...memo, projectId: undefined } : memo), recordSync: { status: 'saving', message: '메인퀘스트를 삭제하고 있어요.' } })
+    try {
+      assertStoredWhenRequired(await removeProjectRow(id))
+      set({ recordSync: { status: 'saved', message: '메인퀘스트를 삭제했어요.' } })
+      return true
+    } catch {
+      set({ projects: previousProjects, quests: previousQuests, memos: previousMemos, recordSync: { status: 'error', message: '메인퀘스트를 삭제하지 못해 복원했어요.' } })
+      return false
+    }
   },
-  setProjectStatus: (id, status) => {
+  setProjectStatus: async (id, status) => {
     const completedAt = status === 'completed' ? timestamp() : undefined
-    set((state) => ({ projects: state.projects.map((project) => project.id === id ? { ...project, status, completedAt, updatedAt: timestamp() } : project) }))
-    void updateProjectRow(id, { status, completedAt }).catch(() => {})
+    return get().updateProject(id, { status, completedAt })
   },
-  addMemo: (memo) => {
+  addMemo: async (memo) => {
     const id = crypto.randomUUID()
     const now = timestamp()
     const full: Memo = { ...memo, id, createdAt: now, updatedAt: now }
-    set((state) => ({ memos: [...state.memos, full] }))
-    void createMemoRow(full).catch(() => {})
-    return id
+    set((state) => ({ memos: [...state.memos, full], recordSync: { status: 'saving', message: '비망록을 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await createMemoRow(full))
+      set({ recordSync: { status: 'saved', message: '비망록을 저장했어요.' } })
+      return id
+    } catch {
+      set((state) => ({ memos: state.memos.filter((item) => item.id !== id), recordSync: { status: 'error', message: '비망록을 저장하지 못했어요.' } }))
+      return null
+    }
   },
-  updateMemo: (id, memo) => {
-    set((state) => ({ memos: state.memos.map((item) => item.id === id ? { ...item, ...memo, updatedAt: timestamp() } : item) }))
-    void updateMemoRow(id, memo).catch(() => {})
+  updateMemo: async (id, memo) => {
+    const previous = get().memos.find((item) => item.id === id)
+    if (!previous) return false
+    set((state) => ({ memos: state.memos.map((item) => item.id === id ? { ...item, ...memo, updatedAt: timestamp() } : item), recordSync: { status: 'saving', message: '비망록을 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await updateMemoRow(id, memo))
+      set({ recordSync: { status: 'saved', message: '비망록을 저장했어요.' } })
+      return true
+    } catch {
+      set((state) => ({ memos: state.memos.map((item) => item.id === id ? previous : item), recordSync: { status: 'error', message: '비망록을 저장하지 못해 되돌렸어요.' } }))
+      return false
+    }
   },
-  deleteMemo: (id) => {
-    set((state) => ({ memos: state.memos.filter((item) => item.id !== id) }))
-    void removeMemoRow(id).catch(() => {})
+  deleteMemo: async (id) => {
+    const previous = get().memos
+    if (!previous.some((item) => item.id === id)) return false
+    set({ memos: previous.filter((item) => item.id !== id), recordSync: { status: 'saving', message: '비망록을 삭제하고 있어요.' } })
+    try {
+      assertStoredWhenRequired(await removeMemoRow(id))
+      set({ recordSync: { status: 'saved', message: '비망록을 삭제했어요.' } })
+      return true
+    } catch {
+      set({ memos: previous, recordSync: { status: 'error', message: '비망록을 삭제하지 못해 복원했어요.' } })
+      return false
+    }
   },
-  addRelationship: (relationship) => {
+  addRelationship: async (relationship) => {
     const id = crypto.randomUUID()
     const now = timestamp()
     const full: Relationship = { ...relationship, id, createdAt: now, updatedAt: now }
-    set((state) => ({ relationships: [...state.relationships, full] }))
-    void createRelationshipRow(full).catch(() => {})
-    return id
+    set((state) => ({ relationships: [...state.relationships, full], recordSync: { status: 'saving', message: '인연록을 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await createRelationshipRow(full))
+      set({ recordSync: { status: 'saved', message: '인연록을 저장했어요.' } })
+      return id
+    } catch {
+      set((state) => ({ relationships: state.relationships.filter((item) => item.id !== id), recordSync: { status: 'error', message: '인연록을 저장하지 못했어요.' } }))
+      return null
+    }
   },
-  updateRelationship: (id, relationship) => {
-    set((state) => ({ relationships: state.relationships.map((item) => item.id === id ? { ...item, ...relationship, updatedAt: timestamp() } : item) }))
-    void updateRelationshipRow(id, relationship).catch(() => {})
+  updateRelationship: async (id, relationship) => {
+    const previous = get().relationships.find((item) => item.id === id)
+    if (!previous) return false
+    set((state) => ({ relationships: state.relationships.map((item) => item.id === id ? { ...item, ...relationship, updatedAt: timestamp() } : item), recordSync: { status: 'saving', message: '인연록을 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await updateRelationshipRow(id, relationship))
+      set({ recordSync: { status: 'saved', message: '인연록을 저장했어요.' } })
+      return true
+    } catch {
+      set((state) => ({ relationships: state.relationships.map((item) => item.id === id ? previous : item), recordSync: { status: 'error', message: '인연록을 저장하지 못해 되돌렸어요.' } }))
+      return false
+    }
   },
-  deleteRelationship: (id) => {
-    set((state) => ({ relationships: state.relationships.filter((item) => item.id !== id) }))
-    void removeRelationshipRow(id).catch(() => {})
+  deleteRelationship: async (id) => {
+    const previous = get().relationships
+    if (!previous.some((item) => item.id === id)) return false
+    set({ relationships: previous.filter((item) => item.id !== id), recordSync: { status: 'saving', message: '인연록을 삭제하고 있어요.' } })
+    try {
+      assertStoredWhenRequired(await removeRelationshipRow(id))
+      set({ recordSync: { status: 'saved', message: '인연록을 삭제했어요.' } })
+      return true
+    } catch {
+      set({ relationships: previous, recordSync: { status: 'error', message: '인연록을 삭제하지 못해 복원했어요.' } })
+      return false
+    }
   },
-  upsertDiary: (entry) => {
+  upsertDiary: async (entry) => {
+    const previous = get().diaries
     let id = ''
     let created = false
     let full: DiaryEntry | undefined
@@ -307,21 +420,38 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
       full = { ...entry, id, createdAt: timestamp(), updatedAt: timestamp() }
       return { diaries: [...state.diaries, full] }
     })
-    if (created) void createDiaryRow(full as DiaryEntry).catch(() => {})
-    else void updateDiaryRow(id, entry).catch(() => {})
-    return id
+    set({ recordSync: { status: 'saving', message: '다이어리를 저장하고 있어요.' } })
+    try {
+      const stored = created ? await createDiaryRow(full as DiaryEntry) : await updateDiaryRow(id, entry)
+      assertStoredWhenRequired(stored)
+      set({ recordSync: { status: 'saved', message: '다이어리를 저장했어요.' } })
+      return id
+    } catch {
+      set({ diaries: previous, recordSync: { status: 'error', message: '다이어리를 저장하지 못해 되돌렸어요.' } })
+      return null
+    }
   },
-  deleteDiary: (id) => {
-    set((state) => ({ diaries: state.diaries.filter((item) => item.id !== id) }))
-    void removeDiaryRow(id).catch(() => {})
+  deleteDiary: async (id) => {
+    const previous = get().diaries
+    if (!previous.some((item) => item.id === id)) return false
+    set({ diaries: previous.filter((item) => item.id !== id), recordSync: { status: 'saving', message: '다이어리를 삭제하고 있어요.' } })
+    try {
+      assertStoredWhenRequired(await removeDiaryRow(id))
+      set({ recordSync: { status: 'saved', message: '다이어리를 삭제했어요.' } })
+      return true
+    } catch {
+      set({ diaries: previous, recordSync: { status: 'error', message: '다이어리를 삭제하지 못해 복원했어요.' } })
+      return false
+    }
   },
-  toggleLibraryFavorite: (type, id) => set((state) => ({
-    projects: type === 'mainQuest' ? state.projects.map((item) => item.id === id ? { ...item, favorite: !item.favorite, updatedAt: timestamp() } : item) : state.projects,
-    quests: type === 'dailyQuest' || type === 'subQuest' ? state.quests.map((item) => item.id === id ? { ...item, favorite: !item.favorite, updatedAt: timestamp() } : item) : state.quests,
-    relationships: type === 'relationship' ? state.relationships.map((item) => item.id === id ? { ...item, favorite: !item.favorite, updatedAt: timestamp() } : item) : state.relationships,
-    memos: type === 'memo' ? state.memos.map((item) => item.id === id ? { ...item, favorite: !item.favorite, updatedAt: timestamp() } : item) : state.memos,
-    diaries: type === 'diary' ? state.diaries.map((item) => item.id === id ? { ...item, favorite: !item.favorite, updatedAt: timestamp() } : item) : state.diaries,
-  })),
+  toggleLibraryFavorite: async (type, id) => {
+    if (type === 'mainQuest') { const item = get().projects.find((value) => value.id === id); return item ? get().updateProject(id, { favorite: !item.favorite }) : false }
+    if (type === 'dailyQuest' || type === 'subQuest') { const item = get().quests.find((value) => value.id === id); return item ? get().updateQuest(id, { favorite: !item.favorite }) : false }
+    if (type === 'relationship') { const item = get().relationships.find((value) => value.id === id); return item ? get().updateRelationship(id, { favorite: !item.favorite }) : false }
+    if (type === 'memo') { const item = get().memos.find((value) => value.id === id); return item ? get().updateMemo(id, { favorite: !item.favorite }) : false }
+    const item = get().diaries.find((value) => value.id === id)
+    return item ? get().upsertDiary({ ...item, favorite: !item.favorite }).then(Boolean) : false
+  },
 }), {
   name: 'rumen-kingdom:v2:locked',
   skipHydration: true,

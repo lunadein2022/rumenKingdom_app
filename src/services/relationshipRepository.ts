@@ -12,7 +12,7 @@ type RelationshipRow = {
   email: string | null
   social: string | null
   address: string | null
-  role: string | null
+  relationship_type: string | null
   first_met_at: string | null
   last_contacted_at: string | null
   notes: string | null
@@ -25,7 +25,7 @@ type RelationshipRow = {
 }
 
 const COLUMNS =
-  'id,name,organization,position,phone,email,social,address,role,first_met_at,last_contacted_at,notes,tags,favorite,business_card_ocr_text,source,created_at,updated_at'
+  'id,name,organization,position,phone,email,social,address,relationship_type,first_met_at,last_contacted_at,notes,tags,favorite,business_card_ocr_text,source,created_at,updated_at'
 
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -45,7 +45,7 @@ const fromRow = (row: RelationshipRow): Relationship => ({
   email: row.email ?? '',
   social: row.social ?? '',
   address: row.address ?? undefined,
-  relationshipType: row.role ?? '',
+  relationshipType: row.relationship_type ?? '',
   firstMetAt: row.first_met_at ?? undefined,
   lastContactedAt: row.last_contacted_at ?? undefined,
   memo: row.notes ?? '',
@@ -66,7 +66,7 @@ const toRow = (value: Partial<Relationship>): Record<string, unknown> => {
   if (value.email !== undefined) row.email = value.email
   if (value.social !== undefined) row.social = value.social
   if (value.address !== undefined) row.address = value.address ?? ''
-  if (value.relationshipType !== undefined) row.role = value.relationshipType
+  if (value.relationshipType !== undefined) row.relationship_type = value.relationshipType
   if (value.firstMetAt !== undefined) row.first_met_at = value.firstMetAt || null
   if (value.lastContactedAt !== undefined) row.last_contacted_at = value.lastContactedAt || null
   if (value.memo !== undefined) row.notes = value.memo
@@ -85,9 +85,9 @@ export async function listRelationships(): Promise<Relationship[] | null> {
   return (data as RelationshipRow[]).map(fromRow)
 }
 
-export async function createRelationship(relationship: Relationship): Promise<void> {
+export async function createRelationship(relationship: Relationship): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(relationship.id)) return
+  if (!supabase || !userId || !isUuid(relationship.id)) return false
   const { error } = await supabase.from('relationships').insert({
     id: relationship.id,
     user_id: userId,
@@ -96,21 +96,24 @@ export async function createRelationship(relationship: Relationship): Promise<vo
     updated_at: relationship.updatedAt,
   })
   if (error) throw error
+  return true
 }
 
-export async function updateRelationship(id: string, patch: Partial<Relationship>): Promise<void> {
+export async function updateRelationship(id: string, patch: Partial<Relationship>): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(id)) return
+  if (!supabase || !userId || !isUuid(id)) return false
   const { error } = await supabase
     .from('relationships')
     .update({ ...toRow(patch), updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
+  return true
 }
 
-export async function removeRelationship(id: string): Promise<void> {
+export async function removeRelationship(id: string): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(id)) return
+  if (!supabase || !userId || !isUuid(id)) return false
   const { error } = await supabase.from('relationships').delete().eq('id', id)
   if (error) throw error
+  return true
 }

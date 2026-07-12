@@ -138,7 +138,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
     } else if (draft.kind === 'memo') {
       navigate('/library/memos/new', { state: { draft: { title: draft.title, content: draft.content, tags: draft.tags } } })
     } else if (draft.kind === 'project') {
-      addProject({
+      const savedId = await addProject({
         title: draft.title,
         goal: draft.goal,
         description: draft.description,
@@ -152,6 +152,10 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
         priority: draft.priority,
         favorite: false,
       })
+      if (!savedId) {
+        setMessages((current) => [...current, { from: 'rita', text: '메인퀘스트를 저장하지 못했어요. 연결 상태를 확인한 뒤 다시 시도해 주세요.', expression: 'error' }])
+        return
+      }
       setDraft(null)
       setSavedAction({ path: '/office', label: '집무실에서 보기' })
       setMessages((current) => [...current, { from: 'rita', text: `“${draft.title}” 메인퀘스트를 추가했어요.`, expression: 'celebration' }])
@@ -161,7 +165,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
         return
       }
       const project = projects.find((item) => item.id === draft.projectId)
-      addQuest({
+      const savedId = await addQuest({
         title: draft.title,
         description: draft.description,
         memo: '',
@@ -177,6 +181,10 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
         priority: draft.priority,
         favorite: false,
       })
+      if (!savedId) {
+        setMessages((current) => [...current, { from: 'rita', text: '퀘스트를 저장하지 못했어요. 연결 상태를 확인한 뒤 다시 시도해 주세요.', expression: 'error' }])
+        return
+      }
       setDraft(null)
       setSavedAction({ path: '/office', label: '집무실에서 보기' })
       setMessages((current) => [...current, { from: 'rita', text: `${project ? `${project.title}에 연결된 ` : '독립 '}${draft.questType === 'sub' ? '서브퀘스트' : '일일퀘스트'}로 추가했어요.`, expression: 'celebration' }])

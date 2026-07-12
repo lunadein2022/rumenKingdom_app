@@ -1,8 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type { Project } from '../types'
 
-// Projects map to the legacy `main_quests` table. Its status/priority stay text,
-// and it has no `user_id` default, so inserts must set user_id explicitly.
+// Projects map to main_quests using the canonical schema column names.
 type ProjectRow = {
   id: string
   title: string
@@ -10,9 +9,9 @@ type ProjectRow = {
   description: string | null
   memo: string | null
   tags: string[] | null
-  progress: number | null
-  start_date: string | null
-  due_date: string | null
+  manual_progress: number | null
+  starts_on: string | null
+  due_on: string | null
   status: Project['status']
   priority: Project['priority']
   favorite: boolean | null
@@ -22,7 +21,7 @@ type ProjectRow = {
 }
 
 const COLUMNS =
-  'id,title,goal,description,memo,tags,progress,start_date,due_date,status,priority,favorite,completed_at,created_at,updated_at'
+  'id,title,goal,description,memo,tags,manual_progress,starts_on,due_on,status,priority,favorite,completed_at,created_at,updated_at'
 
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -42,9 +41,9 @@ const fromRow = (row: ProjectRow): Project => ({
   tags: row.tags ?? [],
   // `tag` is a legacy single-label field with no canonical column; derive it from tags.
   tag: row.tags?.[0] ?? 'Project',
-  progress: row.progress ?? 0,
-  startDate: row.start_date ?? row.due_date ?? '',
-  due: row.due_date ?? '',
+  progress: row.manual_progress ?? 0,
+  startDate: row.starts_on ?? row.due_on ?? '',
+  due: row.due_on ?? '',
   status: row.status,
   priority: row.priority,
   favorite: row.favorite ?? false,
@@ -61,9 +60,9 @@ export async function listProjects(): Promise<Project[] | null> {
   return (data as ProjectRow[]).map(fromRow)
 }
 
-export async function createProject(project: Project): Promise<void> {
+export async function createProject(project: Project): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(project.id)) return
+  if (!supabase || !userId || !isUuid(project.id)) return false
   const { error } = await supabase.from('main_quests').insert({
     id: project.id,
     user_id: userId,
@@ -72,9 +71,9 @@ export async function createProject(project: Project): Promise<void> {
     description: project.description ?? '',
     memo: project.memo ?? '',
     tags: project.tags ?? [],
-    progress: project.progress ?? 0,
-    start_date: project.startDate || null,
-    due_date: project.due || null,
+    manual_progress: project.progress ?? 0,
+    starts_on: project.startDate || null,
+    due_on: project.due || null,
     status: project.status,
     priority: project.priority,
     favorite: project.favorite ?? false,
@@ -83,31 +82,34 @@ export async function createProject(project: Project): Promise<void> {
     updated_at: project.updatedAt,
   })
   if (error) throw error
+  return true
 }
 
-export async function updateProject(id: string, patch: Partial<Project>): Promise<void> {
+export async function updateProject(id: string, patch: Partial<Project>): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(id)) return
+  if (!supabase || !userId || !isUuid(id)) return false
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (patch.title !== undefined) row.title = patch.title
   if (patch.goal !== undefined) row.goal = patch.goal
   if (patch.description !== undefined) row.description = patch.description
   if (patch.memo !== undefined) row.memo = patch.memo
   if (patch.tags !== undefined) row.tags = patch.tags
-  if (patch.progress !== undefined) row.progress = patch.progress
-  if (patch.startDate !== undefined) row.start_date = patch.startDate || null
-  if (patch.due !== undefined) row.due_date = patch.due || null
+  if (patch.progress !== undefined) row.manual_progress = patch.progress
+  if (patch.startDate !== undefined) row.starts_on = patch.startDate || null
+  if (patch.due !== undefined) row.due_on = patch.due || null
   if (patch.status !== undefined) row.status = patch.status
   if (patch.priority !== undefined) row.priority = patch.priority
   if (patch.favorite !== undefined) row.favorite = patch.favorite
   if ('completedAt' in patch) row.completed_at = patch.completedAt ?? null
   const { error } = await supabase.from('main_quests').update(row).eq('id', id)
   if (error) throw error
+  return true
 }
 
-export async function removeProject(id: string): Promise<void> {
+export async function removeProject(id: string): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(id)) return
+  if (!supabase || !userId || !isUuid(id)) return false
   const { error } = await supabase.from('main_quests').delete().eq('id', id)
   if (error) throw error
+  return true
 }

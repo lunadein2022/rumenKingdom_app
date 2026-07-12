@@ -2,8 +2,8 @@ import { supabase } from '../lib/supabase'
 import type { Quest } from '../types'
 
 // Quests map to the canonical `quests` table created by the data-model migration.
-// status/priority are enums that match the app types. There is no tags column
-// (tags belong to the future entity_tags table), so tags do not round-trip yet.
+// status/priority are enums that match the app types. Inline tags remain during
+// the repository cutover and can later be normalized into entity_tags.
 type QuestRow = {
   id: string
   main_quest_id: string | null
@@ -12,6 +12,7 @@ type QuestRow = {
   title: string
   description: string | null
   memo: string | null
+  tags: string[] | null
   status: Quest['status']
   priority: Quest['priority']
   scheduled_on: string | null
@@ -24,7 +25,7 @@ type QuestRow = {
 }
 
 const COLUMNS =
-  'id,main_quest_id,parent_quest_id,kind,title,description,memo,status,priority,scheduled_on,due_on,due_at,favorite,completed_at,created_at,updated_at'
+  'id,main_quest_id,parent_quest_id,kind,title,description,memo,tags,status,priority,scheduled_on,due_on,due_at,favorite,completed_at,created_at,updated_at'
 
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -43,7 +44,7 @@ const fromRow = (row: QuestRow): Quest => {
     title: row.title,
     description: row.description ?? '',
     memo: row.memo ?? '',
-    tags: [],
+    tags: row.tags ?? [],
     projectId: row.main_quest_id ?? undefined,
     parentQuestId: row.parent_quest_id ?? undefined,
     project: undefined,
@@ -69,9 +70,9 @@ export async function listQuests(): Promise<Quest[] | null> {
   return (data as QuestRow[]).map(fromRow)
 }
 
-export async function createQuest(quest: Quest): Promise<void> {
+export async function createQuest(quest: Quest): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(quest.id)) return
+  if (!supabase || !userId || !isUuid(quest.id)) return false
   const completed = quest.status === 'completed'
   const { error } = await supabase.from('quests').insert({
     id: quest.id,
@@ -83,6 +84,7 @@ export async function createQuest(quest: Quest): Promise<void> {
     title: quest.title,
     description: quest.description ?? '',
     memo: quest.memo ?? '',
+    tags: quest.tags ?? [],
     status: quest.status,
     priority: quest.priority,
     scheduled_on: quest.scheduledDate || null,
@@ -94,15 +96,17 @@ export async function createQuest(quest: Quest): Promise<void> {
     updated_at: quest.updatedAt,
   })
   if (error) throw error
+  return true
 }
 
-export async function updateQuest(id: string, patch: Partial<Quest>): Promise<void> {
+export async function updateQuest(id: string, patch: Partial<Quest>): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(id)) return
+  if (!supabase || !userId || !isUuid(id)) return false
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (patch.title !== undefined) row.title = patch.title
   if (patch.description !== undefined) row.description = patch.description ?? ''
   if (patch.memo !== undefined) row.memo = patch.memo ?? ''
+  if (patch.tags !== undefined) row.tags = patch.tags
   if (patch.type !== undefined) row.kind = patch.type
   if (patch.priority !== undefined) row.priority = patch.priority
   if (patch.favorite !== undefined) row.favorite = patch.favorite
@@ -121,11 +125,13 @@ export async function updateQuest(id: string, patch: Partial<Quest>): Promise<vo
   }
   const { error } = await supabase.from('quests').update(row).eq('id', id)
   if (error) throw error
+  return true
 }
 
-export async function removeQuest(id: string): Promise<void> {
+export async function removeQuest(id: string): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(id)) return
+  if (!supabase || !userId || !isUuid(id)) return false
   const { error } = await supabase.from('quests').delete().eq('id', id)
   if (error) throw error
+  return true
 }

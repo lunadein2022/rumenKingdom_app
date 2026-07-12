@@ -32,6 +32,7 @@ alter table public.profiles
 
 alter table public.main_quests
   add column if not exists favorite boolean not null default false,
+  add column if not exists tags jsonb not null default '[]'::jsonb,
   add column if not exists manual_progress smallint,
   add column if not exists completed_at timestamptz;
 
@@ -54,6 +55,7 @@ create table if not exists public.quests (
   title text not null,
   description text not null default '',
   memo text not null default '',
+  tags jsonb not null default '[]'::jsonb,
   status public.quest_status not null default 'planned',
   priority public.quest_priority not null default 'medium',
   scheduled_on date,
@@ -68,6 +70,8 @@ create table if not exists public.quests (
   check (parent_quest_id is null or parent_quest_id <> id),
   check ((status = 'completed' and completed_at is not null) or status <> 'completed')
 );
+
+alter table public.quests add column if not exists tags jsonb not null default '[]'::jsonb;
 
 do $$ begin
   alter table public.quests add constraint quests_main_quest_owner_fkey
@@ -85,7 +89,7 @@ end $$;
 
 -- Preserve both legacy quest sources. They remain available until repository cutover is verified.
 insert into public.quests (
-  id, user_id, main_quest_id, kind, title, description, memo, status, priority,
+  id, user_id, main_quest_id, kind, title, description, memo, tags, status, priority,
   due_on, due_at, recurrence_rule, completed_at, created_at, updated_at
 )
 select
@@ -93,12 +97,13 @@ select
   -- Drop cross-account project links: legacy single-column FK allowed them, the composite FK does not.
   case when mq.id is not null then sub.main_quest_id else null end,
   'sub'::public.quest_kind, sub.title,
-  '',                                 -- legacy sub_quests has no description column
+  coalesce(sub.description, ''),
   coalesce(sub.memo, ''),
-  sub.status::public.quest_status,    -- legacy status/priority are text, not the canonical enums
-  'medium'::public.quest_priority,    -- legacy sub_quests has no priority column
+  '[]'::jsonb,
+  sub.status::public.quest_status,
+  sub.priority::public.quest_priority,
   sub.due_on, sub.due_at,
-  null,                               -- legacy recurrence is jsonb and stays in the preserved source table
+  sub.recurrence_rule,
   case when sub.status = 'completed' then coalesce(sub.updated_at, now()) else null end,
   sub.created_at, sub.updated_at
 from public.sub_quests sub
@@ -106,7 +111,7 @@ left join public.main_quests mq on mq.id = sub.main_quest_id and mq.user_id = su
 on conflict (id) do nothing;
 
 insert into public.quests (
-  id, user_id, main_quest_id, parent_quest_id, kind, title, description, memo,
+  id, user_id, main_quest_id, parent_quest_id, kind, title, description, memo, tags,
   status, priority, scheduled_on, due_on, due_at, completed_at, created_at, updated_at
 )
 select
@@ -115,12 +120,13 @@ select
   case when mq.id is not null then daily.main_quest_id else null end,
   case when parent.id is not null and parent.user_id = daily.user_id then daily.sub_quest_id else null end,
   'daily'::public.quest_kind, daily.title,
-  '',                                 -- legacy daily_quests has no description column
+  coalesce(daily.description, ''),
   coalesce(daily.memo, ''),
-  daily.status::public.quest_status,    -- legacy status/priority are text, not the canonical enums
+  '[]'::jsonb,
+  daily.status::public.quest_status,
   daily.priority::public.quest_priority,
   daily.quest_date, daily.quest_date, daily.due_at,
-  case when daily.status = 'completed' then coalesce(daily.updated_at, now()) else null end,  -- legacy daily_quests has no completed_at
+  case when daily.status = 'completed' then coalesce(daily.completed_at, daily.updated_at, now()) else null end,
   daily.created_at, daily.updated_at
 from public.daily_quests daily
 left join public.main_quests mq on mq.id = daily.main_quest_id and mq.user_id = daily.user_id
@@ -311,6 +317,7 @@ alter table public.relationships
   add column if not exists first_met_at date,
   add column if not exists last_contacted_at date,
   add column if not exists business_card_ocr_text text,
+  add column if not exists tags jsonb not null default '[]'::jsonb,
   add column if not exists favorite boolean not null default false,
   add column if not exists source text not null default 'manual';
 

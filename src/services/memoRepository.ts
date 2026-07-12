@@ -53,9 +53,9 @@ export async function listMemos(): Promise<Memo[] | null> {
   return (data as MemoRow[]).map(fromRow)
 }
 
-export async function createMemo(memo: Memo): Promise<void> {
+export async function createMemo(memo: Memo): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(memo.id)) return
+  if (!supabase || !userId || !isUuid(memo.id)) return false
   const { error } = await supabase.from('memos').insert({
     id: memo.id,
     user_id: userId,
@@ -72,11 +72,12 @@ export async function createMemo(memo: Memo): Promise<void> {
     updated_at: memo.updatedAt,
   })
   if (error) throw error
+  return true
 }
 
-export async function updateMemo(id: string, patch: Partial<Memo>): Promise<void> {
+export async function updateMemo(id: string, patch: Partial<Memo>): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(id)) return
+  if (!supabase || !userId || !isUuid(id)) return false
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (patch.title !== undefined) row.title = patch.title
   if (patch.content !== undefined) row.content = patch.content ?? ''
@@ -89,11 +90,13 @@ export async function updateMemo(id: string, patch: Partial<Memo>): Promise<void
   if ('projectId' in patch) row.main_quest_id = patch.projectId && isUuid(patch.projectId) ? patch.projectId : null
   const { error } = await supabase.from('memos').update(row).eq('id', id)
   if (error) throw error
+  return true
 }
 
-export async function removeMemo(id: string): Promise<void> {
+export async function removeMemo(id: string): Promise<boolean> {
   const userId = await getUserId()
-  if (!supabase || !userId || !isUuid(id)) return
+  if (!supabase || !userId || !isUuid(id)) return false
   const { error } = await supabase.from('memos').delete().eq('id', id)
   if (error) throw error
+  return true
 }

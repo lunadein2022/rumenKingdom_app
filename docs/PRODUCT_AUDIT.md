@@ -212,3 +212,13 @@
 - Added RLS to every newly introduced user table and a private `room-backgrounds` Storage bucket whose path must begin with the authenticated user's id.
 - Kept diary quest snapshots after a source quest is deleted and detached quests/memoranda when their linked project is removed.
 - Extended the one-time account reset script to cover the canonical tables while continuing to preserve `auth.users`.
+
+## 2026-07 cloud repository contract repair
+
+- Aligned project repositories with `main_quests.starts_on`, `due_on`, and `manual_progress`; aligned diaries with `diary_entries.body`; and aligned relationships with `relationship_type`.
+- Added rerunnable inline tag columns for projects, quests, memoranda, diaries, and relationships so the current UI does not silently lose tags during the later normalized-tag transition.
+- Corrected legacy quest migration to preserve descriptions, priorities, recurrence rules, and original completion timestamps instead of substituting placeholders.
+- Changed project, quest, memorandum, relationship, and diary mutations to await their Supabase result for authenticated accounts. Failed optimistic changes now roll back and surface a shared record-sync message.
+- Rita now reports a project or quest as added only after the corresponding store action confirms persistence.
+- Library favorites now use the same cloud-backed update path as ordinary edits.
+- Added a shared Asia/Seoul service-date calculation with a 06:00 boundary and automatic rollover hook, then applied it to Lobby, Office, Diary, and Header daily summaries.

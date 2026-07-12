@@ -5,6 +5,8 @@ import { BackButton } from '../../components/BackButton'
 import { EmptyState, Metric, SectionTitle } from '../../components/Common'
 import { projectProgress, useKingdomStore } from '../../store'
 import type { Project, ProjectStatus, Quest, QuestPriority, QuestType } from '../../types'
+import { serviceDate } from '../../lib/serviceTime'
+import { useServiceDate } from '../../lib/useServiceDate'
 
 type ProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 type QuestInput = Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
@@ -21,6 +23,7 @@ export function OfficePage() {
   const draggedQuestIdRef = useRef<string | null>(null)
   const [dropProjectId, setDropProjectId] = useState<string | null>(null)
   const [dropNotice, setDropNotice] = useState('')
+  useServiceDate()
   const activeProjects = projects.filter((project) => project.status === 'active' || project.status === 'planned')
   const completedProjects = projects.filter((project) => project.status === 'completed')
   const todayOpen = quests.filter((quest) => !quest.done && isTodayQuest(quest))
@@ -36,20 +39,18 @@ export function OfficePage() {
     return !normalized || `${quest.title} ${project}`.toLocaleLowerCase('ko').includes(normalized)
   }).sort((a, b) => Number(a.done) - Number(b.done) || (a.scheduledDate ?? '9999').localeCompare(b.scheduledDate ?? '9999')), [filter, projects, query, quests])
 
-  const saveProject = (input: ProjectInput) => {
-    if (editingProject) updateProject(editingProject.id, input)
-    else addProject(input)
-    setEditingProject(undefined)
+  const saveProject = async (input: ProjectInput) => {
+    const saved = editingProject ? await updateProject(editingProject.id, input) : Boolean(await addProject(input))
+    if (saved) setEditingProject(undefined)
   }
-  const saveQuest = (input: QuestInput) => {
-    if (editingQuest) updateQuest(editingQuest.id, input)
-    else addQuest(input)
-    setEditingQuest(undefined)
+  const saveQuest = async (input: QuestInput) => {
+    const saved = editingQuest ? await updateQuest(editingQuest.id, input) : Boolean(await addQuest(input))
+    if (saved) setEditingQuest(undefined)
   }
-  const finishDrop = (questId: string, project?: Project) => {
+  const finishDrop = async (questId: string, project?: Project) => {
     if (!quests.some((quest) => quest.id === questId)) return
-    updateQuest(questId, { projectId: project?.id, project: project?.title })
-    setDropNotice(project ? `${project.title}에 퀘스트를 연결했습니다.` : '독립 퀘스트로 변경했습니다.')
+    const saved = await updateQuest(questId, { projectId: project?.id, project: project?.title })
+    if (saved) setDropNotice(project ? `${project.title}에 퀘스트를 연결했습니다.` : '독립 퀘스트로 변경했습니다.')
     draggedQuestIdRef.current = null
     setDraggedQuestId(null)
     setDropProjectId(null)
@@ -82,8 +83,8 @@ export function OfficePage() {
     const release = () => {
       cleanup()
       const project = activeProjects.find((item) => item.id === targetProjectId)
-      if (active && targetProjectId === '') finishDrop(questId)
-      else if (active && project) finishDrop(questId, project)
+      if (active && targetProjectId === '') void finishDrop(questId)
+      else if (active && project) void finishDrop(questId, project)
       else {
         draggedQuestIdRef.current = null
         setDraggedQuestId(null)
@@ -182,12 +183,11 @@ export function ProjectDetailPage() {
   const progress = projectProgress(project, quests)
   const completedCount = linked.filter((quest) => quest.done).length
   const activeProjects = projects.filter((item) => item.status === 'active' || item.status === 'planned')
-  const saveQuest = (input: QuestInput) => {
-    if (editingQuest) updateQuest(editingQuest.id, input)
-    else addQuest(input)
-    setEditingQuest(undefined)
+  const saveQuest = async (input: QuestInput) => {
+    const saved = editingQuest ? await updateQuest(editingQuest.id, input) : Boolean(await addQuest(input))
+    if (saved) setEditingQuest(undefined)
   }
-  const remove = () => { if (confirm(`“${project.title}” 메인퀘스트를 삭제할까요? 연결된 퀘스트는 독립 퀘스트로 남습니다.`)) { deleteProject(project.id); navigate('/office', { replace: true }) } }
+  const remove = async () => { if (confirm(`“${project.title}” 메인퀘스트를 삭제할까요? 연결된 퀘스트는 독립 퀘스트로 남습니다.`) && await deleteProject(project.id)) navigate('/office', { replace: true }) }
 
   return <div>
     <BackButton fallback="/office" label="집무실로"/>
@@ -199,9 +199,13 @@ export function ProjectDetailPage() {
         <LinkedQuestSection title="서브퀘스트" quests={sub} projects={projects} onEdit={setEditingQuest} onDelete={deleteQuest}/>
       </div>
       <div className="project-link-actions"><button className="primary" onClick={() => setEditingQuest(null)}><Plus size={15}/> 새 연결 퀘스트</button><button onClick={() => setPicking(true)}><Link2 size={15}/> 연결되지 않은 퀘스트 가져오기</button></div>
-      <div className="detail-footer-actions">{project.status !== 'completed' ? <button className="primary" onClick={() => setProjectStatus(project.id, 'completed')}><CheckCircle2 size={16}/> 메인퀘스트 완료</button> : <button onClick={() => setProjectStatus(project.id, 'active')}><ArchiveRestore size={16}/> 다시 진행하기</button>}<button className="danger" onClick={remove}><Trash2 size={16}/> 삭제</button></div>
+      <div className="detail-footer-actions">{project.status !== 'completed' ? <button className="primary" onClick={() => void setProjectStatus(project.id, 'completed')}><CheckCircle2 size={16}/> 메인퀘스트 완료</button> : <button onClick={() => void setProjectStatus(project.id, 'active')}><ArchiveRestore size={16}/> 다시 진행하기</button>}<button className="danger" onClick={() => void remove()}><Trash2 size={16}/> 삭제</button></div>
     </section>
-    {editingProject && <ProjectModal project={project} onClose={() => setEditingProject(false)} onSave={(input) => { updateProject(project.id, input); setEditingProject(false) }}/>} 
+    {editingProject && <ProjectModal
+      project={project}
+      onClose={() => setEditingProject(false)}
+      onSave={async (input) => { if (await updateProject(project.id, input)) setEditingProject(false) }}
+    />}
     {editingQuest !== undefined && <QuestModal quest={editingQuest} projects={activeProjects} defaultProjectId={project.id} onClose={() => setEditingQuest(undefined)} onSave={saveQuest}/>} 
     {picking && <IndependentQuestPicker quests={quests.filter((quest) => !quest.projectId)} project={project} onClose={() => setPicking(false)} onConnect={(quest) => updateQuest(quest.id, { projectId: project.id, project: project.title })}/>} 
   </div>
@@ -222,7 +226,7 @@ export function CompletedProjectsPage() {
   return <div><BackButton fallback="/office" label="집무실로"/><section className="panel glass-panel completed-projects"><SectionTitle title="완료된 메인퀘스트"/>{completed.length ? completed.map((project) => <article key={project.id}><button className="completed-project-main" onClick={() => navigate(`/office/projects/${project.id}`)}><CheckCircle2 size={18}/><span><b>{project.title}</b><small>{project.completedAt ? new Date(project.completedAt).toLocaleDateString('ko-KR') : '완료일 미상'} · {project.tag}</small></span><ChevronRight size={16}/></button><button onClick={() => setProjectStatus(project.id, 'active')}><ArchiveRestore size={15}/> 복원</button></article>) : <EmptyState title="완료된 메인퀘스트가 없어요" description="메인퀘스트를 완료하면 이곳에 기록됩니다."/>}</section></div>
 }
 
-function ProjectModal({ project, onClose, onSave }: { project: Project | null; onClose: () => void; onSave: (project: ProjectInput) => void }) {
+function ProjectModal({ project, onClose, onSave }: { project: Project | null; onClose: () => void; onSave: (project: ProjectInput) => void | Promise<void> }) {
   const [title, setTitle] = useState(project?.title ?? '')
   const [goal, setGoal] = useState(project?.goal ?? '')
   const [description, setDescription] = useState(project?.description ?? '')
@@ -237,7 +241,7 @@ function ProjectModal({ project, onClose, onSave }: { project: Project | null; o
   return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal glass-panel" role="dialog" aria-modal="true" aria-labelledby="project-modal-title" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); onSave({ title: title.trim(), goal: goal.trim(), description: description.trim(), memo: memo.trim(), tags: tags.split(',').map((item) => item.trim()).filter(Boolean), progress: project?.progress ?? 0, startDate, due, tag: tag.trim() || 'Project', status, priority, favorite: project?.favorite ?? false, completedAt: status === 'completed' ? project?.completedAt ?? new Date().toISOString() : undefined }) }}><div className="modal-head"><div><span className="eyebrow">MAIN QUEST</span><h2 id="project-modal-title">{project ? '메인퀘스트 편집' : '새 메인퀘스트'}</h2></div><button type="button" onClick={onClose} aria-label="닫기"><X size={18}/></button></div><label>제목<input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} required/></label><label>목표<input value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="이 메인퀘스트로 이루고 싶은 목표"/></label><label>짧은 설명<textarea className="modal-textarea compact" value={description} onChange={(event) => setDescription(event.target.value)}/></label><label>메모<textarea className="modal-textarea" value={memo} onChange={(event) => setMemo(event.target.value)} placeholder="회의 내용, 링크, 진행 중 떠오른 내용을 자유롭게 기록하세요."/></label><div className="form-row"><label>시작일<input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)}/></label><label>마감일<input type="date" value={due} min={startDate} onChange={(event) => setDue(event.target.value)}/></label></div><div className="form-row"><label>상태<select value={status} onChange={(event) => setStatus(event.target.value as ProjectStatus)}><option value="planned">계획</option><option value="active">진행 중</option><option value="completed">완료</option><option value="archived">보관</option></select></label><label>우선순위<select value={priority} onChange={(event) => setPriority(event.target.value as QuestPriority)}><option value="high">높음</option><option value="medium">보통</option><option value="low">낮음</option></select></label></div><div className="form-row"><label>대표 태그<input value={tag} onChange={(event) => setTag(event.target.value)}/></label><label>추가 태그<input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="쉼표로 구분"/></label></div><div className="automatic-progress-note"><Sparkles size={15}/><span>진행률은 연결된 일일·서브퀘스트의 완료 비율로 자동 계산됩니다.</span></div><div className="modal-actions"><button type="button" className="ghost" onClick={onClose}>취소</button><button type="submit" className="primary"><Plus size={15}/>{project ? '저장' : '추가'}</button></div></form></div>
 }
 
-function QuestModal({ quest, projects, defaultProjectId, onClose, onSave }: { quest: Quest | null; projects: Project[]; defaultProjectId?: string; onClose: () => void; onSave: (quest: QuestInput) => void }) {
+function QuestModal({ quest, projects, defaultProjectId, onClose, onSave }: { quest: Quest | null; projects: Project[]; defaultProjectId?: string; onClose: () => void; onSave: (quest: QuestInput) => void | Promise<void> }) {
   const [title, setTitle] = useState(quest?.title ?? '')
   const [description, setDescription] = useState(quest?.description ?? '')
   const [memo, setMemo] = useState(quest?.memo ?? '')
@@ -257,11 +261,7 @@ function useEscapeClose(onClose: () => void) {
 }
 
 function isoToday() {
-  const parts = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
-  const year = parts.find((part) => part.type === 'year')?.value ?? '1970'
-  const month = parts.find((part) => part.type === 'month')?.value ?? '01'
-  const day = parts.find((part) => part.type === 'day')?.value ?? '01'
-  return `${year}-${month}-${day}`
+  return serviceDate()
 }
 function dateFromLegacyDue(due?: string) { const match = due?.match(/\d{4}-\d{2}-\d{2}/); return match?.[0] }
 function timeFromDue(due?: string) { const match = due?.match(/\d{2}:\d{2}/); return match?.[0] }
