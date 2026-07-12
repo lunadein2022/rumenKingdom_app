@@ -70,11 +70,15 @@ insert into public.quests (
   due_on, due_at, recurrence_rule, completed_at, created_at, updated_at
 )
 select
-  id, user_id, main_quest_id, 'sub'::public.quest_kind, title, description, memo,
-  status, priority, due_on, due_at, recurrence_rule,
-  case when status = 'completed' then coalesce(updated_at, now()) else null end,
-  created_at, updated_at
-from public.sub_quests
+  sub.id, sub.user_id,
+  -- Drop cross-account project links: legacy single-column FK allowed them, the composite FK does not.
+  case when mq.id is not null then sub.main_quest_id else null end,
+  'sub'::public.quest_kind, sub.title, sub.description, sub.memo,
+  sub.status, sub.priority, sub.due_on, sub.due_at, sub.recurrence_rule,
+  case when sub.status = 'completed' then coalesce(sub.updated_at, now()) else null end,
+  sub.created_at, sub.updated_at
+from public.sub_quests sub
+left join public.main_quests mq on mq.id = sub.main_quest_id and mq.user_id = sub.user_id
 on conflict (id) do nothing;
 
 insert into public.quests (
@@ -82,13 +86,16 @@ insert into public.quests (
   status, priority, scheduled_on, due_on, due_at, completed_at, created_at, updated_at
 )
 select
-  daily.id, daily.user_id, daily.main_quest_id,
+  daily.id, daily.user_id,
+  -- Drop cross-account project links: legacy single-column FK allowed them, the composite FK does not.
+  case when mq.id is not null then daily.main_quest_id else null end,
   case when parent.id is not null and parent.user_id = daily.user_id then daily.sub_quest_id else null end,
   'daily'::public.quest_kind, daily.title, daily.description, daily.memo,
   daily.status, daily.priority, daily.quest_date, daily.quest_date, daily.due_at,
   case when daily.status = 'completed' then coalesce(daily.completed_at, daily.updated_at, now()) else null end,
   daily.created_at, daily.updated_at
 from public.daily_quests daily
+left join public.main_quests mq on mq.id = daily.main_quest_id and mq.user_id = daily.user_id
 left join public.quests parent on parent.id = daily.sub_quest_id
 on conflict (id) do nothing;
 
