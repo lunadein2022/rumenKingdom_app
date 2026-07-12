@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { addDays, differenceInCalendarDays, format, parseISO, setDate } from 'date-fns'
 import { createCalendarEvent, listCalendarEvents, removeCalendarEvent, updateCalendarEvent, updateCalendarEventDate } from './services/calendarRepository'
+import { createProject as createProjectRow, listProjects, removeProject as removeProjectRow, updateProject as updateProjectRow } from './services/projectRepository'
 import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, Project, Quest, Relationship } from './types'
 import { setActiveAccountScope } from './lib/accountScope'
 
@@ -26,6 +27,7 @@ interface KingdomState {
   deleteEvent: (id: string) => void
   moveEvent: (id: string, date: string) => void
   hydrateEvents: () => Promise<void>
+  hydrateProjects: () => Promise<void>
   clearCalendarSync: () => void
   resetForAccount: (demo: boolean) => void
   toggleQuest: (id: string) => void
@@ -184,16 +186,34 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
     void updateCalendarEventDate(id, date, nextEndDate).then(() => set({ calendarSync: { status: 'saved', message: '일정 날짜를 변경했어요.' } })).catch(() => set((state) => ({ events: previous ? state.events.map((event) => event.id === id ? previous as CalendarEvent : event) : state.events, calendarSync: { status: 'error', message: '날짜를 변경하지 못해 이전 위치로 되돌렸어요.' } })))
   },
   hydrateEvents: async () => { try { const savedEvents = await listCalendarEvents(); if (savedEvents) set({ events: savedEvents }) } catch { set({ calendarSync: { status: 'error', message: '왕국 일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' } }) } },
+  hydrateProjects: async () => { try { const savedProjects = await listProjects(); if (savedProjects) set({ projects: savedProjects }) } catch { /* keep local projects on failure */ } },
   clearCalendarSync: () => set({ calendarSync: { status: 'idle', message: '' } }),
   resetForAccount: (demo) => set(accountData(demo)),
   toggleQuest: (id) => set((state) => ({ quests: state.quests.map((quest) => quest.id === id ? { ...quest, done: !quest.done, status: quest.done ? 'active' : 'completed', completedAt: quest.done ? undefined : timestamp(), updatedAt: timestamp() } : quest) })),
   addQuest: (quest) => { const id = crypto.randomUUID(); set((state) => ({ quests: [...state.quests, { ...quest, id, completedAt: quest.done ? timestamp() : undefined, createdAt: timestamp(), updatedAt: timestamp() }] })); return id },
   updateQuest: (id, quest) => set((state) => ({ quests: state.quests.map((item) => item.id === id ? { ...item, ...quest, updatedAt: timestamp() } : item) })),
   deleteQuest: (id) => set((state) => ({ quests: state.quests.filter((quest) => quest.id !== id) })),
-  addProject: (project) => { const id = crypto.randomUUID(); set((state) => ({ projects: [...state.projects, { ...project, id, createdAt: timestamp(), updatedAt: timestamp() }] })); return id },
-  updateProject: (id, project) => set((state) => ({ projects: state.projects.map((item) => item.id === id ? { ...item, ...project, updatedAt: timestamp() } : item) })),
-  deleteProject: (id) => set((state) => ({ projects: state.projects.filter((item) => item.id !== id), quests: state.quests.map((quest) => quest.projectId === id ? { ...quest, projectId: undefined, project: undefined } : quest) })),
-  setProjectStatus: (id, status) => set((state) => ({ projects: state.projects.map((project) => project.id === id ? { ...project, status, completedAt: status === 'completed' ? timestamp() : undefined, updatedAt: timestamp() } : project) })),
+  addProject: (project) => {
+    const id = crypto.randomUUID()
+    const now = timestamp()
+    const full: Project = { ...project, id, createdAt: now, updatedAt: now }
+    set((state) => ({ projects: [...state.projects, full] }))
+    void createProjectRow(full).catch(() => {})
+    return id
+  },
+  updateProject: (id, project) => {
+    set((state) => ({ projects: state.projects.map((item) => item.id === id ? { ...item, ...project, updatedAt: timestamp() } : item) }))
+    void updateProjectRow(id, project).catch(() => {})
+  },
+  deleteProject: (id) => {
+    set((state) => ({ projects: state.projects.filter((item) => item.id !== id), quests: state.quests.map((quest) => quest.projectId === id ? { ...quest, projectId: undefined, project: undefined } : quest) }))
+    void removeProjectRow(id).catch(() => {})
+  },
+  setProjectStatus: (id, status) => {
+    const completedAt = status === 'completed' ? timestamp() : undefined
+    set((state) => ({ projects: state.projects.map((project) => project.id === id ? { ...project, status, completedAt, updatedAt: timestamp() } : project) }))
+    void updateProjectRow(id, { status, completedAt }).catch(() => {})
+  },
   addMemo: (memo) => { const id = crypto.randomUUID(); set((state) => ({ memos: [...state.memos, { ...memo, id, createdAt: timestamp(), updatedAt: timestamp() }] })); return id },
   updateMemo: (id, memo) => set((state) => ({ memos: state.memos.map((item) => item.id === id ? { ...item, ...memo, updatedAt: timestamp() } : item) })),
   deleteMemo: (id) => set((state) => ({ memos: state.memos.filter((item) => item.id !== id) })),

@@ -2,10 +2,29 @@
 -- Run after supabase/schema.sql. This migration is rerunnable and preserves legacy rows.
 create extension if not exists "pgcrypto";
 
+-- Self-contained type + trigger dependencies. Older projects may predate these in schema.sql.
 do $$ begin
   create type public.quest_kind as enum ('daily', 'sub');
 exception when duplicate_object then null;
 end $$;
+
+do $$ begin
+  create type public.quest_status as enum ('planned', 'active', 'completed', 'archived');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type public.quest_priority as enum ('low', 'medium', 'high');
+exception when duplicate_object then null;
+end $$;
+
+create or replace function public.touch_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
 
 alter table public.profiles
   add column if not exists intro text not null default '',
@@ -73,8 +92,13 @@ select
   sub.id, sub.user_id,
   -- Drop cross-account project links: legacy single-column FK allowed them, the composite FK does not.
   case when mq.id is not null then sub.main_quest_id else null end,
-  'sub'::public.quest_kind, sub.title, sub.description, sub.memo,
-  sub.status, sub.priority, sub.due_on, sub.due_at, sub.recurrence_rule,
+  'sub'::public.quest_kind, sub.title,
+  '',                                 -- legacy sub_quests has no description column
+  coalesce(sub.memo, ''),
+  sub.status::public.quest_status,    -- legacy status/priority are text, not the canonical enums
+  'medium'::public.quest_priority,    -- legacy sub_quests has no priority column
+  sub.due_on, sub.due_at,
+  null,                               -- legacy recurrence is jsonb and stays in the preserved source table
   case when sub.status = 'completed' then coalesce(sub.updated_at, now()) else null end,
   sub.created_at, sub.updated_at
 from public.sub_quests sub
@@ -90,9 +114,13 @@ select
   -- Drop cross-account project links: legacy single-column FK allowed them, the composite FK does not.
   case when mq.id is not null then daily.main_quest_id else null end,
   case when parent.id is not null and parent.user_id = daily.user_id then daily.sub_quest_id else null end,
-  'daily'::public.quest_kind, daily.title, daily.description, daily.memo,
-  daily.status, daily.priority, daily.quest_date, daily.quest_date, daily.due_at,
-  case when daily.status = 'completed' then coalesce(daily.completed_at, daily.updated_at, now()) else null end,
+  'daily'::public.quest_kind, daily.title,
+  '',                                 -- legacy daily_quests has no description column
+  coalesce(daily.memo, ''),
+  daily.status::public.quest_status,    -- legacy status/priority are text, not the canonical enums
+  daily.priority::public.quest_priority,
+  daily.quest_date, daily.quest_date, daily.due_at,
+  case when daily.status = 'completed' then coalesce(daily.updated_at, now()) else null end,  -- legacy daily_quests has no completed_at
   daily.created_at, daily.updated_at
 from public.daily_quests daily
 left join public.main_quests mq on mq.id = daily.main_quest_id and mq.user_id = daily.user_id
