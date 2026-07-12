@@ -1,5 +1,7 @@
 -- Canonical Princess OS data model.
 -- Run after supabase/schema.sql. This migration is rerunnable and preserves legacy rows.
+begin;
+
 create extension if not exists "pgcrypto";
 
 -- Self-contained type + trigger dependencies. Older projects may predate these in schema.sql.
@@ -34,7 +36,69 @@ alter table public.main_quests
   add column if not exists favorite boolean not null default false,
   add column if not exists tags jsonb not null default '[]'::jsonb,
   add column if not exists manual_progress smallint,
+  add column if not exists starts_on date,
+  add column if not exists due_on date,
   add column if not exists completed_at timestamptz;
+
+-- Preserve the production schema's legacy start_date/due_date/progress values
+-- while moving the application onto the canonical column contract.
+do $$ begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'main_quests' and column_name = 'start_date'
+  ) then
+    execute 'update public.main_quests set starts_on = coalesce(starts_on, start_date)';
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'main_quests' and column_name = 'due_date'
+  ) then
+    execute 'update public.main_quests set due_on = coalesce(due_on, due_date)';
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'main_quests' and column_name = 'progress'
+  ) then
+    execute 'update public.main_quests set manual_progress = coalesce(manual_progress, greatest(0, least(100, progress)))';
+  end if;
+end $$;
+
+-- Older production rows use todo/normal text values. Normalize them before the
+-- frontend reads the rows as the canonical ProjectStatus and QuestPriority.
+update public.main_quests
+set completed_at = coalesce(completed_at, updated_at, now())
+where status::text in ('done', 'completed') and completed_at is null;
+
+do $$
+declare
+  status_type text;
+  priority_type text;
+begin
+  select data_type into status_type from information_schema.columns
+  where table_schema = 'public' and table_name = 'main_quests' and column_name = 'status';
+  select data_type into priority_type from information_schema.columns
+  where table_schema = 'public' and table_name = 'main_quests' and column_name = 'priority';
+
+  if status_type = 'USER-DEFINED' then
+    execute 'update public.main_quests set status = (case status::text
+      when ''active'' then ''active'' when ''doing'' then ''active'' when ''in_progress'' then ''active''
+      when ''done'' then ''completed'' when ''completed'' then ''completed''
+      when ''archived'' then ''archived'' else ''planned'' end)::public.quest_status';
+  else
+    execute 'update public.main_quests set status = case status::text
+      when ''active'' then ''active'' when ''doing'' then ''active'' when ''in_progress'' then ''active''
+      when ''done'' then ''completed'' when ''completed'' then ''completed''
+      when ''archived'' then ''archived'' else ''planned'' end';
+  end if;
+
+  if priority_type = 'USER-DEFINED' then
+    execute 'update public.main_quests set priority = (case priority::text
+      when ''high'' then ''high'' when ''low'' then ''low'' else ''medium'' end)::public.quest_priority';
+  else
+    execute 'update public.main_quests set priority = case priority::text
+      when ''high'' then ''high'' when ''low'' then ''low'' else ''medium'' end';
+  end if;
+end $$;
 
 do $$ begin
   alter table public.main_quests
@@ -73,6 +137,30 @@ create table if not exists public.quests (
 
 alter table public.quests add column if not exists tags jsonb not null default '[]'::jsonb;
 
+-- Supabase projects created from older Princess OS drafts do not all share the
+-- same legacy quest columns. Add only missing compatibility columns before the
+-- static copy below; existing columns and data are never replaced.
+alter table public.sub_quests
+  add column if not exists description text not null default '',
+  add column if not exists memo text not null default '',
+  add column if not exists status public.quest_status not null default 'planned',
+  add column if not exists priority public.quest_priority not null default 'medium',
+  add column if not exists due_on date,
+  add column if not exists due_at time,
+  add column if not exists recurrence_rule text,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table public.daily_quests
+  add column if not exists description text not null default '',
+  add column if not exists memo text not null default '',
+  add column if not exists status public.quest_status not null default 'planned',
+  add column if not exists priority public.quest_priority not null default 'medium',
+  add column if not exists due_at time,
+  add column if not exists completed_at timestamptz,
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
+
 do $$ begin
   alter table public.quests add constraint quests_main_quest_owner_fkey
     foreign key (main_quest_id, user_id)
@@ -100,11 +188,20 @@ select
   coalesce(sub.description, ''),
   coalesce(sub.memo, ''),
   '[]'::jsonb,
-  sub.status::public.quest_status,
-  sub.priority::public.quest_priority,
+  case sub.status::text
+    when 'active' then 'active'::public.quest_status
+    when 'completed' then 'completed'::public.quest_status
+    when 'archived' then 'archived'::public.quest_status
+    else 'planned'::public.quest_status
+  end,
+  case sub.priority::text
+    when 'high' then 'high'::public.quest_priority
+    when 'low' then 'low'::public.quest_priority
+    else 'medium'::public.quest_priority
+  end,
   sub.due_on, sub.due_at,
-  sub.recurrence_rule,
-  case when sub.status = 'completed' then coalesce(sub.updated_at, now()) else null end,
+  nullif(nullif(sub.recurrence_rule::text, ''), 'null'),
+  case when sub.status::text = 'completed' then coalesce(sub.updated_at, now()) else null end,
   sub.created_at, sub.updated_at
 from public.sub_quests sub
 left join public.main_quests mq on mq.id = sub.main_quest_id and mq.user_id = sub.user_id
@@ -123,10 +220,19 @@ select
   coalesce(daily.description, ''),
   coalesce(daily.memo, ''),
   '[]'::jsonb,
-  daily.status::public.quest_status,
-  daily.priority::public.quest_priority,
+  case daily.status::text
+    when 'active' then 'active'::public.quest_status
+    when 'completed' then 'completed'::public.quest_status
+    when 'archived' then 'archived'::public.quest_status
+    else 'planned'::public.quest_status
+  end,
+  case daily.priority::text
+    when 'high' then 'high'::public.quest_priority
+    when 'low' then 'low'::public.quest_priority
+    else 'medium'::public.quest_priority
+  end,
   daily.quest_date, daily.quest_date, daily.due_at,
-  case when daily.status = 'completed' then coalesce(daily.completed_at, daily.updated_at, now()) else null end,
+  case when daily.status::text = 'completed' then coalesce(daily.completed_at, daily.updated_at, now()) else null end,
   daily.created_at, daily.updated_at
 from public.daily_quests daily
 left join public.main_quests mq on mq.id = daily.main_quest_id and mq.user_id = daily.user_id
@@ -193,7 +299,19 @@ end $$;
 alter table public.diary_entries
   add column if not exists favorite boolean not null default false,
   add column if not exists title text not null default '',
+  add column if not exists body text not null default '',
   add column if not exists tags jsonb not null default '[]'::jsonb;
+
+-- Production used reflection for the diary body. Keep that column intact and
+-- copy it only when the canonical body is still empty.
+do $$ begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'diary_entries' and column_name = 'reflection'
+  ) then
+    execute 'update public.diary_entries set body = coalesce(nullif(body, ''''), reflection, '''')';
+  end if;
+end $$;
 
 create unique index if not exists diary_entries_id_user_uidx
   on public.diary_entries(id, user_id);
@@ -319,7 +437,19 @@ alter table public.relationships
   add column if not exists business_card_ocr_text text,
   add column if not exists tags jsonb not null default '[]'::jsonb,
   add column if not exists favorite boolean not null default false,
-  add column if not exists source text not null default 'manual';
+  add column if not exists source text not null default 'manual',
+  add column if not exists relationship_type text not null default '';
+
+-- Production used role for the relationship type. Preserve it and backfill the
+-- canonical field without overwriting a value that was already edited.
+do $$ begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'relationships' and column_name = 'role'
+  ) then
+    execute 'update public.relationships set relationship_type = coalesce(nullif(relationship_type, ''''), role, '''')';
+  end if;
+end $$;
 
 -- New tables use the same authoritative ownership boundary.
 alter table public.quests enable row level security;
@@ -378,3 +508,5 @@ using (bucket_id = 'room-backgrounds' and (storage.foldername(name))[1] = auth.u
 with check (bucket_id = 'room-backgrounds' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "room_backgrounds_delete_own" on storage.objects for delete to authenticated
 using (bucket_id = 'room-backgrounds' and (storage.foldername(name))[1] = auth.uid()::text);
+
+commit;

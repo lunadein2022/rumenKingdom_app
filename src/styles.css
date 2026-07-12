@@ -174,5 +174,5 @@ a{color:inherit}.brand,.nav-item,.header-shortcut{text-decoration:none}.page-hea
 .topbar{position:sticky;top:12px;z-index:100;isolation:isolate}
 @media(min-width:901px){.login-main-logo,.login-welcome-copy{left:6%}}
 @media(max-width:1200px) and (min-width:901px){.login-brand-side{--login-safe-shift:40px}.login-princess{left:calc(64% + var(--login-safe-shift))}}
-@media(max-width:900px){.login-main-logo{left:50%}.login-main-logo,.login-welcome-copy{translate:0 0}.login-princess{left:18%}.topbar{top:8px}}
+@media(max-width:900px){.login-main-logo{left:50%;translate:-50% 0}.login-welcome-copy{translate:0 0}.login-princess{left:18%}.topbar{top:8px}}
 @media(max-width:520px){.login-princess{left:9%}}
