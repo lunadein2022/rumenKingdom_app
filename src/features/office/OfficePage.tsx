@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArchiveRestore, Check, CheckCircle2, ChevronRight, Clock3, Link2, Pencil, Plus, Search, Sparkles, Trash2, Unlink, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { ArchiveRestore, Check, CheckCircle2, ChevronRight, Clock3, GripVertical, Link2, Pencil, Plus, Search, Sparkles, Trash2, Unlink, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BackButton } from '../../components/BackButton'
 import { EmptyState, Metric, SectionTitle } from '../../components/Common'
@@ -18,6 +18,7 @@ export function OfficePage() {
   const [filter, setFilter] = useState<QuestFilter>('all')
   const [query, setQuery] = useState('')
   const [draggedQuestId, setDraggedQuestId] = useState<string | null>(null)
+  const draggedQuestIdRef = useRef<string | null>(null)
   const [dropProjectId, setDropProjectId] = useState<string | null>(null)
   const [dropNotice, setDropNotice] = useState('')
   const activeProjects = projects.filter((project) => project.status === 'active' || project.status === 'planned')
@@ -45,13 +46,60 @@ export function OfficePage() {
     else addQuest(input)
     setEditingQuest(undefined)
   }
-  const finishDrop = (project?: Project) => {
-    if (!draggedQuestId) return
-    updateQuest(draggedQuestId, { projectId: project?.id, project: project?.title })
+  const finishDrop = (questId: string, project?: Project) => {
+    if (!quests.some((quest) => quest.id === questId)) return
+    updateQuest(questId, { projectId: project?.id, project: project?.title })
     setDropNotice(project ? `${project.title}에 퀘스트를 연결했습니다.` : '독립 퀘스트로 변경했습니다.')
+    draggedQuestIdRef.current = null
     setDraggedQuestId(null)
     setDropProjectId(null)
     window.setTimeout(() => setDropNotice(''), 2200)
+  }
+  const startPointerDrag = (questId: string, event: ReactPointerEvent<HTMLElement>) => {
+    if (event.button !== 0 || event.pointerType === 'touch') return
+    event.preventDefault()
+    const origin = { x: event.clientX, y: event.clientY }
+    let active = false
+    let targetProjectId: string | null = null
+
+    const cleanup = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', release)
+      window.removeEventListener('pointercancel', cancel)
+      document.body.classList.remove('office-pointer-dragging')
+    }
+    const move = (pointer: PointerEvent) => {
+      if (!active && Math.hypot(pointer.clientX - origin.x, pointer.clientY - origin.y) < 6) return
+      active = true
+      pointer.preventDefault()
+      draggedQuestIdRef.current = questId
+      setDraggedQuestId(questId)
+      document.body.classList.add('office-pointer-dragging')
+      const target = document.elementFromPoint(pointer.clientX, pointer.clientY)?.closest<HTMLElement>('[data-project-id], [data-independent-drop]')
+      targetProjectId = target?.dataset.projectId ?? (target?.hasAttribute('data-independent-drop') ? '' : null)
+      setDropProjectId(targetProjectId || null)
+    }
+    const release = () => {
+      cleanup()
+      const project = activeProjects.find((item) => item.id === targetProjectId)
+      if (active && targetProjectId === '') finishDrop(questId)
+      else if (active && project) finishDrop(questId, project)
+      else {
+        draggedQuestIdRef.current = null
+        setDraggedQuestId(null)
+        setDropProjectId(null)
+      }
+    }
+    const cancel = () => {
+      cleanup()
+      draggedQuestIdRef.current = null
+      setDraggedQuestId(null)
+      setDropProjectId(null)
+    }
+
+    window.addEventListener('pointermove', move, { passive: false })
+    window.addEventListener('pointerup', release, { once: true })
+    window.addEventListener('pointercancel', cancel, { once: true })
   }
 
   return <div>
@@ -70,7 +118,7 @@ export function OfficePage() {
           {activeProjects.map((project) => {
             const linked = quests.filter((quest) => quest.projectId === project.id)
             const progress = projectProgress(project, quests)
-            return <article className={`office-project-item royal-card ${dropProjectId === project.id ? 'drop-ready' : ''}`} key={project.id} onDragEnter={(event) => { if (draggedQuestId) { event.preventDefault(); setDropProjectId(project.id) } }} onDragOver={(event) => { if (draggedQuestId) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropProjectId(null) }} onDrop={(event) => { event.preventDefault(); finishDrop(project) }}>
+            return <article data-project-id={project.id} className={`office-project-item royal-card ${dropProjectId === project.id ? 'drop-ready' : ''}`} key={project.id}>
               <button className="office-project-main" onClick={() => navigate(`/office/projects/${project.id}`)}>
                 <span className="project-tag">{project.tag}</span>
                 <span className="office-project-title"><b>{project.title}</b><small>{linked.length ? `연결 퀘스트 ${linked.filter((quest) => quest.done).length}/${linked.length}` : '연결된 퀘스트 없음'}</small></span>
@@ -87,13 +135,13 @@ export function OfficePage() {
 
       <section className="panel glass-panel office-quest-pane">
         <div className="office-quest-heading"><div><h2>전체 퀘스트</h2><p>메인퀘스트 연결 여부와 관계없이 모든 실행 항목을 관리해요.</p></div><button className="primary" onClick={() => setEditingQuest(null)}><Plus size={15}/> 새 퀘스트</button></div>
-        {draggedQuestId && <div className="independent-drop-zone" onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move' }} onDrop={(event) => { event.preventDefault(); finishDrop(undefined) }}><Unlink size={15}/> 여기에 놓으면 독립 퀘스트로 변경됩니다.</div>}
+        {draggedQuestId && <div className="independent-drop-zone" data-independent-drop><Unlink size={15}/> 여기에 놓으면 독립 퀘스트로 변경됩니다.</div>}
         <div className="quest-command-bar">
           <label><Search size={15}/><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="퀘스트 검색"/></label>
           <div className="quest-filters">{filterOptions.map((option) => <button key={option.id} className={filter === option.id ? 'active' : ''} onClick={() => setFilter(option.id)}>{option.label}</button>)}</div>
         </div>
         <div className="office-quest-list">
-          {visibleQuests.map((quest) => <OfficeQuestItem key={quest.id} quest={quest} project={projects.find((project) => project.id === quest.projectId)} onEdit={() => setEditingQuest(quest)} onDelete={() => { if (confirm(`“${quest.title}” 퀘스트를 삭제할까요?`)) deleteQuest(quest.id) }} onDragStart={() => setDraggedQuestId(quest.id)} onDragEnd={() => { setDraggedQuestId(null); setDropProjectId(null) }}/>) }
+          {visibleQuests.map((quest) => <OfficeQuestItem key={quest.id} quest={quest} project={projects.find((project) => project.id === quest.projectId)} dragging={draggedQuestId === quest.id} onEdit={() => setEditingQuest(quest)} onDelete={() => { if (confirm(`“${quest.title}” 퀘스트를 삭제할까요?`)) deleteQuest(quest.id) }} onPointerDragStart={startPointerDrag}/>) }
         </div>
         {!visibleQuests.length && <EmptyState title="조건에 맞는 퀘스트가 없어요" action="새 퀘스트 만들기" onAction={() => setEditingQuest(null)}/>} 
       </section>
@@ -105,11 +153,12 @@ export function OfficePage() {
   </div>
 }
 
-function OfficeQuestItem({ quest, project, onEdit, onDelete, onDragStart, onDragEnd }: { quest: Quest; project?: Project; onEdit: () => void; onDelete: () => void; onDragStart?: () => void; onDragEnd?: () => void }) {
+function OfficeQuestItem({ quest, project, dragging, onEdit, onDelete, onPointerDragStart }: { quest: Quest; project?: Project; dragging?: boolean; onEdit: () => void; onDelete: () => void; onPointerDragStart?: (questId: string, event: ReactPointerEvent<HTMLElement>) => void }) {
   const toggleQuest = useKingdomStore((state) => state.toggleQuest)
-  return <article className={`office-quest-item ${quest.done ? 'done' : ''} ${onDragStart ? 'draggable' : ''}`} draggable={Boolean(onDragStart)} onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', quest.id); onDragStart?.() }} onDragEnd={onDragEnd}>
+  return <article className={`office-quest-item ${quest.done ? 'done' : ''} ${onPointerDragStart ? 'drag-enabled' : ''} ${dragging ? 'is-dragging' : ''}`}>
+    <span className="quest-drag-handle" onPointerDown={(event) => onPointerDragStart?.(quest.id, event)} aria-label={`${quest.title} 드래그하여 메인퀘스트에 연결`} title="이 손잡이나 퀘스트 제목을 드래그하여 연결"><GripVertical size={15}/></span>
     <button className="quest-toggle" onClick={() => toggleQuest(quest.id)} aria-label={`${quest.title} ${quest.done ? '미완료로 변경' : '완료'}`}><span>{quest.done && <Check size={13}/>}</span></button>
-    <div className="office-quest-copy"><div><b>{quest.title}</b><em>{quest.type === 'daily' ? '일일' : '서브'}</em></div><small className={project ? 'linked-label' : 'independent-label'}>{project ? <><Link2 size={11}/>{project.title}</> : <><Unlink size={11}/>독립 퀘스트</>}</small></div>
+    <div className="office-quest-copy" onPointerDown={(event) => onPointerDragStart?.(quest.id, event)}><div><b>{quest.title}</b><em>{quest.type === 'daily' ? '일일' : '서브'}</em></div><small className={project ? 'linked-label' : 'independent-label'}>{project ? <><Link2 size={11}/>{project.title}</> : <><Unlink size={11}/>독립 퀘스트</>}</small></div>
     <time><Clock3 size={12}/>{questDueLabel(quest)}</time>
     <i className={`priority ${quest.priority}`}/>
     <button className="quest-icon-action" onClick={onEdit} aria-label={`${quest.title} 편집`}><Pencil size={14}/></button>

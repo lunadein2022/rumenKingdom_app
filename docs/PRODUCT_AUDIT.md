@@ -135,3 +135,29 @@
 - Aligned the desktop login logo, princess figure, and welcome copy with a shared responsive safe-area shift while retaining the existing centered mobile composition and login-card position.
 - Made the shared glass Header sticky at its existing desktop/mobile inset without making the Footer sticky; the application shell no longer creates an overflow ancestor that prevents sticky positioning.
 - Added a data-preserving `calendar_events` upgrade that detects legacy `start_at`, `end_at`, `event_start`, `start_date`, `date`, and timestamp-typed `starts_at/ends_at` columns, converts them to the frontend contract in `Asia/Seoul`, maps legacy categories/priority, and refuses to invent dates when source rows cannot be migrated.
+
+## 2026-07 authentication resilience and Office drag reliability
+
+- Capped the blocking authentication bootstrap at four seconds so a delayed Supabase session request cannot hold the application on the palace loading screen indefinitely.
+- Added failure-safe session initialization, late-session recovery, and a user-facing connection notice on the login screen.
+- Wrapped password sign-in, account creation, password reset, and Google OAuth in consistent loading, exception, and localized error handling while preserving Supabase email-confirmation behavior.
+- Normalized authentication redirects to the application origin root for local and Netlify allow-list compatibility.
+- Replaced whole-row quest dragging with a dedicated desktop drag handle so checkbox, edit, and delete controls no longer compete with native drag initiation.
+- Made Office drops read the quest identifier directly from `dataTransfer`, with a synchronous ref fallback, instead of depending on React state committing before the pointer reaches a main quest.
+- Confirmed the latest production bundle renders one drag handle per visible quest and reaches the login screen immediately when Supabase is not configured locally.
+
+## 2026-07 Office pointer drag and mobile quest readability
+
+- Replaced the unreliable native HTML5 quest drag gesture with a desktop pointer-driven interaction that tracks the cursor, highlights the main quest under it, and connects the quest on release.
+- Allowed users to begin dragging from either the grip or the quest title area while preserving normal checkbox, edit, and delete button behavior.
+- Kept the independent-quest drop zone compatible with the same pointer flow.
+- Rebuilt the mobile quest row with named grid areas so the checkbox, title, project label, due time, priority, edit, and delete controls cannot be auto-placed into the wrong columns.
+- Hid the desktop-only drag grip below 650px and gave the quest title the flexible mobile column.
+- Verified a real cursor drag from an independent quest to `Hydro Hawk`, including the updated project label and success toast, then restored the test record to its original independent state.
+- Verified at a 557px viewport that the quest copy receives 356px of usable width and edit/delete remain aligned on the right edge.
+
+## 2026-07 responsive Royal Library shelf alignment
+
+- Replaced the fixed two-column, left-aligned mobile Library grid with a centered wrapping shelf while preserving the compact 112px book-cover size.
+- The shelf now uses the available width without stretching the supplied cover artwork, and incomplete final rows are centered instead of leaving a large empty area on the right.
+- Verified four centered books plus a centered three-book final row at 618px, and two centered books per row at 390px.

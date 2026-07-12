@@ -2,13 +2,22 @@ import { useState, type FormEvent } from 'react'
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Sparkles } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
-export function LoginScreen({ onGuest }: { onGuest: () => void }) {
+export function LoginScreen({ onGuest, initialMessage = '' }: { onGuest: () => void; initialMessage?: string }) {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
+  const [message, setMessage] = useState(initialMessage)
+
+  const authMessage = (error: unknown) => {
+    const fallback = error instanceof Error ? error.message : '인증 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'
+    if (/invalid login credentials/i.test(fallback)) return '이메일 또는 비밀번호가 올바르지 않아요.'
+    if (/email not confirmed/i.test(fallback)) return '이메일 인증을 완료한 뒤 로그인해 주세요.'
+    if (/user already registered/i.test(fallback)) return '이미 가입된 이메일이에요. 로그인해 주세요.'
+    if (/signup.*disabled|signups not allowed/i.test(fallback)) return '현재 신규 계정 생성이 허용되지 않았어요. Supabase 가입 설정을 확인해 주세요.'
+    return fallback
+  }
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -19,13 +28,18 @@ export function LoginScreen({ onGuest }: { onGuest: () => void }) {
     }
 
     setLoading(true)
-    const result = mode === 'login'
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
-    setLoading(false)
-
-    if (result.error) setMessage(result.error.message)
-    else if (mode === 'signup') setMessage('확인 메일을 보냈어요. 인증 후 왕국에 입장해 주세요.')
+    try {
+      const result = mode === 'login'
+        ? await supabase.auth.signInWithPassword({ email, password })
+        : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/` } })
+      if (result.error) setMessage(authMessage(result.error))
+      else if (mode === 'signup' && result.data.session) setMessage('계정이 만들어졌어요. 왕국으로 이동하고 있습니다.')
+      else if (mode === 'signup') setMessage('확인 메일을 보냈어요. 인증 후 왕국에 입장해 주세요.')
+    } catch (error) {
+      setMessage(authMessage(error))
+    } finally {
+      setLoading(false)
+    }
   }
 
   const signInWithGoogle = async () => {
@@ -33,16 +47,29 @@ export function LoginScreen({ onGuest }: { onGuest: () => void }) {
       setMessage('Supabase 환경 변수를 먼저 설정해 주세요.')
       return
     }
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
-    if (error) setMessage(error.message)
+    setLoading(true)
+    setMessage('Google 로그인 화면으로 이동하고 있어요...')
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/` } })
+      if (error) setMessage(authMessage(error))
+    } catch (error) {
+      setMessage(authMessage(error))
+    } finally {
+      setLoading(false)
+    }
   }
 
   const resetPassword = async () => {
     if (!supabase || !email.trim()) { setMessage('비밀번호를 재설정할 이메일을 먼저 입력해 주세요.'); return }
     setLoading(true)
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin })
-    setLoading(false)
-    setMessage(error ? error.message : '비밀번호 재설정 메일을 보냈어요.')
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/` })
+      setMessage(error ? authMessage(error) : '비밀번호 재설정 메일을 보냈어요.')
+    } catch (error) {
+      setMessage(authMessage(error))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -70,7 +97,7 @@ export function LoginScreen({ onGuest }: { onGuest: () => void }) {
         </form>
 
         <div className="login-divider"><span>또는</span></div>
-        <button className="google-login" onClick={signInWithGoogle}><b>G</b> Google 계정으로 계속하기</button>
+        <button className="google-login" onClick={signInWithGoogle} disabled={loading}><b>G</b> Google 계정으로 계속하기</button>
         <button className="mode-switch" onClick={() => { setMode((value) => value === 'login' ? 'signup' : 'login'); setMessage('') }}>{mode === 'login' ? '처음 오셨나요? 왕국 계정 만들기' : '이미 계정이 있나요? 로그인하기'}</button>
         {!isSupabaseConfigured && <button className="guest-entry" onClick={onGuest}>데모로 먼저 둘러보기</button>}
         <small className="login-copyright">Copyright © RUMEN KINGDOM · All Rights Reserved.</small>
