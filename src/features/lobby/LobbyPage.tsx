@@ -4,6 +4,7 @@ import { QuestRow } from '../../components/QuestRow'
 import { RitaFace } from '../../components/RitaFace'
 import { EmptyState, SectionTitle } from '../../components/Common'
 import { projectProgress, useKingdomStore } from '../../store'
+import { lobbyGreetingLead } from '../../lib/serviceTime'
 import type { Quest } from '../../types'
 
 export function LobbyPage() {
@@ -24,7 +25,7 @@ export function LobbyPage() {
       <div className="lobby-hero-glow"/>
       <div className="lobby-briefing-copy">
         <div className="lobby-rita-greeting"><RitaFace expression="welcome"/><span><small>RITA'S MORNING REPORT</small><b>리타의 오늘 브리핑</b></span></div>
-        <h1 id="lobby-briefing-title">좋은 아침입니다,<br/>공주님.</h1>
+        <h1 id="lobby-briefing-title">{lobbyGreetingLead()}<br/>공주님.</h1>
         <p>오늘은 일정 <b>{todayEvents.length}건</b>과 퀘스트 <b>{openTodayQuests.length}건</b>이 예정되어 있습니다.</p>
         <p>{priorityProject ? `${priorityProject.title} 메인퀘스트의 마감과 진행 상황을 먼저 살펴보는 것을 추천드려요.` : '오늘은 새 목표를 정하고 차분히 하루를 시작하기 좋은 날이에요.'}</p>
         <div className="lobby-vitals" aria-label="오늘의 핵심 현황">
