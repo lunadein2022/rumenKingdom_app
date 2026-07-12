@@ -168,10 +168,14 @@ create table if not exists public.memos (
   source text not null default 'manual' check (source in ('manual', 'rita', 'document', 'audio')),
   important boolean not null default false,
   favorite boolean not null default false,
+  tags jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (id, user_id)
 );
+
+-- Inline tag list (entity_tags table is a later phase). Keep it on existing memos tables too.
+alter table public.memos add column if not exists tags jsonb not null default '[]'::jsonb;
 
 do $$ begin
   alter table public.memos add constraint memos_main_quest_owner_fkey
@@ -181,7 +185,9 @@ exception when duplicate_object then null;
 end $$;
 
 alter table public.diary_entries
-  add column if not exists favorite boolean not null default false;
+  add column if not exists favorite boolean not null default false,
+  add column if not exists title text not null default '',
+  add column if not exists tags jsonb not null default '[]'::jsonb;
 
 create unique index if not exists diary_entries_id_user_uidx
   on public.diary_entries(id, user_id);

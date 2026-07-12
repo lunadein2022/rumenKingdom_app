@@ -10,6 +10,9 @@ function App() {
   const hydrateEvents = useKingdomStore((state) => state.hydrateEvents)
   const hydrateProjects = useKingdomStore((state) => state.hydrateProjects)
   const hydrateQuests = useKingdomStore((state) => state.hydrateQuests)
+  const hydrateMemos = useKingdomStore((state) => state.hydrateMemos)
+  const hydrateRelationships = useKingdomStore((state) => state.hydrateRelationships)
+  const hydrateDiaries = useKingdomStore((state) => state.hydrateDiaries)
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(!supabase)
   const [authNotice, setAuthNotice] = useState('')
@@ -61,12 +64,12 @@ function App() {
     const prepare = async () => {
       if (session) {
         await activateKingdomAccount(`user:${session.user.id}`)
-        await Promise.all([hydrateEvents(), hydrateProjects()])
+        await Promise.all([hydrateEvents(), hydrateProjects(), hydrateMemos(), hydrateRelationships(), hydrateDiaries()])
         await hydrateQuests()
         if (active) setDataReady(true)
       } else if (guestMode) {
         await activateKingdomAccount('guest', true)
-        await Promise.all([hydrateEvents(), hydrateProjects()])
+        await Promise.all([hydrateEvents(), hydrateProjects(), hydrateMemos(), hydrateRelationships(), hydrateDiaries()])
         await hydrateQuests()
         if (active) setDataReady(true)
       } else {
@@ -75,7 +78,7 @@ function App() {
     }
     void prepare()
     return () => { active = false }
-  }, [guestMode, hydrateEvents, hydrateProjects, hydrateQuests, session])
+  }, [guestMode, hydrateEvents, hydrateProjects, hydrateQuests, hydrateMemos, hydrateRelationships, hydrateDiaries, session])
 
   const enterGuest = () => { setDataReady(false); sessionStorage.setItem('rumen-guest-mode', 'true'); setGuestMode(true) }
   const signOut = async () => { setDataReady(false); deactivateKingdomAccount(); if (session) await supabase?.auth.signOut(); sessionStorage.removeItem('rumen-guest-mode'); setGuestMode(false); setSession(null) }

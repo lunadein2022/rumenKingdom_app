@@ -4,6 +4,9 @@ import { addDays, differenceInCalendarDays, format, parseISO, setDate } from 'da
 import { createCalendarEvent, listCalendarEvents, removeCalendarEvent, updateCalendarEvent, updateCalendarEventDate } from './services/calendarRepository'
 import { createProject as createProjectRow, listProjects, removeProject as removeProjectRow, updateProject as updateProjectRow } from './services/projectRepository'
 import { createQuest as createQuestRow, listQuests, removeQuest as removeQuestRow, updateQuest as updateQuestRow } from './services/questRepository'
+import { createMemo as createMemoRow, listMemos, removeMemo as removeMemoRow, updateMemo as updateMemoRow } from './services/memoRepository'
+import { createRelationship as createRelationshipRow, listRelationships, removeRelationship as removeRelationshipRow, updateRelationship as updateRelationshipRow } from './services/relationshipRepository'
+import { createDiary as createDiaryRow, listDiaries, removeDiary as removeDiaryRow, updateDiary as updateDiaryRow } from './services/diaryRepository'
 import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, Project, Quest, Relationship } from './types'
 import { setActiveAccountScope } from './lib/accountScope'
 
@@ -30,6 +33,9 @@ interface KingdomState {
   hydrateEvents: () => Promise<void>
   hydrateProjects: () => Promise<void>
   hydrateQuests: () => Promise<void>
+  hydrateMemos: () => Promise<void>
+  hydrateRelationships: () => Promise<void>
+  hydrateDiaries: () => Promise<void>
   clearCalendarSync: () => void
   resetForAccount: (demo: boolean) => void
   toggleQuest: (id: string) => void
@@ -200,6 +206,9 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
       }))
     } catch { /* keep local quests on failure */ }
   },
+  hydrateMemos: async () => { try { const saved = await listMemos(); if (saved) set({ memos: saved }) } catch { /* keep local memos on failure */ } },
+  hydrateRelationships: async () => { try { const saved = await listRelationships(); if (saved) set({ relationships: saved }) } catch { /* keep local relationships on failure */ } },
+  hydrateDiaries: async () => { try { const saved = await listDiaries(); if (saved) set({ diaries: saved }) } catch { /* keep local diaries on failure */ } },
   clearCalendarSync: () => set({ calendarSync: { status: 'idle', message: '' } }),
   resetForAccount: (demo) => set(accountData(demo)),
   toggleQuest: (id) => {
@@ -251,14 +260,61 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
     set((state) => ({ projects: state.projects.map((project) => project.id === id ? { ...project, status, completedAt, updatedAt: timestamp() } : project) }))
     void updateProjectRow(id, { status, completedAt }).catch(() => {})
   },
-  addMemo: (memo) => { const id = crypto.randomUUID(); set((state) => ({ memos: [...state.memos, { ...memo, id, createdAt: timestamp(), updatedAt: timestamp() }] })); return id },
-  updateMemo: (id, memo) => set((state) => ({ memos: state.memos.map((item) => item.id === id ? { ...item, ...memo, updatedAt: timestamp() } : item) })),
-  deleteMemo: (id) => set((state) => ({ memos: state.memos.filter((item) => item.id !== id) })),
-  addRelationship: (relationship) => { const id = crypto.randomUUID(); set((state) => ({ relationships: [...state.relationships, { ...relationship, id, createdAt: timestamp(), updatedAt: timestamp() }] })); return id },
-  updateRelationship: (id, relationship) => set((state) => ({ relationships: state.relationships.map((item) => item.id === id ? { ...item, ...relationship, updatedAt: timestamp() } : item) })),
-  deleteRelationship: (id) => set((state) => ({ relationships: state.relationships.filter((item) => item.id !== id) })),
-  upsertDiary: (entry) => { let id = ''; set((state) => { const existing = state.diaries.find((item) => item.date === entry.date); id = existing?.id ?? crypto.randomUUID(); return { diaries: existing ? state.diaries.map((item) => item.id === existing.id ? { ...item, ...entry, updatedAt: timestamp() } : item) : [...state.diaries, { ...entry, id, createdAt: timestamp(), updatedAt: timestamp() }] } }); return id },
-  deleteDiary: (id) => set((state) => ({ diaries: state.diaries.filter((item) => item.id !== id) })),
+  addMemo: (memo) => {
+    const id = crypto.randomUUID()
+    const now = timestamp()
+    const full: Memo = { ...memo, id, createdAt: now, updatedAt: now }
+    set((state) => ({ memos: [...state.memos, full] }))
+    void createMemoRow(full).catch(() => {})
+    return id
+  },
+  updateMemo: (id, memo) => {
+    set((state) => ({ memos: state.memos.map((item) => item.id === id ? { ...item, ...memo, updatedAt: timestamp() } : item) }))
+    void updateMemoRow(id, memo).catch(() => {})
+  },
+  deleteMemo: (id) => {
+    set((state) => ({ memos: state.memos.filter((item) => item.id !== id) }))
+    void removeMemoRow(id).catch(() => {})
+  },
+  addRelationship: (relationship) => {
+    const id = crypto.randomUUID()
+    const now = timestamp()
+    const full: Relationship = { ...relationship, id, createdAt: now, updatedAt: now }
+    set((state) => ({ relationships: [...state.relationships, full] }))
+    void createRelationshipRow(full).catch(() => {})
+    return id
+  },
+  updateRelationship: (id, relationship) => {
+    set((state) => ({ relationships: state.relationships.map((item) => item.id === id ? { ...item, ...relationship, updatedAt: timestamp() } : item) }))
+    void updateRelationshipRow(id, relationship).catch(() => {})
+  },
+  deleteRelationship: (id) => {
+    set((state) => ({ relationships: state.relationships.filter((item) => item.id !== id) }))
+    void removeRelationshipRow(id).catch(() => {})
+  },
+  upsertDiary: (entry) => {
+    let id = ''
+    let created = false
+    let full: DiaryEntry | undefined
+    set((state) => {
+      const existing = state.diaries.find((item) => item.date === entry.date)
+      id = existing?.id ?? crypto.randomUUID()
+      if (existing) {
+        full = { ...existing, ...entry, updatedAt: timestamp() }
+        return { diaries: state.diaries.map((item) => item.id === existing.id ? full as DiaryEntry : item) }
+      }
+      created = true
+      full = { ...entry, id, createdAt: timestamp(), updatedAt: timestamp() }
+      return { diaries: [...state.diaries, full] }
+    })
+    if (created) void createDiaryRow(full as DiaryEntry).catch(() => {})
+    else void updateDiaryRow(id, entry).catch(() => {})
+    return id
+  },
+  deleteDiary: (id) => {
+    set((state) => ({ diaries: state.diaries.filter((item) => item.id !== id) }))
+    void removeDiaryRow(id).catch(() => {})
+  },
   toggleLibraryFavorite: (type, id) => set((state) => ({
     projects: type === 'mainQuest' ? state.projects.map((item) => item.id === id ? { ...item, favorite: !item.favorite, updatedAt: timestamp() } : item) : state.projects,
     quests: type === 'dailyQuest' || type === 'subQuest' ? state.quests.map((item) => item.id === id ? { ...item, favorite: !item.favorite, updatedAt: timestamp() } : item) : state.quests,
