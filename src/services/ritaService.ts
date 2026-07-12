@@ -39,6 +39,7 @@ export type RitaRequestAnalysis =
   | { kind: 'chat'; reply: string }
   | { kind: 'clarify'; reply: string }
   | { kind: 'memo'; title: string; content: string; tags: string[] }
+  | { kind: 'project'; title: string; goal: string; description: string; startDate?: string; dueDate?: string; priority: QuestPriority; tags: string[]; reply: string }
   | { kind: 'quest'; title: string; description: string; questType: QuestType; dueDate?: string; dueTime?: string; priority: QuestPriority; tags: string[]; projectId?: string; needsProjectSelection: boolean; reply: string }
   | { kind: 'calendar'; title: string; description: string; startDate: string; endDate?: string; startTime?: string; endTime?: string; allDay: boolean; calendarKind: CalendarKind; important: boolean; reply: string }
 

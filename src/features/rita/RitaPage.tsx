@@ -9,9 +9,10 @@ import { accountStorageKey } from '../../lib/accountScope'
 
 type ChatMessage = { from: 'rita' | 'user'; text: string; expression?: RitaExpression }
 type MemoDraft = { kind: 'memo'; title: string; content: string; tags: string[] }
+type ProjectDraft = Extract<RitaRequestAnalysis, { kind: 'project' }>
 type QuestDraft = Extract<RitaRequestAnalysis, { kind: 'quest' }>
 type CalendarDraft = Extract<RitaRequestAnalysis, { kind: 'calendar' }>
-type Draft = MemoDraft | QuestDraft | CalendarDraft | RitaAttachmentAnalysis
+type Draft = MemoDraft | ProjectDraft | QuestDraft | CalendarDraft | RitaAttachmentAnalysis
 
 const welcomeMessage: ChatMessage = {
   from: 'rita',
@@ -23,7 +24,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
   const navigate = useNavigate()
   const location = useLocation()
   const fileInput = useRef<HTMLInputElement>(null)
-  const { projects, addQuest, addEvent } = useKingdomStore()
+  const { projects, addProject, addQuest, addEvent } = useKingdomStore()
   const conversationStorageKey = accountStorageKey('rumen-rita-conversation')
   const prompt = (location.state as { prompt?: string } | null)?.prompt
   const [input, setInput] = useState(prompt ?? '')
@@ -108,7 +109,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
         nextMessages.map((message) => ({ role: message.from === 'rita' ? 'assistant' : 'user', content: message.text })),
         projects.filter((project) => project.status !== 'completed' && project.status !== 'archived').map(({ id, title, status }) => ({ id, title, status })),
       )
-      if (analysis.kind === 'quest' || analysis.kind === 'calendar') {
+      if (analysis.kind === 'quest' || analysis.kind === 'calendar' || analysis.kind === 'project') {
         setDraft(analysis)
         setMessages((current) => [...current, { from: 'rita', text: analysis.reply, expression: 'speaking' }])
       } else if (analysis.kind === 'memo') {
@@ -136,6 +137,24 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
       } } })
     } else if (draft.kind === 'memo') {
       navigate('/library/memos/new', { state: { draft: { title: draft.title, content: draft.content, tags: draft.tags } } })
+    } else if (draft.kind === 'project') {
+      addProject({
+        title: draft.title,
+        goal: draft.goal,
+        description: draft.description,
+        memo: '',
+        tags: draft.tags,
+        progress: 0,
+        startDate: draft.startDate ?? '',
+        due: draft.dueDate ?? '',
+        tag: draft.tags[0] ?? 'Project',
+        status: 'active',
+        priority: draft.priority,
+        favorite: false,
+      })
+      setDraft(null)
+      setSavedAction({ path: '/office', label: '집무실에서 보기' })
+      setMessages((current) => [...current, { from: 'rita', text: `“${draft.title}” 메인퀘스트를 추가했어요.`, expression: 'celebration' }])
     } else if (draft.kind === 'quest') {
       if (draft.needsProjectSelection && !draft.projectId) {
         setMessages((current) => [...current, { from: 'rita', text: '연결할 메인퀘스트를 선택하거나 독립 퀘스트를 선택해 주세요.', expression: 'concern' }])
@@ -201,7 +220,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
         {savedAction && <button className="rita-saved-action" onClick={() => navigate(savedAction.path)}><Check size={15}/>{savedAction.label}</button>}
         {loading && <div className="message rita typing"><RitaFace expression="thinking"/><p><i/><i/><i/></p></div>}
       </div>
-      <div className="suggestions">{['오늘 일정 정리해줘', 'Hydro Hawk 요약해줘', '이 내용을 비망록에 메모해줘'].map((value) => <button key={value} onClick={() => setInput(value)}>{value}</button>)}</div>
+      <div className="suggestions">{['오늘 일정 정리해줘', '메인퀘스트 요약해줘', '이 내용을 비망록에 메모해줘'].map((value) => <button key={value} onClick={() => setInput(value)}>{value}</button>)}</div>
       {attachment && <AttachmentTray file={attachment} previewUrl={previewUrl} loading={loading} onRemove={removeAttachment}/>} 
       <div className="composer">
         <input ref={fileInput} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.pdf,.docx,.txt,.md,.csv,audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/m4a,audio/ogg" onChange={(event) => selectFile(event.target.files?.[0])}/>
@@ -224,6 +243,7 @@ function AttachmentTray({ file, previewUrl, loading, onRemove }: { file: File; p
 }
 
 function DraftConfirmation({ draft, projects, onChange, onClose, onConfirm }: { draft: Draft; projects: Project[]; onChange: (draft: Draft) => void; onClose: () => void; onConfirm: () => void }) {
+  if (draft.kind === 'project') return <ProjectDraftConfirmation draft={draft} onChange={onChange} onClose={onClose} onConfirm={onConfirm}/>
   if (draft.kind === 'quest') return <QuestDraftConfirmation draft={draft} projects={projects} onChange={onChange} onClose={onClose} onConfirm={onConfirm}/>
   if (draft.kind === 'calendar') return <CalendarDraftConfirmation draft={draft} onChange={onChange} onClose={onClose} onConfirm={onConfirm}/>
   const businessCard = draft.kind === 'business-card'
@@ -236,6 +256,22 @@ function DraftConfirmation({ draft, projects, onChange, onClose, onConfirm }: { 
     <div><span>{businessCard ? 'RELATIONSHIP DRAFT' : 'MEMORANDUM DRAFT'}</span><button aria-label="초안 닫기" onClick={onClose}><X size={14}/></button></div>
     <h3>{title}</h3><p>{content}</p><small>{tags.join(' · ') || '태그 없음'}</small>
     <button onClick={onConfirm}><Check size={15}/> {businessCard ? '인연록에서 확인하고 저장' : '비망록에서 확인하고 저장'}</button>
+  </article>
+}
+
+function ProjectDraftConfirmation({ draft, onChange, onClose, onConfirm }: { draft: ProjectDraft; onChange: (draft: Draft) => void; onClose: () => void; onConfirm: () => void }) {
+  const update = (change: Partial<ProjectDraft>) => onChange({ ...draft, ...change })
+  return <article className="rita-confirmation rita-action-draft">
+    <div><span>MAIN QUEST DRAFT</span><button aria-label="초안 닫기" onClick={onClose}><X size={14}/></button></div>
+    <label>제목<input value={draft.title} onChange={(event) => update({ title: event.target.value })}/></label>
+    <label>목표<input value={draft.goal} onChange={(event) => update({ goal: event.target.value })} placeholder="이 메인퀘스트로 이루고 싶은 목표"/></label>
+    <label>상세 내용<textarea value={draft.description} onChange={(event) => update({ description: event.target.value })}/></label>
+    <div className="rita-draft-row">
+      <label>시작일<input type="date" value={draft.startDate ?? ''} onChange={(event) => update({ startDate: event.target.value || undefined })}/></label>
+      <label>마감일<input type="date" min={draft.startDate} value={draft.dueDate ?? ''} onChange={(event) => update({ dueDate: event.target.value || undefined })}/></label>
+    </div>
+    <label>우선순위<select value={draft.priority} onChange={(event) => update({ priority: event.target.value as QuestPriority })}><option value="high">높음</option><option value="medium">보통</option><option value="low">낮음</option></select></label>
+    <button disabled={!draft.title.trim()} onClick={onConfirm}><Check size={15}/> 메인퀘스트 추가</button>
   </article>
 }
 

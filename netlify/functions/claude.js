@@ -65,12 +65,14 @@ async function interpretRequest(input, apiKey, model) {
 현재 메인퀘스트 후보: ${JSON.stringify(projects)}
 
 분류 규칙:
+- project: 공주님이 새로운 메인퀘스트(프로젝트)를 만들려는 경우입니다. 여러 퀘스트를 담는 상위 목표·이니셔티브이며, 보통 "메인퀘스트" 또는 "프로젝트"를 새로 만들거나 시작해 달라고 요청합니다. 개별 실행 과업은 project가 아니라 quest입니다.
 - quest: 사용자가 직접 해야 하는 행동이나 과업. 전화하기, 작성하기, 제출하기, 확인하기 등. 날짜나 시간이 있어도 행동 중심이면 퀘스트입니다.
 - calendar: 특정 시각이나 기간에 발생하는 회의, 약속, 행사, 여행, 출장, 예약입니다.
 - memo: 실행이나 일정 등록이 아닌 보관할 정보입니다.
 - chat: 저장 의도가 없는 일반 대화입니다.
 - clarify: quest와 calendar 중 어느 것인지 모호하거나 일정에 필수 날짜가 없습니다.
 
+"브랜드 리뉴얼 메인퀘스트 만들어줘"나 "새 프로젝트 시작하자, 이름은 왕국 도서관"은 project입니다. 반대로 "그 프로젝트에 발표자료 준비를 추가해줘"처럼 기존 메인퀘스트에 실행 항목을 넣는 것은 quest이고 projectId를 채웁니다.
 "내일 거래처에 전화해야 해"는 quest이고 "내일 오후 3시에 거래처 회의가 있어"는 calendar입니다.
 "8월 19일부터 22일까지 가족여행"은 calendar이며 시간이 없으면 allDay=true입니다.
 사용자가 "개인업무 일정"이라고 말하면 calendarKind는 personal로 분류하세요. 업무·회사 일정은 work, 프로젝트 마감은 project입니다.
@@ -79,6 +81,7 @@ async function interpretRequest(input, apiKey, model) {
 저장을 완료했다고 말하지 말고 초안을 확인해 달라는 reply를 작성하세요.
 
 반드시 아래 중 하나의 JSON 객체만 출력하세요. 마크다운은 사용하지 마세요.
+{"kind":"project","title":"","goal":"","description":"","startDate":"YYYY-MM-DD 또는 빈 문자열","dueDate":"YYYY-MM-DD 또는 빈 문자열","priority":"high|medium|low","tags":[],"reply":""}
 {"kind":"quest","title":"","description":"","questType":"daily|sub","dueDate":"YYYY-MM-DD 또는 빈 문자열","dueTime":"HH:mm 또는 빈 문자열","priority":"high|medium|low","tags":[],"projectId":"후보 id 또는 빈 문자열","needsProjectSelection":false,"reply":""}
 {"kind":"calendar","title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD 또는 빈 문자열","startTime":"HH:mm 또는 빈 문자열","endTime":"HH:mm 또는 빈 문자열","allDay":true,"calendarKind":"royal|personal|work|project|anniversary","important":false,"reply":""}
 {"kind":"memo","title":"","content":"","tags":[]}
@@ -96,6 +99,14 @@ async function interpretRequest(input, apiKey, model) {
 
 function normalizeRequestAnalysis(value, projects) {
   const kind = clean(value?.kind)
+  if (kind === 'project') {
+    return {
+      kind: 'project', title: clean(value.title), goal: clean(value.goal), description: clean(value.description),
+      startDate: isoDate(value.startDate), dueDate: isoDate(value.dueDate),
+      priority: ['high', 'low'].includes(value.priority) ? value.priority : 'medium', tags: stringArray(value.tags),
+      reply: clean(value.reply) || '메인퀘스트 초안을 정리했어요. 저장하기 전에 확인해 주세요.',
+    }
+  }
   if (kind === 'quest') {
     const projectId = projects.some((project) => project.id === value.projectId) ? value.projectId : ''
     return {
