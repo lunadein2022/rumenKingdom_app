@@ -9,6 +9,7 @@ import { activateKingdomAccount, deactivateKingdomAccount, useKingdomStore } fro
 function App() {
   const hydrateEvents = useKingdomStore((state) => state.hydrateEvents)
   const hydrateProjects = useKingdomStore((state) => state.hydrateProjects)
+  const hydrateQuests = useKingdomStore((state) => state.hydrateQuests)
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(!supabase)
   const [authNotice, setAuthNotice] = useState('')
@@ -61,10 +62,12 @@ function App() {
       if (session) {
         await activateKingdomAccount(`user:${session.user.id}`)
         await Promise.all([hydrateEvents(), hydrateProjects()])
+        await hydrateQuests()
         if (active) setDataReady(true)
       } else if (guestMode) {
         await activateKingdomAccount('guest', true)
         await Promise.all([hydrateEvents(), hydrateProjects()])
+        await hydrateQuests()
         if (active) setDataReady(true)
       } else {
         deactivateKingdomAccount()
@@ -72,7 +75,7 @@ function App() {
     }
     void prepare()
     return () => { active = false }
-  }, [guestMode, hydrateEvents, hydrateProjects, session])
+  }, [guestMode, hydrateEvents, hydrateProjects, hydrateQuests, session])
 
   const enterGuest = () => { setDataReady(false); sessionStorage.setItem('rumen-guest-mode', 'true'); setGuestMode(true) }
   const signOut = async () => { setDataReady(false); deactivateKingdomAccount(); if (session) await supabase?.auth.signOut(); sessionStorage.removeItem('rumen-guest-mode'); setGuestMode(false); setSession(null) }

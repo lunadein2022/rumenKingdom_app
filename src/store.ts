@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import { addDays, differenceInCalendarDays, format, parseISO, setDate } from 'date-fns'
 import { createCalendarEvent, listCalendarEvents, removeCalendarEvent, updateCalendarEvent, updateCalendarEventDate } from './services/calendarRepository'
 import { createProject as createProjectRow, listProjects, removeProject as removeProjectRow, updateProject as updateProjectRow } from './services/projectRepository'
+import { createQuest as createQuestRow, listQuests, removeQuest as removeQuestRow, updateQuest as updateQuestRow } from './services/questRepository'
 import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, Project, Quest, Relationship } from './types'
 import { setActiveAccountScope } from './lib/accountScope'
 
@@ -28,6 +29,7 @@ interface KingdomState {
   moveEvent: (id: string, date: string) => void
   hydrateEvents: () => Promise<void>
   hydrateProjects: () => Promise<void>
+  hydrateQuests: () => Promise<void>
   clearCalendarSync: () => void
   resetForAccount: (demo: boolean) => void
   toggleQuest: (id: string) => void
@@ -187,12 +189,47 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
   },
   hydrateEvents: async () => { try { const savedEvents = await listCalendarEvents(); if (savedEvents) set({ events: savedEvents }) } catch { set({ calendarSync: { status: 'error', message: '왕국 일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' } }) } },
   hydrateProjects: async () => { try { const savedProjects = await listProjects(); if (savedProjects) set({ projects: savedProjects }) } catch { /* keep local projects on failure */ } },
+  hydrateQuests: async () => {
+    try {
+      const savedQuests = await listQuests()
+      if (savedQuests) set((state) => ({
+        quests: savedQuests.map((quest) => ({
+          ...quest,
+          project: quest.projectId ? state.projects.find((project) => project.id === quest.projectId)?.title : undefined,
+        })),
+      }))
+    } catch { /* keep local quests on failure */ }
+  },
   clearCalendarSync: () => set({ calendarSync: { status: 'idle', message: '' } }),
   resetForAccount: (demo) => set(accountData(demo)),
-  toggleQuest: (id) => set((state) => ({ quests: state.quests.map((quest) => quest.id === id ? { ...quest, done: !quest.done, status: quest.done ? 'active' : 'completed', completedAt: quest.done ? undefined : timestamp(), updatedAt: timestamp() } : quest) })),
-  addQuest: (quest) => { const id = crypto.randomUUID(); set((state) => ({ quests: [...state.quests, { ...quest, id, completedAt: quest.done ? timestamp() : undefined, createdAt: timestamp(), updatedAt: timestamp() }] })); return id },
-  updateQuest: (id, quest) => set((state) => ({ quests: state.quests.map((item) => item.id === id ? { ...item, ...quest, updatedAt: timestamp() } : item) })),
-  deleteQuest: (id) => set((state) => ({ quests: state.quests.filter((quest) => quest.id !== id) })),
+  toggleQuest: (id) => {
+    let nextStatus: Quest['status'] = 'active'
+    let nextCompletedAt: string | undefined
+    set((state) => ({ quests: state.quests.map((quest) => {
+      if (quest.id !== id) return quest
+      const nextDone = !quest.done
+      nextStatus = nextDone ? 'completed' : 'active'
+      nextCompletedAt = nextDone ? timestamp() : undefined
+      return { ...quest, done: nextDone, status: nextStatus, completedAt: nextCompletedAt, updatedAt: timestamp() }
+    }) }))
+    void updateQuestRow(id, { status: nextStatus, completedAt: nextCompletedAt }).catch(() => {})
+  },
+  addQuest: (quest) => {
+    const id = crypto.randomUUID()
+    const now = timestamp()
+    const full: Quest = { ...quest, id, completedAt: quest.done ? now : undefined, createdAt: now, updatedAt: now }
+    set((state) => ({ quests: [...state.quests, full] }))
+    void createQuestRow(full).catch(() => {})
+    return id
+  },
+  updateQuest: (id, quest) => {
+    set((state) => ({ quests: state.quests.map((item) => item.id === id ? { ...item, ...quest, updatedAt: timestamp() } : item) }))
+    void updateQuestRow(id, quest).catch(() => {})
+  },
+  deleteQuest: (id) => {
+    set((state) => ({ quests: state.quests.filter((quest) => quest.id !== id) }))
+    void removeQuestRow(id).catch(() => {})
+  },
   addProject: (project) => {
     const id = crypto.randomUUID()
     const now = timestamp()
