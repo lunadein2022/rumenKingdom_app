@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { AppRouter } from './app/AppRouter'
 import { LoginScreen } from './components/LoginScreen'
 import { supabase } from './lib/supabase'
-import { useKingdomStore } from './store'
+import { activateKingdomAccount, deactivateKingdomAccount, useKingdomStore } from './store'
 
 function App() {
   const hydrateEvents = useKingdomStore((state) => state.hydrateEvents)
@@ -12,6 +12,7 @@ function App() {
   const [authReady, setAuthReady] = useState(!supabase)
   const [authNotice, setAuthNotice] = useState('')
   const [guestMode, setGuestMode] = useState(() => sessionStorage.getItem('rumen-guest-mode') === 'true')
+  const [dataReady, setDataReady] = useState(false)
 
   useEffect(() => {
     if (!supabase) return
@@ -42,6 +43,7 @@ function App() {
     const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       if (!active) return
       window.clearTimeout(timeout)
+      setDataReady(false)
       setSession(nextSession)
       setAuthNotice('')
       setAuthReady(true)
@@ -52,14 +54,37 @@ function App() {
       data.subscription.unsubscribe()
     }
   }, [])
-  useEffect(() => { if (session || guestMode) void hydrateEvents() }, [guestMode, hydrateEvents, session])
+  useEffect(() => {
+    let active = true
+    const prepare = async () => {
+      if (session) {
+        await activateKingdomAccount(`user:${session.user.id}`)
+        await hydrateEvents()
+        if (active) setDataReady(true)
+      } else if (guestMode) {
+        await activateKingdomAccount('guest', true)
+        await hydrateEvents()
+        if (active) setDataReady(true)
+      } else {
+        deactivateKingdomAccount()
+      }
+    }
+    void prepare()
+    return () => { active = false }
+  }, [guestMode, hydrateEvents, session])
 
-  const enterGuest = () => { sessionStorage.setItem('rumen-guest-mode', 'true'); setGuestMode(true) }
-  const signOut = async () => { if (session) await supabase?.auth.signOut(); sessionStorage.removeItem('rumen-guest-mode'); setGuestMode(false); setSession(null) }
+  const enterGuest = () => { setDataReady(false); sessionStorage.setItem('rumen-guest-mode', 'true'); setGuestMode(true) }
+  const signOut = async () => { setDataReady(false); deactivateKingdomAccount(); if (session) await supabase?.auth.signOut(); sessionStorage.removeItem('rumen-guest-mode'); setGuestMode(false); setSession(null) }
+  const resetDemo = () => useKingdomStore.getState().resetForAccount(true)
   return <BrowserRouter>
-    {!authReady ? <div className="auth-loading"><img src="/assets/brand/main-logo.webp" alt="루멘왕국, 공주의 하루"/><span>왕실 문을 준비하고 있어요...</span></div>
-      : !session && !guestMode ? <LoginScreen onGuest={enterGuest} initialMessage={authNotice}/>
-        : <AppRouter onSignOut={signOut}/>} 
+    {!authReady
+      ? <div className="auth-loading"><img src="/assets/brand/main-logo.webp" alt="루멘왕국, 공주의 하루"/><span>왕실 문을 준비하고 있어요...</span></div>
+      : !session && !guestMode
+        ? <LoginScreen onGuest={enterGuest} initialMessage={authNotice}/>
+        : !dataReady
+          ? <div className="auth-loading"><img src="/assets/brand/main-logo.webp" alt="루멘왕국, 공주의 하루"/><span>공주님의 왕국 기록을 불러오고 있어요...</span></div>
+          : <AppRouter demoMode={guestMode && !session} onResetDemo={resetDemo} onSignOut={signOut}/>
+    }
   </BrowserRouter>
 }
 

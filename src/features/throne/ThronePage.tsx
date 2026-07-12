@@ -1,27 +1,32 @@
 import { Bell, ChevronRight, Cloud, Crown, Database, Image, LogOut, Pencil, Save, Sparkles, UserRound, X } from 'lucide-react'
 import { useState } from 'react'
 import { isSupabaseConfigured } from '../../lib/supabase'
+import { accountStorageKey } from '../../lib/accountScope'
 import { useKingdomStore } from '../../store'
 
 type SettingId = 'profile' | 'background' | 'notifications' | 'ai' | 'data' | null
 
-export function ThronePage({ onSignOut }: { onSignOut: () => Promise<void> }) {
+export function ThronePage({ demoMode = false, onResetDemo = () => undefined, onSignOut }: { demoMode?: boolean; onResetDemo?: () => void; onSignOut: () => Promise<void> }) {
   const store = useKingdomStore()
+  const profileNameKey = accountStorageKey('rumen-princess-name')
+  const profileIntroKey = accountStorageKey('rumen-princess-intro')
+  const notificationsKey = accountStorageKey('rumen-in-app-notifications')
+  const ritaStyleKey = accountStorageKey('rumen-rita-style')
   const [setting, setSetting] = useState<SettingId>(null)
-  const [name, setName] = useState(() => localStorage.getItem('rumen-princess-name') || '루멘왕국의 공주')
-  const [intro, setIntro] = useState(() => localStorage.getItem('rumen-princess-intro') || '차분하게 왕국의 하루를 가꾸어 가는 중입니다.')
+  const [name, setName] = useState(() => localStorage.getItem(profileNameKey) || '루멘왕국의 공주')
+  const [intro, setIntro] = useState(() => localStorage.getItem(profileIntroKey) || '차분하게 왕국의 하루를 가꾸어 가는 중입니다.')
   const [draftName, setDraftName] = useState(name)
   const [draftIntro, setDraftIntro] = useState(intro)
-  const [notifications, setNotifications] = useState(() => localStorage.getItem('rumen-in-app-notifications') !== 'off')
-  const [aiStyle, setAiStyle] = useState(() => localStorage.getItem('rumen-rita-style') || 'concise')
+  const [notifications, setNotifications] = useState(() => localStorage.getItem(notificationsKey) !== 'off')
+  const [aiStyle, setAiStyle] = useState(() => localStorage.getItem(ritaStyleKey) || 'concise')
   const recordCount = store.projects.length + store.quests.length + store.memos.length + store.relationships.length + store.diaries.length
 
   const saveProfile = () => {
     const nextName = draftName.trim() || '루멘왕국의 공주'
     const nextIntro = draftIntro.trim()
     setName(nextName); setIntro(nextIntro)
-    localStorage.setItem('rumen-princess-name', nextName)
-    localStorage.setItem('rumen-princess-intro', nextIntro)
+    localStorage.setItem(profileNameKey, nextName)
+    localStorage.setItem(profileIntroKey, nextIntro)
     setSetting(null)
   }
   const exportData = () => {
@@ -51,15 +56,15 @@ export function ThronePage({ onSignOut }: { onSignOut: () => Promise<void> }) {
       {setting && <SettingPanel setting={setting} onClose={() => setSetting(null)}>
         {setting === 'profile' && <div className="setting-form"><label>공주 이름<input value={draftName} onChange={(event) => setDraftName(event.target.value)}/></label><label>한 줄 소개<textarea value={draftIntro} onChange={(event) => setDraftIntro(event.target.value)}/></label><button className="primary" onClick={saveProfile}><Save size={14}/> 저장</button></div>}
         {setting === 'background' && <div className="setting-note"><Image size={20}/><div><b>페이지별 왕궁 배경 사용 중</b><p>각 공간에 지정된 왕궁 배경을 유지합니다. 추가 배경 선택 기능은 에셋이 늘어날 때 확장할 수 있어요.</p></div></div>}
-        {setting === 'notifications' && <label className="setting-toggle"><span><b>앱 내부 알림</b><small>일정과 확인할 기록을 헤더에서 안내합니다.</small></span><input type="checkbox" checked={notifications} onChange={(event) => { setNotifications(event.target.checked); localStorage.setItem('rumen-in-app-notifications', event.target.checked ? 'on' : 'off') }}/></label>}
-        {setting === 'ai' && <label className="setting-select">리타의 답변 방식<select value={aiStyle} onChange={(event) => { setAiStyle(event.target.value); localStorage.setItem('rumen-rita-style', event.target.value) }}><option value="concise">간결하게</option><option value="warm">다정하게</option><option value="detailed">자세하게</option></select><small>실제 Claude 요청 프롬프트 연동은 서버 설정 단계에서 적용합니다.</small></label>}
-        {setting === 'data' && <div className="setting-note"><Database size={20}/><div><b>내 왕국 기록 보관</b><p>현재 기기에 저장된 프로젝트, 퀘스트, 일정, 기록을 JSON 파일로 내보냅니다.</p><button onClick={exportData}>왕국 기록 내보내기</button></div></div>}
+        {setting === 'notifications' && <label className="setting-toggle"><span><b>앱 내부 알림</b><small>일정과 확인할 기록을 헤더에서 안내합니다.</small></span><input type="checkbox" checked={notifications} onChange={(event) => { setNotifications(event.target.checked); localStorage.setItem(notificationsKey, event.target.checked ? 'on' : 'off') }}/></label>}
+        {setting === 'ai' && <label className="setting-select">리타의 답변 방식<select value={aiStyle} onChange={(event) => { setAiStyle(event.target.value); localStorage.setItem(ritaStyleKey, event.target.value) }}><option value="concise">간결하게</option><option value="warm">다정하게</option><option value="detailed">자세하게</option></select><small>실제 Claude 요청 프롬프트 연동은 서버 설정 단계에서 적용합니다.</small></label>}
+        {setting === 'data' && <div className="setting-note"><Database size={20}/><div><b>{demoMode ? '데모 왕국 관리' : '내 왕국 기록 보관'}</b><p>{demoMode ? '수정한 데모 기록을 처음 예시 상태로 되돌릴 수 있습니다.' : '현재 기기에 저장된 프로젝트, 퀘스트, 일정, 기록을 JSON 파일로 내보냅니다.'}</p>{demoMode ? <button onClick={() => { if (confirm('데모 왕국을 처음 예시 데이터로 되돌릴까요?')) { onResetDemo(); setSetting(null) } }}>데모 데이터 초기화</button> : <button onClick={exportData}>왕국 기록 내보내기</button>}</div></div>}
       </SettingPanel>}
     </section>
 
-    <section className="kingdom-connections panel glass-panel"><header><span className="eyebrow">CONNECTION</span><h2>연결 상태</h2></header><div className="connection-row"><span><Database size={18}/></span><div><b>기록 저장소</b><small>로그인과 왕국 기록의 안전한 보관</small></div><em>{isSupabaseConfigured ? '사용 가능' : '설정 필요'}</em></div><div className="connection-row"><span><Sparkles size={18}/></span><div><b>AI 메이드 리타</b><small>대화, 문서 요약, 명함 정리</small></div><em>로그인 후 확인</em></div><div className="connection-row"><span><Cloud size={18}/></span><div><b>클라우드 동기화</b><small>여러 기기에서 같은 왕국 기록 사용</small></div><em>{isSupabaseConfigured ? '준비됨' : '설정 필요'}</em></div></section>
+    <section className="kingdom-connections panel glass-panel"><header><span className="eyebrow">CONNECTION</span><h2>연결 상태</h2></header><div className="connection-row"><span><Database size={18}/></span><div><b>계정별 기록 저장소</b><small>각 계정과 게스트 기록을 이 기기에서 분리 보관</small></div><em>분리됨</em></div><div className="connection-row"><span><Sparkles size={18}/></span><div><b>AI 메이드 리타</b><small>계정별 대화, 문서 요약, 명함 정리</small></div><em>로그인 후 확인</em></div><div className="connection-row"><span><Cloud size={18}/></span><div><b>일정 클라우드 동기화</b><small>왕실 일정표를 로그인 계정별로 안전하게 동기화</small></div><em>{isSupabaseConfigured ? '준비됨' : '설정 필요'}</em></div></section>
 
-    <button className="signout-button kingdom-signout" onClick={() => void onSignOut()}><LogOut size={16}/> 왕국에서 나가기</button>
+    <button className="signout-button kingdom-signout" onClick={() => void onSignOut()}><LogOut size={16}/> {demoMode ? '로그인해서 내 왕국 만들기' : '왕국에서 나가기'}</button>
   </div>
 }
 

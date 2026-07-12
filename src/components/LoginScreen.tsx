@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Sparkles } from 'lucide-react'
-import { isSupabaseConfigured, supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 
 export function LoginScreen({ onGuest, initialMessage = '' }: { onGuest: () => void; initialMessage?: string }) {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
@@ -99,7 +99,8 @@ export function LoginScreen({ onGuest, initialMessage = '' }: { onGuest: () => v
         <div className="login-divider"><span>또는</span></div>
         <button className="google-login" onClick={signInWithGoogle} disabled={loading}><b>G</b> Google 계정으로 계속하기</button>
         <button className="mode-switch" onClick={() => { setMode((value) => value === 'login' ? 'signup' : 'login'); setMessage('') }}>{mode === 'login' ? '처음 오셨나요? 왕국 계정 만들기' : '이미 계정이 있나요? 로그인하기'}</button>
-        {!isSupabaseConfigured && <button className="guest-entry" onClick={onGuest}>데모로 먼저 둘러보기</button>}
+        <button className="guest-entry" onClick={onGuest}>데모 왕국 둘러보기</button>
+        <small className="demo-entry-note">로그인 없이 예시 프로젝트와 퀘스트를 체험할 수 있어요.</small>
         <small className="login-copyright">Copyright © RUMEN KINGDOM · All Rights Reserved.</small>
       </main>
     </div>

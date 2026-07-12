@@ -4,9 +4,12 @@ import type { CalendarEvent } from '../types'
 type CalendarRow = {
   id: string
   title: string
+  description: string
   event_date: string
+  end_date: string | null
   starts_at: string
   ends_at: string | null
+  all_day: boolean
   kind: CalendarEvent['kind']
   important: boolean
   recurrence_rule: string | null
@@ -15,9 +18,12 @@ type CalendarRow = {
 const fromRow = (row: CalendarRow): CalendarEvent => ({
   id: row.id,
   title: row.title,
+  description: row.description,
   date: row.event_date,
-  start: row.starts_at,
+  endDate: row.end_date ?? undefined,
+  start: row.all_day ? '' : row.starts_at,
   end: row.ends_at ?? undefined,
+  allDay: row.all_day,
   kind: row.kind,
   important: row.important,
   recurrenceRule: row.recurrence_rule ?? undefined,
@@ -35,7 +41,7 @@ export async function listCalendarEvents(): Promise<CalendarEvent[] | null> {
   if (!supabase || !(await hasAuthenticatedUser())) return null
   const { data, error } = await supabase
     .from('calendar_events')
-    .select('id,title,event_date,starts_at,ends_at,kind,important,recurrence_rule')
+    .select('id,title,description,event_date,end_date,starts_at,ends_at,all_day,kind,important,recurrence_rule')
     .order('event_date')
     .order('starts_at')
 
@@ -49,23 +55,26 @@ export async function createCalendarEvent(event: Omit<CalendarEvent, 'id'>): Pro
     .from('calendar_events')
     .insert({
       title: event.title,
+      description: event.description ?? '',
       event_date: event.date,
-      starts_at: event.start,
+      end_date: event.endDate ?? event.date,
+      starts_at: event.allDay ? '00:00' : event.start || '09:00',
       ends_at: event.end ?? null,
+      all_day: event.allDay ?? false,
       kind: event.kind,
       important: event.important ?? false,
       recurrence_rule: event.recurrenceRule ?? null,
     })
-    .select('id,title,event_date,starts_at,ends_at,kind,important,recurrence_rule')
+    .select('id,title,description,event_date,end_date,starts_at,ends_at,all_day,kind,important,recurrence_rule')
     .single()
 
   if (error) throw error
   return fromRow(data as CalendarRow)
 }
 
-export async function updateCalendarEventDate(id: string, date: string): Promise<void> {
+export async function updateCalendarEventDate(id: string, date: string, endDate?: string): Promise<void> {
   if (!supabase || !isUuid(id) || !(await hasAuthenticatedUser())) return
-  const { error } = await supabase.from('calendar_events').update({ event_date: date }).eq('id', id)
+  const { error } = await supabase.from('calendar_events').update({ event_date: date, end_date: endDate ?? date }).eq('id', id)
   if (error) throw error
 }
 
@@ -75,15 +84,18 @@ export async function updateCalendarEvent(id: string, event: Omit<CalendarEvent,
     .from('calendar_events')
     .update({
       title: event.title,
+      description: event.description ?? '',
       event_date: event.date,
-      starts_at: event.start,
+      end_date: event.endDate ?? event.date,
+      starts_at: event.allDay ? '00:00' : event.start || '09:00',
       ends_at: event.end ?? null,
+      all_day: event.allDay ?? false,
       kind: event.kind,
       important: event.important ?? false,
       recurrence_rule: event.recurrenceRule ?? null,
     })
     .eq('id', id)
-    .select('id,title,event_date,starts_at,ends_at,kind,important,recurrence_rule')
+    .select('id,title,description,event_date,end_date,starts_at,ends_at,all_day,kind,important,recurrence_rule')
     .single()
 
   if (error) throw error

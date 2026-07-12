@@ -5,9 +5,12 @@ export type CalendarKind = 'royal' | 'personal' | 'work' | 'project' | 'annivers
 export interface CalendarEvent {
   id: string
   title: string
+  description?: string
   date: string
+  endDate?: string
   start: string
   end?: string
+  allDay?: boolean
   kind: CalendarKind
   important?: boolean
   recurrenceRule?: string

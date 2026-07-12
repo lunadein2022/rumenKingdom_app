@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { SourceAttachment } from '../types'
+import type { CalendarKind, QuestPriority, QuestType } from '../types'
 
 export interface RitaMessage {
   role: 'user' | 'assistant'
@@ -34,6 +35,19 @@ export interface MemorandumAnalysis {
 
 export type RitaAttachmentAnalysis = BusinessCardAnalysis | MemorandumAnalysis
 
+export type RitaRequestAnalysis =
+  | { kind: 'chat'; reply: string }
+  | { kind: 'clarify'; reply: string }
+  | { kind: 'memo'; title: string; content: string; tags: string[] }
+  | { kind: 'quest'; title: string; description: string; questType: QuestType; dueDate?: string; dueTime?: string; priority: QuestPriority; tags: string[]; projectId?: string; needsProjectSelection: boolean; reply: string }
+  | { kind: 'calendar'; title: string; description: string; startDate: string; endDate?: string; startTime?: string; endTime?: string; allDay: boolean; calendarKind: CalendarKind; important: boolean; reply: string }
+
+export interface RitaProjectContext {
+  id: string
+  title: string
+  status: string
+}
+
 async function authHeaders() {
   const { data } = await supabase?.auth.getSession() ?? { data: { session: null } }
   const accessToken = data.session?.access_token
@@ -51,6 +65,24 @@ export async function askRita(messages: RitaMessage[]): Promise<string> {
   const payload = await response.json() as { reply?: string; error?: string }
   if (!response.ok || !payload.reply) throw new Error(payload.error ?? '리타와 연결할 수 없습니다.')
   return payload.reply
+}
+
+export async function interpretRitaRequest(messages: RitaMessage[], projects: RitaProjectContext[]): Promise<RitaRequestAnalysis> {
+  const response = await fetch('/.netlify/functions/claude', {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({
+      action: 'interpret-request',
+      messages,
+      projects,
+      now: new Date().toISOString(),
+      timeZone: 'Asia/Seoul',
+    }),
+  })
+
+  const payload = await response.json() as { analysis?: RitaRequestAnalysis; error?: string }
+  if (!response.ok || !payload.analysis) throw new Error(payload.error ?? '리타가 요청을 정리하지 못했습니다.')
+  return payload.analysis
 }
 
 export async function analyzeRitaAttachment(file: File, intent: AttachmentIntent): Promise<RitaAttachmentAnalysis> {

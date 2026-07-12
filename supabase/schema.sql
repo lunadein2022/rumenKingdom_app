@@ -80,8 +80,10 @@ create table if not exists public.calendar_events (
   title text not null,
   description text not null default '',
   event_date date not null,
+  end_date date,
   starts_at time not null default '09:00',
   ends_at time,
+  all_day boolean not null default false,
   kind public.calendar_kind not null default 'royal',
   important boolean not null default false,
   recurrence_rule text,
@@ -172,14 +174,16 @@ create table if not exists public.notifications (
 );
 
 -- Upgrade legacy calendar_events rows without discarding their original timestamp columns.
--- The current application reads event_date, starts_at, ends_at, kind, important and recurrence_rule.
+-- The current application reads event_date, end_date, starts_at, ends_at, all_day, kind, important and recurrence_rule.
 alter table public.calendar_events
   add column if not exists user_id uuid references auth.users(id) on delete cascade,
   add column if not exists title text,
   add column if not exists description text not null default '',
   add column if not exists event_date date,
+  add column if not exists end_date date,
   add column if not exists starts_at time,
   add column if not exists ends_at time,
+  add column if not exists all_day boolean not null default false,
   add column if not exists kind public.calendar_kind,
   add column if not exists important boolean not null default false,
   add column if not exists recurrence_rule text,
@@ -313,6 +317,7 @@ begin
   end if;
 
   update public.calendar_events set kind = 'royal' where kind is null;
+  update public.calendar_events set end_date = event_date where end_date is null and event_date is not null;
 
   if exists (
     select 1 from information_schema.columns
@@ -341,6 +346,19 @@ alter table public.calendar_events
   alter column starts_at set not null,
   alter column kind set default 'royal',
   alter column kind set not null;
+
+-- Every browser insert is owned by the authenticated account even when user_id is omitted.
+alter table public.main_quests alter column user_id set default auth.uid();
+alter table public.sub_quests alter column user_id set default auth.uid();
+alter table public.daily_quests alter column user_id set default auth.uid();
+alter table public.diary_entries alter column user_id set default auth.uid();
+alter table public.ai_conversations alter column user_id set default auth.uid();
+alter table public.relationships alter column user_id set default auth.uid();
+alter table public.tags alter column user_id set default auth.uid();
+alter table public.entity_tags alter column user_id set default auth.uid();
+alter table public.folders alter column user_id set default auth.uid();
+alter table public.attachments alter column user_id set default auth.uid();
+alter table public.notifications alter column user_id set default auth.uid();
 
 -- Existing projects receive newly introduced fields without replacing any rows.
 alter table public.main_quests

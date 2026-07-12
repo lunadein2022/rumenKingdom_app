@@ -161,3 +161,43 @@
 - Replaced the fixed two-column, left-aligned mobile Library grid with a centered wrapping shelf while preserving the compact 112px book-cover size.
 - The shelf now uses the available width without stretching the supplied cover artwork, and incomplete final rows are centered instead of leaving a large empty area on the right.
 - Verified four centered books plus a centered three-book final row at 618px, and two centered books per row at 390px.
+
+## 2026-07 Rita verified quest and schedule actions
+
+- Replaced Rita's text-only claims with a structured request interpreter that classifies user language as a quest, calendar event, memorandum, clarification, or general conversation.
+- Added explicit language rules so action-oriented reminders such as calling someone become quests, while meetings, trips, reservations, and date ranges become calendar events.
+- Added editable confirmation cards for quests and schedules. Rita never writes data until the user reviews and confirms the draft.
+- Passed active main-quest candidates to Rita and added a required project selector when a requested subquest cannot be matched confidently; independent quests remain available without requiring users to remember exact project names.
+- Connected confirmed quest drafts to the existing Office store and confirmed schedule drafts to the real calendar repository. Rita reports success only after the calendar write resolves and offers a direct link to the saved destination.
+- Added multi-day and all-day calendar fields across the application type, repository, schema, create/edit forms, detail view, Lobby totals, Header notifications, and calendar day/range rendering.
+- Made calendar creation rollback its optimistic row when Supabase persistence fails, preventing a failed write from looking successful in Rita or the calendar.
+- Extended the rerunnable Supabase schema with non-destructive `end_date` and `all_day` columns, preserving existing rows by setting their end date to their original event date.
+
+### Deployment requirement
+
+- Apply the updated `supabase/schema.sql` before testing Rita-created schedules in production. The deployed repository now reads and writes `calendar_events.end_date` and `calendar_events.all_day`.
+
+## 2026-07 account data isolation
+
+- Replaced the shared browser-wide kingdom cache with reset-generation account stores named `rumen-kingdom:v2:user:{userId}` and a separate `rumen-kingdom:v2:guest` store.
+- Disabled automatic hydration of the legacy shared demo cache. Its contents remain untouched for a later explicit owner-confirmed import and are never copied into every account.
+- Authenticated accounts now start empty instead of inheriting demo projects, quests, records, and diaries; only Guest mode receives demo content.
+- Added an account preparation gate that hides the application while switching stores and hydrating the signed-in user's calendar, preventing a previous account's in-memory data from flashing on screen.
+- Logout immediately changes persistence to a locked transient scope and clears in-memory kingdom data without overwriting the signed-out account's own cache.
+- Scoped Rita conversation history, princess profile copy, in-app notification preference, and Rita response-style preference to the active account or Guest scope.
+- Kept Supabase RLS as the authoritative cloud boundary and added `auth.uid()` defaults to every user-owned table so future browser inserts cannot accidentally omit ownership.
+- Corrected the Throne Room connection copy: all records are separated per account on the device, while only the calendar currently claims cloud synchronization.
+
+### Remaining cloud phase
+
+- Main quests, daily/sub quests, memoranda, relationships, diaries, profile preferences, and Rita conversations still require dedicated Supabase repositories for cross-device synchronization. Their current account-scoped browser caches prevent same-browser account leakage but are not yet cloud backups.
+
+## 2026-07 dedicated Demo Kingdom and clean-account reset
+
+- Made `데모 왕국 둘러보기` permanently available from the Login screen, regardless of whether Supabase is configured, with concise copy explaining that it contains example records.
+- Added a visible desktop `DEMO MODE` badge, changed logout copy to Login in Demo mode, and added a `로그인해서 내 왕국 만들기` action in the Throne Room.
+- Kept Demo edits inside the dedicated Guest cache and added a confirmation-protected `데모 데이터 초기화` action that restores the original example projects, quests, schedules, memoranda, relationships, and diary.
+- Disabled Rita network requests and attachment analysis in Demo mode so anonymous visitors cannot consume authenticated AI services; the Rita screen remains available as a preview.
+- Advanced browser caches to the `v2` data generation so every currently registered account starts with an empty account-scoped local kingdom after deployment. Older shared or per-account caches remain unread and are not silently assigned to any user.
+- Added `supabase/reset_all_app_data.sql` as an explicit one-time destructive reset that clears application rows for all users while preserving `auth.users` and resetting profile display copy.
+- The reset SQL intentionally does not delete Storage objects directly. The private `rita-attachments` bucket must be emptied through Supabase Storage to avoid orphaning physical objects.

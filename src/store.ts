@@ -1,8 +1,9 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { format, setDate } from 'date-fns'
+import { addDays, differenceInCalendarDays, format, parseISO, setDate } from 'date-fns'
 import { createCalendarEvent, listCalendarEvents, removeCalendarEvent, updateCalendarEvent, updateCalendarEventDate } from './services/calendarRepository'
 import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, Project, Quest, Relationship } from './types'
+import { setActiveAccountScope } from './lib/accountScope'
 
 type ProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 type QuestInput = Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
@@ -20,12 +21,13 @@ interface KingdomState {
   diaries: DiaryEntry[]
   calendarSync: { status: 'idle' | 'saving' | 'saved' | 'error'; message: string }
   setSelectedDate: (date: string) => void
-  addEvent: (event: Omit<CalendarEvent, 'id'>) => void
+  addEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<{ event: CalendarEvent; storage: 'cloud' | 'local' }>
   updateEvent: (id: string, event: Omit<CalendarEvent, 'id'>) => void
   deleteEvent: (id: string) => void
   moveEvent: (id: string, date: string) => void
   hydrateEvents: () => Promise<void>
   clearCalendarSync: () => void
+  resetForAccount: (demo: boolean) => void
   toggleQuest: (id: string) => void
   addQuest: (quest: QuestInput) => string
   updateQuest: (id: string, quest: Partial<Quest>) => void
@@ -100,6 +102,17 @@ export const calendarKinds: { id: CalendarKind; label: string }[] = [
   { id: 'anniversary', label: '기념일' },
 ]
 
+const accountData = (demo: boolean) => ({
+  selectedDate: today,
+  events: demo ? [...initialEvents] : [],
+  quests: demo ? [...initialQuests] : [],
+  projects: demo ? [...initialProjects] : [],
+  memos: demo ? [...initialMemos] : [],
+  relationships: demo ? [...initialRelationships] : [],
+  diaries: demo ? [...initialDiaries] : [],
+  calendarSync: { status: 'idle' as const, message: '' },
+})
+
 export function projectProgress(project: Project, quests: Quest[]) {
   const linked = quests.filter((quest) => quest.projectId === project.id)
   if (!linked.length) return 0
@@ -128,11 +141,18 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
   setSelectedDate: (selectedDate) => set({ selectedDate }),
   addEvent: (event) => {
     const optimisticId = crypto.randomUUID()
-    set((state) => ({ events: [...state.events, { ...event, id: optimisticId }], calendarSync: { status: 'saving', message: '일정을 저장하고 있어요.' } }))
-    void createCalendarEvent(event).then((saved) => set((state) => ({
-      events: saved ? state.events.map((item) => item.id === optimisticId ? saved : item) : state.events,
-      calendarSync: { status: 'saved', message: saved ? '왕국 기록에 일정을 저장했어요.' : '이 기기에 일정을 저장했어요.' },
-    }))).catch(() => set({ calendarSync: { status: 'error', message: '기기에는 저장했지만 왕국 기록과 동기화하지 못했어요.' } }))
+    const optimistic = { ...event, id: optimisticId }
+    set((state) => ({ events: [...state.events, optimistic], calendarSync: { status: 'saving', message: '일정을 저장하고 있어요.' } }))
+    return createCalendarEvent(event).then((saved) => {
+      set((state) => ({
+        events: saved ? state.events.map((item) => item.id === optimisticId ? saved : item) : state.events,
+        calendarSync: { status: 'saved', message: saved ? '왕국 기록에 일정을 저장했어요.' : '이 기기에 일정을 저장했어요.' },
+      }))
+      return { event: saved ?? optimistic, storage: saved ? 'cloud' as const : 'local' as const }
+    }).catch((error) => {
+      set((state) => ({ events: state.events.filter((item) => item.id !== optimisticId), calendarSync: { status: 'error', message: '일정을 저장하지 못했어요. 다시 시도해 주세요.' } }))
+      throw error
+    })
   },
   updateEvent: (id, event) => {
     let previous: CalendarEvent | undefined
@@ -151,12 +171,21 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
     void removeCalendarEvent(id).then(() => set({ calendarSync: { status: 'saved', message: '일정을 삭제했어요.' } })).catch(() => set((state) => ({ events: removed ? [...state.events, removed as CalendarEvent] : state.events, calendarSync: { status: 'error', message: '일정을 삭제하지 못해 복원했어요.' } })))
   },
   moveEvent: (id, date) => {
-    let previousDate = ''
-    set((state) => { previousDate = state.events.find((event) => event.id === id)?.date ?? ''; return { events: state.events.map((event) => event.id === id ? { ...event, date } : event), calendarSync: { status: 'saving', message: '일정 날짜를 변경하고 있어요.' } } })
-    void updateCalendarEventDate(id, date).then(() => set({ calendarSync: { status: 'saved', message: '일정 날짜를 변경했어요.' } })).catch(() => set((state) => ({ events: previousDate ? state.events.map((event) => event.id === id ? { ...event, date: previousDate } : event) : state.events, calendarSync: { status: 'error', message: '날짜를 변경하지 못해 이전 위치로 되돌렸어요.' } })))
+    let previous: CalendarEvent | undefined
+    let nextEndDate: string | undefined
+    set((state) => {
+      previous = state.events.find((event) => event.id === id)
+      if (previous?.endDate) {
+        const duration = differenceInCalendarDays(parseISO(previous.endDate), parseISO(previous.date))
+        nextEndDate = format(addDays(parseISO(date), duration), 'yyyy-MM-dd')
+      }
+      return { events: state.events.map((event) => event.id === id ? { ...event, date, endDate: nextEndDate } : event), calendarSync: { status: 'saving', message: '일정 날짜를 변경하고 있어요.' } }
+    })
+    void updateCalendarEventDate(id, date, nextEndDate).then(() => set({ calendarSync: { status: 'saved', message: '일정 날짜를 변경했어요.' } })).catch(() => set((state) => ({ events: previous ? state.events.map((event) => event.id === id ? previous as CalendarEvent : event) : state.events, calendarSync: { status: 'error', message: '날짜를 변경하지 못해 이전 위치로 되돌렸어요.' } })))
   },
   hydrateEvents: async () => { try { const savedEvents = await listCalendarEvents(); if (savedEvents) set({ events: savedEvents }) } catch { set({ calendarSync: { status: 'error', message: '왕국 일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' } }) } },
   clearCalendarSync: () => set({ calendarSync: { status: 'idle', message: '' } }),
+  resetForAccount: (demo) => set(accountData(demo)),
   toggleQuest: (id) => set((state) => ({ quests: state.quests.map((quest) => quest.id === id ? { ...quest, done: !quest.done, status: quest.done ? 'active' : 'completed', completedAt: quest.done ? undefined : timestamp(), updatedAt: timestamp() } : quest) })),
   addQuest: (quest) => { const id = crypto.randomUUID(); set((state) => ({ quests: [...state.quests, { ...quest, id, completedAt: quest.done ? timestamp() : undefined, createdAt: timestamp(), updatedAt: timestamp() }] })); return id },
   updateQuest: (id, quest) => set((state) => ({ quests: state.quests.map((item) => item.id === id ? { ...item, ...quest, updatedAt: timestamp() } : item) })),
@@ -181,7 +210,8 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
     diaries: type === 'diary' ? state.diaries.map((item) => item.id === id ? { ...item, favorite: !item.favorite, updatedAt: timestamp() } : item) : state.diaries,
   })),
 }), {
-  name: 'rumen-kingdom-demo-state',
+  name: 'rumen-kingdom:v2:locked',
+  skipHydration: true,
   version: 5,
   migrate: (persisted) => {
     const old = (persisted ?? {}) as PersistedState
@@ -213,3 +243,27 @@ export const useKingdomStore = create<KingdomState>()(persist((set) => ({
   },
   partialize: (state) => ({ selectedDate: state.selectedDate, events: state.events, quests: state.quests, projects: state.projects, memos: state.memos, relationships: state.relationships, diaries: state.diaries }),
 }))
+
+let activeKingdomStorageKey = ''
+
+export async function activateKingdomAccount(scope: string, demo = false) {
+  const safeScope = scope.replace(/[^a-zA-Z0-9:_-]/g, '-') || 'locked'
+  const storageKey = `rumen-kingdom:v2:${safeScope}`
+  if (activeKingdomStorageKey === storageKey) return
+  setActiveAccountScope(safeScope)
+  useKingdomStore.persist.setOptions({ name: storageKey })
+  activeKingdomStorageKey = storageKey
+  if (localStorage.getItem(storageKey)) {
+    try { await useKingdomStore.persist.rehydrate() }
+    catch { useKingdomStore.getState().resetForAccount(demo) }
+  } else useKingdomStore.getState().resetForAccount(demo)
+}
+
+export function deactivateKingdomAccount() {
+  const storageKey = 'rumen-kingdom:v2:locked'
+  setActiveAccountScope('locked')
+  useKingdomStore.persist.setOptions({ name: storageKey })
+  activeKingdomStorageKey = ''
+  useKingdomStore.getState().resetForAccount(false)
+  localStorage.removeItem(storageKey)
+}

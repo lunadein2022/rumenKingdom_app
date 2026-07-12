@@ -4,6 +4,7 @@ import mammoth from 'mammoth'
 const SYSTEM_PROMPT = `당신은 루멘왕국의 왕실 메이드이자 일정·프로젝트 비서인 리타입니다.
 사용자를 항상 공주님이라고 부르세요. 말투는 부드럽고 차분하며 신뢰감 있어야 합니다.
 정보가 불분명하거나 중요한 정보가 빠졌다면 실행을 단정하지 말고 짧게 질문하세요.
+실제 저장 결과를 받기 전에는 절대로 "추가했습니다", "저장했습니다"라고 말하지 마세요.
 답변은 기본적으로 한국어로 간결하게 작성하세요.`
 
 const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024
@@ -38,12 +39,94 @@ export const handler = async (event) => {
   try {
     const input = JSON.parse(event.body ?? '{}')
     if (input.action === 'analyze-attachment') return await analyzeAttachment(input, apiKey, model)
+    if (input.action === 'interpret-request') return await interpretRequest(input, apiKey, model)
     return await chat(input, apiKey, model)
   } catch (error) {
     console.error('Claude function error', error)
     return json(500, { error: error instanceof Error ? error.message : '요청을 처리하지 못했습니다.' })
   }
 }
+
+async function interpretRequest(input, apiKey, model) {
+  const messages = Array.isArray(input.messages)
+    ? input.messages.filter((message) => message?.role === 'user' || message?.role === 'assistant').slice(-12)
+      .map((message) => ({ role: message.role, content: String(message.content).slice(0, 6000) }))
+    : []
+  if (!messages.length) return json(400, { error: '분석할 요청이 필요합니다.' })
+
+  const projects = Array.isArray(input.projects) ? input.projects.slice(0, 30).map((project) => ({
+    id: String(project?.id ?? ''), title: String(project?.title ?? '').slice(0, 120), status: String(project?.status ?? ''),
+  })).filter((project) => project.id && project.title) : []
+  const now = String(input.now ?? new Date().toISOString())
+  const timeZone = String(input.timeZone ?? 'Asia/Seoul')
+  const instruction = `다음 대화의 마지막 사용자 요청을 분석하세요.
+현재 시각: ${now}
+시간대: ${timeZone}
+현재 메인퀘스트 후보: ${JSON.stringify(projects)}
+
+분류 규칙:
+- quest: 사용자가 직접 해야 하는 행동이나 과업. 전화하기, 작성하기, 제출하기, 확인하기 등. 날짜나 시간이 있어도 행동 중심이면 퀘스트입니다.
+- calendar: 특정 시각이나 기간에 발생하는 회의, 약속, 행사, 여행, 출장, 예약입니다.
+- memo: 실행이나 일정 등록이 아닌 보관할 정보입니다.
+- chat: 저장 의도가 없는 일반 대화입니다.
+- clarify: quest와 calendar 중 어느 것인지 모호하거나 일정에 필수 날짜가 없습니다.
+
+"내일 거래처에 전화해야 해"는 quest이고 "내일 오후 3시에 거래처 회의가 있어"는 calendar입니다.
+"8월 19일부터 22일까지 가족여행"은 calendar이며 시간이 없으면 allDay=true입니다.
+사용자가 "개인업무 일정"이라고 말하면 calendarKind는 personal로 분류하세요. 업무·회사 일정은 work, 프로젝트 마감은 project입니다.
+퀘스트가 메인퀘스트 연결을 요구하면 후보의 정확한 id만 projectId로 반환하세요. 일부 이름, 설명 또는 직전 대화로 하나를 확정할 수 없으면 projectId를 비우고 needsProjectSelection=true로 두세요.
+연도가 생략된 날짜는 현재 시각 기준 가장 가까운 미래 날짜를 YYYY-MM-DD로 계산하세요.
+저장을 완료했다고 말하지 말고 초안을 확인해 달라는 reply를 작성하세요.
+
+반드시 아래 중 하나의 JSON 객체만 출력하세요. 마크다운은 사용하지 마세요.
+{"kind":"quest","title":"","description":"","questType":"daily|sub","dueDate":"YYYY-MM-DD 또는 빈 문자열","dueTime":"HH:mm 또는 빈 문자열","priority":"high|medium|low","tags":[],"projectId":"후보 id 또는 빈 문자열","needsProjectSelection":false,"reply":""}
+{"kind":"calendar","title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD 또는 빈 문자열","startTime":"HH:mm 또는 빈 문자열","endTime":"HH:mm 또는 빈 문자열","allDay":true,"calendarKind":"royal|personal|work|project|anniversary","important":false,"reply":""}
+{"kind":"memo","title":"","content":"","tags":[]}
+{"kind":"clarify","reply":"짧은 확인 질문"}
+{"kind":"chat","reply":"일반 답변"}`
+
+  const result = await callClaude(apiKey, model, {
+    system: `${SYSTEM_PROMPT}\n\n${instruction}`,
+    max_tokens: 1200,
+    messages,
+  })
+  const parsed = parseClaudeJson(textFromClaude(result))
+  return json(200, { analysis: normalizeRequestAnalysis(parsed, projects) })
+}
+
+function normalizeRequestAnalysis(value, projects) {
+  const kind = clean(value?.kind)
+  if (kind === 'quest') {
+    const projectId = projects.some((project) => project.id === value.projectId) ? value.projectId : ''
+    return {
+      kind: 'quest', title: clean(value.title), description: clean(value.description),
+      questType: value.questType === 'sub' ? 'sub' : 'daily', dueDate: isoDate(value.dueDate), dueTime: clockTime(value.dueTime),
+      priority: ['high', 'low'].includes(value.priority) ? value.priority : 'medium', tags: stringArray(value.tags),
+      projectId: projectId || undefined, needsProjectSelection: Boolean(value.needsProjectSelection) && !projectId,
+      reply: clean(value.reply) || '퀘스트 초안을 정리했어요. 저장하기 전에 확인해 주세요.',
+    }
+  }
+  if (kind === 'calendar') {
+    const startDate = isoDate(value.startDate)
+    const endDate = isoDate(value.endDate)
+    if (!startDate) return { kind: 'clarify', reply: '일정을 어느 날짜에 등록할까요?' }
+    if (endDate && endDate < startDate) return { kind: 'clarify', reply: '종료일이 시작일보다 빠릅니다. 일정 기간을 다시 알려주시겠어요?' }
+    const calendarKinds = ['royal', 'personal', 'work', 'project', 'anniversary']
+    return {
+      kind: 'calendar', title: clean(value.title), description: clean(value.description), startDate,
+      endDate: endDate || undefined, startTime: clockTime(value.startTime), endTime: clockTime(value.endTime),
+      allDay: Boolean(value.allDay) || !clockTime(value.startTime),
+      calendarKind: calendarKinds.includes(value.calendarKind) ? value.calendarKind : 'personal',
+      important: Boolean(value.important), reply: clean(value.reply) || '일정 초안을 정리했어요. 저장하기 전에 확인해 주세요.',
+    }
+  }
+  if (kind === 'memo') return { kind: 'memo', title: clean(value.title), content: clean(value.content), tags: stringArray(value.tags) }
+  if (kind === 'clarify') return { kind: 'clarify', reply: clean(value.reply) || '퀘스트와 일정 중 어느 것으로 등록할까요?' }
+  return { kind: 'chat', reply: clean(value?.reply) || '공주님, 조금 더 자세히 말씀해 주시겠어요?' }
+}
+
+const isoDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(clean(value)) ? clean(value) : undefined
+const clockTime = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(clean(value)) ? clean(value) : undefined
 
 async function chat(input, apiKey, model) {
   const messages = Array.isArray(input.messages)

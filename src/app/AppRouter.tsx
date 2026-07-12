@@ -17,8 +17,8 @@ import { ThronePage } from '../features/throne/ThronePage'
 import { navigation, pageIdFromPath, pagePaths } from './navigation'
 import { NavLink, useNavigate } from 'react-router-dom'
 
-export function AppRouter({ onSignOut }: { onSignOut: () => Promise<void> }) {
-  return <Routes><Route element={<AppLayout onSignOut={onSignOut}/>}>
+export function AppRouter({ demoMode, onResetDemo, onSignOut }: { demoMode: boolean; onResetDemo: () => void; onSignOut: () => Promise<void> }) {
+  return <Routes><Route element={<AppLayout demoMode={demoMode} onSignOut={onSignOut}/>}>
     <Route index element={<LobbyPage/>}/>
     <Route path="office" element={<OfficePage/>}/>
     <Route path="office/projects/:projectId" element={<ProjectDetailPage/>}/>
@@ -33,19 +33,19 @@ export function AppRouter({ onSignOut }: { onSignOut: () => Promise<void> }) {
     <Route path="diary" element={<DiaryPage/>}/>
     <Route path="diary/:date" element={<DiaryPage/>}/>
     <Route path="garden" element={<GardenPage/>}/>
-    <Route path="rita" element={<RitaPage/>}/>
-    <Route path="throne" element={<ThronePage onSignOut={onSignOut}/>}/>
+    <Route path="rita" element={<RitaPage demoMode={demoMode}/>}/>
+    <Route path="throne" element={<ThronePage demoMode={demoMode} onResetDemo={onResetDemo} onSignOut={onSignOut}/>}/>
     <Route path="*" element={<NotFoundPage/>}/>
   </Route></Routes>
 }
 
-function AppLayout({ onSignOut }: { onSignOut: () => Promise<void> }) {
+function AppLayout({ demoMode, onSignOut }: { demoMode: boolean; onSignOut: () => Promise<void> }) {
   const location = useLocation()
   const page = pageIdFromPath(location.pathname)
   const [mobileNav, setMobileNav] = useState(false)
   const topLevel = Object.values(pagePaths).includes(location.pathname)
   const showPageHeading = topLevel && page !== 'lobby' && page !== 'garden'
-  return <div className={`app-shell page-${page}`}><RouteEffects/><div className="ambient ambient-one"/><div className="ambient ambient-two"/><AppHeader page={page} onMenu={() => setMobileNav((value) => !value)} onSignOut={onSignOut}/>{mobileNav && <nav className="mobile-nav glass-panel" aria-label="모바일 메뉴">{navigation.map((item) => { const Icon = item.icon; return <NavLink key={item.id} to={item.path} end={item.path === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileNav(false)}><Icon size={15}/>{item.label}</NavLink> })}<NavLink className="nav-item" to="/rita" onClick={() => setMobileNav(false)}>리타</NavLink><NavLink className="nav-item" to="/throne" onClick={() => setMobileNav(false)}>왕좌의 방</NavLink><button className="nav-item" onClick={() => void onSignOut()}>로그아웃</button></nav>}<main className="main-wrap">{showPageHeading && <PageHeading page={page}/>}<Outlet/></main><footer><span>Copyright © RUMEN KINGDOM</span><span>All Rights Reserved.</span></footer></div>
+  return <div className={`app-shell page-${page}`}><RouteEffects/><div className="ambient ambient-one"/><div className="ambient ambient-two"/><AppHeader demoMode={demoMode} page={page} onMenu={() => setMobileNav((value) => !value)} onSignOut={onSignOut}/>{mobileNav && <nav className="mobile-nav glass-panel" aria-label="모바일 메뉴">{navigation.map((item) => { const Icon = item.icon; return <NavLink key={item.id} to={item.path} end={item.path === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileNav(false)}><Icon size={15}/>{item.label}</NavLink> })}<NavLink className="nav-item" to="/rita" onClick={() => setMobileNav(false)}>리타</NavLink><NavLink className="nav-item" to="/throne" onClick={() => setMobileNav(false)}>왕좌의 방</NavLink><button className="nav-item" onClick={() => void onSignOut()}>{demoMode ? '로그인하기' : '로그아웃'}</button></nav>}<main className="main-wrap">{showPageHeading && <PageHeading page={page}/>}<Outlet/></main><footer><span>Copyright © RUMEN KINGDOM</span><span>All Rights Reserved.</span></footer></div>
 }
 
 function RouteEffects() {

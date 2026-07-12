@@ -10,7 +10,7 @@ export function LobbyPage() {
   const navigate = useNavigate()
   const { events, quests, projects } = useKingdomStore()
   const today = seoulToday()
-  const todayEvents = events.filter((event) => event.date === today)
+  const todayEvents = events.filter((event) => event.date <= today && (event.endDate ?? event.date) >= today)
   const todayQuests = quests.filter(isTodayQuest)
   const openTodayQuests = todayQuests.filter((quest) => !quest.done)
   const activeProjects = projects.filter((project) => project.status === 'active')
