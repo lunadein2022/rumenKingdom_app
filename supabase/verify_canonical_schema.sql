@@ -25,7 +25,13 @@ expected_columns(table_name, column_name) as (
     ('memos', 'source'), ('memos', 'tags'), ('memos', 'favorite'),
     ('relationships', 'name'), ('relationships', 'relationship_type'),
     ('relationships', 'notes'), ('relationships', 'tags'),
-    ('relationships', 'organization'), ('relationships', 'favorite')
+    ('relationships', 'organization'), ('relationships', 'favorite'),
+    ('diary_quest_links', 'diary_id'), ('diary_quest_links', 'source_quest_id'),
+    ('diary_quest_links', 'snapshot_title'), ('diary_quest_links', 'snapshot_note'),
+    ('attachments', 'entity_type'), ('attachments', 'entity_id'),
+    ('attachments', 'storage_path'), ('attachments', 'file_name'),
+    ('user_settings', 'preferences'),
+    ('room_backgrounds', 'room_key'), ('room_backgrounds', 'storage_path')
 ),
 missing_columns as (
   select expected.table_name, expected.column_name
@@ -54,7 +60,8 @@ quest_counts as (
 ),
 expected_tables(table_name) as (
   values ('main_quests'), ('quests'), ('calendar_events'), ('diary_entries'),
-    ('memos'), ('relationships'), ('notifications'), ('user_settings'), ('room_backgrounds')
+    ('diary_quest_links'), ('memos'), ('relationships'), ('attachments'),
+    ('notifications'), ('reminders'), ('user_settings'), ('room_backgrounds')
 ),
 disabled_rls as (
   select expected.table_name

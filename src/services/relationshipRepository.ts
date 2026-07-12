@@ -1,8 +1,9 @@
 import { supabase } from '../lib/supabase'
 import type { Relationship } from '../types'
+import { listAttachmentMap, saveAttachment } from './attachmentRepository'
 
-// Relationships map to the `relationships` table (expanded by the migration).
-// businessCardImageRef / sourceAttachment are not persisted yet.
+// Relationships map to the expanded `relationships` table; private business
+// card metadata is joined from the owner-scoped attachments table.
 type RelationshipRow = {
   id: string
   name: string
@@ -82,7 +83,11 @@ export async function listRelationships(): Promise<Relationship[] | null> {
   if (!supabase || !userId) return null
   const { data, error } = await supabase.from('relationships').select(COLUMNS).order('created_at', { ascending: false })
   if (error) throw error
-  return (data as RelationshipRow[]).map(fromRow)
+  const attachments = await listAttachmentMap('relationship')
+  return (data as RelationshipRow[]).map((row) => {
+    const attachment = attachments.get(row.id)
+    return { ...fromRow(row), sourceAttachment: attachment, businessCardImageRef: attachment?.storagePath }
+  })
 }
 
 export async function createRelationship(relationship: Relationship): Promise<boolean> {
@@ -96,6 +101,7 @@ export async function createRelationship(relationship: Relationship): Promise<bo
     updated_at: relationship.updatedAt,
   })
   if (error) throw error
+  await saveAttachment('relationship', relationship.id, relationship.sourceAttachment)
   return true
 }
 

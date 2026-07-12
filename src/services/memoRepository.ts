@@ -1,8 +1,9 @@
 import { supabase } from '../lib/supabase'
 import type { Memo } from '../types'
+import { listAttachmentMap, saveAttachment } from './attachmentRepository'
 
-// Memos map to the canonical `memos` table. sourceAttachment metadata is not
-// persisted yet (that belongs to the future attachments wiring).
+// Memos map to the canonical `memos` table; original file metadata is joined
+// from the owner-scoped attachments table.
 type MemoRow = {
   id: string
   main_quest_id: string | null
@@ -50,7 +51,8 @@ export async function listMemos(): Promise<Memo[] | null> {
   if (!supabase || !userId) return null
   const { data, error } = await supabase.from('memos').select(COLUMNS).order('created_at', { ascending: false })
   if (error) throw error
-  return (data as MemoRow[]).map(fromRow)
+  const attachments = await listAttachmentMap('memo')
+  return (data as MemoRow[]).map((row) => ({ ...fromRow(row), sourceAttachment: attachments.get(row.id) }))
 }
 
 export async function createMemo(memo: Memo): Promise<boolean> {
@@ -72,6 +74,7 @@ export async function createMemo(memo: Memo): Promise<boolean> {
     updated_at: memo.updatedAt,
   })
   if (error) throw error
+  await saveAttachment('memo', memo.id, memo.sourceAttachment)
   return true
 }
 

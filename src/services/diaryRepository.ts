@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { DiaryEntry } from '../types'
+import type { DiaryEntry, DiaryQuestSnapshot } from '../types'
 
 // Diary entries map to diary_entries. The canonical body column is `body`.
 type DiaryRow = {
@@ -53,7 +53,39 @@ export async function listDiaries(): Promise<DiaryEntry[] | null> {
   if (!supabase || !userId) return null
   const { data, error } = await supabase.from('diary_entries').select(COLUMNS).order('entry_date', { ascending: false })
   if (error) throw error
-  return (data as DiaryRow[]).map(fromRow)
+  const { data: links, error: linkError } = await supabase.from('diary_quest_links').select('diary_id,source_quest_id,snapshot_title,snapshot_note,imported_at')
+  if (linkError) throw linkError
+  const byDiary = new Map<string, DiaryQuestSnapshot[]>()
+  for (const link of links ?? []) {
+    const list = byDiary.get(link.diary_id) ?? []
+    list.push({ sourceQuestId: link.source_quest_id, title: link.snapshot_title, note: link.snapshot_note, importedAt: link.imported_at })
+    byDiary.set(link.diary_id, list)
+  }
+  return (data as DiaryRow[]).map((row) => ({ ...fromRow(row), questSnapshots: byDiary.get(row.id) ?? [] }))
+}
+
+async function syncQuestSnapshots(diaryId: string, snapshots: DiaryQuestSnapshot[] = []) {
+  const userId = await getUserId()
+  if (!supabase || !userId) return
+  const { data: current, error: readError } = await supabase.from('diary_quest_links').select('source_quest_id').eq('diary_id', diaryId)
+  if (readError) throw readError
+  const wanted = new Set(snapshots.map((item) => item.sourceQuestId))
+  const remove = (current ?? []).filter((item) => !wanted.has(item.source_quest_id)).map((item) => item.source_quest_id)
+  if (remove.length) {
+    const { error } = await supabase.from('diary_quest_links').delete().eq('diary_id', diaryId).in('source_quest_id', remove)
+    if (error) throw error
+  }
+  if (snapshots.length) {
+    const { error } = await supabase.from('diary_quest_links').upsert(snapshots.map((item) => ({
+      user_id: userId,
+      diary_id: diaryId,
+      quest_id: isUuid(item.sourceQuestId) ? item.sourceQuestId : null,
+      source_quest_id: item.sourceQuestId,
+      snapshot_title: item.title,
+      snapshot_note: item.note ?? '',
+    })), { onConflict: 'user_id,diary_id,source_quest_id' })
+    if (error) throw error
+  }
 }
 
 export async function createDiary(entry: DiaryEntry): Promise<boolean> {
@@ -67,6 +99,7 @@ export async function createDiary(entry: DiaryEntry): Promise<boolean> {
     updated_at: entry.updatedAt,
   })
   if (error) throw error
+  await syncQuestSnapshots(entry.id, entry.questSnapshots)
   return true
 }
 
@@ -78,6 +111,7 @@ export async function updateDiary(id: string, patch: Partial<DiaryEntry>): Promi
     .update({ ...toRow(patch), updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
+  if (patch.questSnapshots !== undefined) await syncQuestSnapshots(id, patch.questSnapshots)
   return true
 }
 

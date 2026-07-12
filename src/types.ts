@@ -16,6 +16,13 @@ export interface CalendarEvent {
   recurrenceRule?: string
 }
 
+export interface DiaryQuestSnapshot {
+  sourceQuestId: string
+  title: string
+  note?: string
+  importedAt?: string
+}
+
 export type QuestPriority = 'high' | 'medium' | 'low'
 export type QuestType = 'daily' | 'sub'
 export type QuestStatus = 'planned' | 'active' | 'completed' | 'archived'
@@ -120,11 +127,12 @@ export interface DiaryEntry {
   mood: string
   favorite: boolean
   tags: string[]
+  questSnapshots?: DiaryQuestSnapshot[]
   createdAt: string
   updatedAt: string
 }
 
-export type LibraryCategory = 'all' | 'main-quests' | 'daily-quests' | 'sub-quests' | 'relationships' | 'memos' | 'diaries'
+export type LibraryCategory = 'all' | 'favorites' | 'main-quests' | 'daily-quests' | 'sub-quests' | 'relationships' | 'memos' | 'diaries'
 export type LibraryRecordType = 'mainQuest' | 'dailyQuest' | 'subQuest' | 'relationship' | 'memo' | 'diary'
 
 export interface LibraryRecord {

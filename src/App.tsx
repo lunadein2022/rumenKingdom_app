@@ -5,6 +5,8 @@ import { AppRouter } from './app/AppRouter'
 import { LoginScreen } from './components/LoginScreen'
 import { supabase } from './lib/supabase'
 import { activateKingdomAccount, deactivateKingdomAccount, useKingdomStore } from './store'
+import { accountStorageKey } from './lib/accountScope'
+import { loadPreferences } from './services/settingsRepository'
 
 function App() {
   const hydrateEvents = useKingdomStore((state) => state.hydrateEvents)
@@ -64,6 +66,13 @@ function App() {
     const prepare = async () => {
       if (session) {
         await activateKingdomAccount(`user:${session.user.id}`)
+        const preferences = await loadPreferences().catch(() => null)
+        if (preferences) {
+          localStorage.setItem(accountStorageKey('rumen-princess-name'), preferences.profileName)
+          localStorage.setItem(accountStorageKey('rumen-princess-intro'), preferences.profileIntro)
+          localStorage.setItem(accountStorageKey('rumen-in-app-notifications'), preferences.notifications ? 'on' : 'off')
+          localStorage.setItem(accountStorageKey('rumen-rita-style'), preferences.aiStyle)
+        }
         await Promise.all([hydrateEvents(), hydrateProjects(), hydrateMemos(), hydrateRelationships(), hydrateDiaries()])
         await hydrateQuests()
         if (active) setDataReady(true)

@@ -224,3 +224,21 @@
 - Added a shared Asia/Seoul service-date calculation with a 06:00 boundary and automatic rollover hook, then applied it to Lobby, Office, Diary, and Header daily summaries.
 - Made the canonical quest migration tolerate older Supabase projects whose legacy `sub_quests`/`daily_quests` tables lack description, priority, recurrence, completion, or timestamp columns. Missing compatibility columns are added without replacing existing data, enum-like text is normalized safely, and the migration now runs in an explicit transaction.
 - Reconciled the canonical migration against a production Supabase schema export: legacy project `start_date`/`due_date`/`progress`, diary `reflection`, and relationship `role` values are now copied into the repository-facing `starts_on`/`due_on`/`manual_progress`, `body`, and `relationship_type` columns without dropping the legacy columns. Added a read-only post-migration verification script for expected columns, normalized values, quest counts, RLS flags, and duplicate diary dates.
+
+## 2026-07 integrated productivity completion
+
+- Added a first-class Library favorites shelf and `/library/favorites` aggregate view without introducing an eighth mismatched book cover. Favorite records keep the same search, tag, sort, edit, and delete behavior as their source categories.
+- Added URL-persisted Library pagination and page-size controls so filtering, browser history, and refresh preserve the current archive position.
+- Added diary quest snapshots. A diary can import quests completed on its service date, synchronizes them through `diary_quest_links`, prevents duplicates, and keeps snapshot copy after a source quest is removed.
+- Expanded stored RRULE values into actual daily, weekly, and monthly occurrences in month, week, day, and list calendar views.
+- Replaced the header's static count-only notification copy with actionable due-event, overdue-quest, and memorandum-review items, including per-account read state and direct detail navigation.
+- Connected profile, notification preference, Rita response style, timezone, and service-day preferences to `user_settings`, while retaining the account-scoped local values as an offline fallback.
+- Activated per-room background upload, private signed preview, replacement, and default restoration through `room-backgrounds` Storage and the `room_backgrounds` table.
+- Versioned JSON exports and added validated merge imports that create fresh owner-safe IDs and remap project links for the current account.
+- Persisted Rita source-file metadata to `attachments` and rehydrated it with memoranda and relationships, so private originals remain discoverable across devices.
+- Extended the canonical verifier to include diary snapshots, attachment metadata, settings, reminders, and room-background fields and RLS.
+
+### Operational boundary
+
+- In-app reminders are evaluated while the application is open. Operating-system push delivery and background schedulers remain outside this client-only Netlify deployment.
+- JSON restore intentionally merges records and generates new IDs; destructive replacement requires a separately confirmed administrative workflow.

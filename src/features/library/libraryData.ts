@@ -37,6 +37,7 @@ export function buildLibraryRecords(data: { projects: Project[]; quests: Quest[]
 
 export function recordMatchesCategory(record: LibraryRecord, category: LibraryCategory) {
   if (category === 'all') return true
+  if (category === 'favorites') return record.favorite
   return ({ 'main-quests': 'mainQuest', 'daily-quests': 'dailyQuest', 'sub-quests': 'subQuest', relationships: 'relationship', memos: 'memo', diaries: 'diary' } as const)[category] === record.type
 }
 
