@@ -1,0 +1,13 @@
+{
+  "name": "루멘왕국, 공주의 하루",
+  "short_name": "루멘왕국",
+  "description": "왕실 메이드 리타와 함께 관리하는 공주의 라이프 OS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f2ee",
+  "theme_color": "#3b1268",
+  "icons": [
+    { "src": "/assets/favicon.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

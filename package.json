@@ -1,23 +1,35 @@
 {
-  "name": "princess-os",
-  "version": "0.27.0-refactor",
+  "name": "rumen-kingdom",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint ."
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@supabase/supabase-js": "2.57.4",
+    "@vitejs/plugin-react": "5.1.1",
+    "date-fns": "4.1.0",
+    "lucide-react": "0.468.0",
+    "mammoth": "1.11.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-router-dom": "7.9.6",
+    "vite": "7.2.4",
+    "zustand": "5.0.9"
   },
   "devDependencies": {
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.1",
-    "typescript": "^5.5.4",
-    "vite": "^5.4.0"
+    "@eslint/js": "latest",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "eslint": "latest",
+    "eslint-plugin-react-hooks": "latest",
+    "eslint-plugin-react-refresh": "latest",
+    "globals": "latest",
+    "typescript": "5.9.3",
+    "typescript-eslint": "latest"
   }
 }
