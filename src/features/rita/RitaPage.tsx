@@ -6,6 +6,8 @@ import { analyzeRitaAttachment, interpretRitaRequest, type AttachmentIntent, typ
 import { calendarKinds, useKingdomStore } from '../../store'
 import type { CalendarKind, Project, QuestPriority, QuestType } from '../../types'
 import { accountStorageKey } from '../../lib/accountScope'
+import { PrincessPortrait } from '../../components/PrincessPortrait'
+import { useSelectedPrincess } from '../../lib/princesses'
 
 type ChatMessage = { from: 'rita' | 'user'; text: string; expression?: RitaExpression }
 type MemoDraft = { kind: 'memo'; title: string; content: string; tags: string[] }
@@ -23,6 +25,7 @@ const welcomeMessage: ChatMessage = {
 
 export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
   const navigate = useNavigate()
+  const princess = useSelectedPrincess()
   const location = useLocation()
   const fileInput = useRef<HTMLInputElement>(null)
   const messagesRef = useRef<HTMLDivElement>(null)
@@ -237,7 +240,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
       <div className="chat-head"><div><span className="online"/><b>왕실 메이드 리타</b><small>{loading ? '자료를 읽고 정리하고 있어요' : '언제나 곁에 있어요'}</small></div><button className="chat-clear" onClick={() => { setMessages([welcomeMessage]); setDraft(null); removeAttachment() }}>대화 지우기</button></div>
       {demoMode && <div className="rita-demo-notice">데모 모드에서는 리타의 화면만 미리 볼 수 있어요. 실제 대화와 첨부 분석은 로그인이 필요합니다.</div>}
       <div className="messages" aria-live="polite" ref={messagesRef}>
-        {messages.map((message, index) => <div key={index} className={`message ${message.from}`}>{message.from === 'rita' ? <RitaFace expression={message.expression}/> : <img className="princess-message-avatar" src="/assets/characters/princess-bust.webp" alt="공주"/>}<p>{message.text}</p></div>)}
+        {messages.map((message, index) => <div key={index} className={`message ${message.from}`}>{message.from === 'rita' ? <RitaFace expression={message.expression}/> : <PrincessPortrait className="princess-message-avatar" princess={princess}/>}<p>{message.text}</p></div>)}
         {draft && <DraftConfirmation
           draft={draft}
           projects={projects.filter((project) => project.status !== 'completed' && project.status !== 'archived')}

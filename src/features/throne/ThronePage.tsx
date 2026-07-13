@@ -5,6 +5,8 @@ import { accountStorageKey } from '../../lib/accountScope'
 import { useKingdomStore } from '../../store'
 import { defaultPreferences, loadPreferences, removeRoomBackground, savePreferences, uploadRoomBackground, type UserPreferences } from '../../services/settingsRepository'
 import type { PageId } from '../../types'
+import { PrincessPortrait } from '../../components/PrincessPortrait'
+import { getPrincess, princessOptions, readSelectedPrincessId, storeSelectedPrincessId, type PrincessId } from '../../lib/princesses'
 
 type SettingId = 'profile' | 'background' | 'notifications' | 'ai' | 'data' | null
 
@@ -23,18 +25,22 @@ export function ThronePage({ demoMode = false, onResetDemo = () => undefined, on
   const [aiStyle, setAiStyle] = useState(() => localStorage.getItem(ritaStyleKey) || 'concise')
   const [timezone, setTimezone] = useState('Asia/Seoul')
   const [serviceDayStartsAt, setServiceDayStartsAt] = useState('06:00')
+  const [princessId, setPrincessId] = useState<PrincessId>(() => readSelectedPrincessId())
+  const [draftPrincessId, setDraftPrincessId] = useState<PrincessId>(princessId)
+  const selectedPrincess = getPrincess(princessId)
   const recordCount = store.projects.length + store.quests.length + store.memos.length + store.relationships.length + store.diaries.length
 
-  useEffect(() => { void loadPreferences().then((saved) => { if (!saved) return; setName(saved.profileName); setDraftName(saved.profileName); setIntro(saved.profileIntro); setDraftIntro(saved.profileIntro); setNotifications(saved.notifications); setAiStyle(saved.aiStyle); setTimezone(saved.timezone); setServiceDayStartsAt(saved.serviceDayStartsAt) }).catch(() => undefined) }, [])
-  const persistPreferences = (patch: Partial<UserPreferences>) => savePreferences({ ...defaultPreferences, profileName: name, profileIntro: intro, notifications, aiStyle: aiStyle as UserPreferences['aiStyle'], timezone, serviceDayStartsAt, ...patch })
+  useEffect(() => { void loadPreferences().then((saved) => { if (!saved) return; const savedPrincessId = storeSelectedPrincessId(saved.selectedPrincessId); setName(saved.profileName); setDraftName(saved.profileName); setIntro(saved.profileIntro); setDraftIntro(saved.profileIntro); setNotifications(saved.notifications); setAiStyle(saved.aiStyle); setTimezone(saved.timezone); setServiceDayStartsAt(saved.serviceDayStartsAt); setPrincessId(savedPrincessId); setDraftPrincessId(savedPrincessId) }).catch(() => undefined) }, [])
+  const persistPreferences = (patch: Partial<UserPreferences>) => savePreferences({ ...defaultPreferences, profileName: name, profileIntro: intro, notifications, aiStyle: aiStyle as UserPreferences['aiStyle'], timezone, serviceDayStartsAt, selectedPrincessId: princessId, ...patch })
 
   const saveProfile = async () => {
     const nextName = draftName.trim() || '루멘왕국의 공주'
     const nextIntro = draftIntro.trim()
-    setName(nextName); setIntro(nextIntro)
+    setName(nextName); setIntro(nextIntro); setPrincessId(draftPrincessId)
     localStorage.setItem(profileNameKey, nextName)
     localStorage.setItem(profileIntroKey, nextIntro)
-    await persistPreferences({ profileName: nextName, profileIntro: nextIntro, timezone, serviceDayStartsAt }).catch(() => undefined)
+    storeSelectedPrincessId(draftPrincessId)
+    await persistPreferences({ profileName: nextName, profileIntro: nextIntro, timezone, serviceDayStartsAt, selectedPrincessId: draftPrincessId }).catch(() => undefined)
     setSetting(null)
   }
   const exportData = () => {
@@ -61,7 +67,7 @@ export function ThronePage({ demoMode = false, onResetDemo = () => undefined, on
 
   return <div className="kingdom-account">
     <section className="princess-profile-card glass-panel">
-      <div className="princess-profile-visual"><img src="/assets/characters/princess-bust.webp" alt="루멘왕국의 공주"/><span><Crown size={17}/></span></div>
+      <div className="princess-profile-visual"><PrincessPortrait princess={selectedPrincess}/><span><Crown size={17}/></span></div>
       <div className="princess-profile-copy"><span className="eyebrow">MY RUMEN KINGDOM</span><h2>{name}</h2><p>{intro}</p><button onClick={() => setSetting('profile')}><Pencil size={14}/> 프로필 편집</button></div>
       <div className="princess-profile-stats"><AccountStat label="총 메인퀘스트" value={store.projects.length}/><AccountStat label="총 퀘스트" value={store.quests.length}/><AccountStat label="작성한 다이어리" value={store.diaries.length}/><AccountStat label="저장된 기록" value={recordCount}/></div>
     </section>
@@ -78,7 +84,23 @@ export function ThronePage({ demoMode = false, onResetDemo = () => undefined, on
         <SettingRow icon={Database} title="데이터 관리" description="왕국 기록 내보내기와 보관" onClick={() => setSetting('data')}/>
       </div>
       {setting && <SettingPanel setting={setting} onClose={() => setSetting(null)}>
-        {setting === 'profile' && <div className="setting-form"><label>공주 이름<input value={draftName} onChange={(event) => setDraftName(event.target.value)}/></label><label>한 줄 소개<textarea value={draftIntro} onChange={(event) => setDraftIntro(event.target.value)}/></label><div className="form-row"><label>시간대<select value={timezone} onChange={(event) => setTimezone(event.target.value)}><option value="Asia/Seoul">대한민국 · 서울</option><option value="UTC">UTC</option></select></label><label>하루 시작 시각<input type="time" value={serviceDayStartsAt} onChange={(event) => setServiceDayStartsAt(event.target.value)}/></label></div><button className="primary" onClick={() => void saveProfile()}><Save size={14}/> 저장</button></div>}
+        {setting === 'profile' && <div className="setting-form">
+          <fieldset className="princess-picker">
+            <legend>공주 고르기</legend>
+            <p>선택한 공주는 로비의 전신 이미지와 왕국 안의 프로필 사진에 함께 적용됩니다.</p>
+            <div className="princess-picker-grid">
+              {princessOptions.map((princess) => <button type="button" key={princess.id} className={draftPrincessId === princess.id ? 'selected' : ''} onClick={() => setDraftPrincessId(princess.id)} aria-pressed={draftPrincessId === princess.id}>
+                <span><PrincessPortrait princess={princess} loading="lazy"/></span>
+                <b>{princess.name}</b>
+                <small>{princess.description}</small>
+              </button>)}
+            </div>
+          </fieldset>
+          <label>공주 이름<input value={draftName} onChange={(event) => setDraftName(event.target.value)}/></label>
+          <label>한 줄 소개<textarea value={draftIntro} onChange={(event) => setDraftIntro(event.target.value)}/></label>
+          <div className="form-row"><label>시간대<select value={timezone} onChange={(event) => setTimezone(event.target.value)}><option value="Asia/Seoul">대한민국 · 서울</option><option value="UTC">UTC</option></select></label><label>하루 시작 시각<input type="time" value={serviceDayStartsAt} onChange={(event) => setServiceDayStartsAt(event.target.value)}/></label></div>
+          <button className="primary" onClick={() => void saveProfile()}><Save size={14}/> 저장</button>
+        </div>}
         {setting === 'background' && <BackgroundSettings/>}
         {setting === 'notifications' && <label className="setting-toggle"><span><b>앱 내부 알림</b><small>일정과 확인할 기록을 헤더에서 안내합니다.</small></span><input type="checkbox" checked={notifications} onChange={(event) => { const value = event.target.checked; setNotifications(value); localStorage.setItem(notificationsKey, value ? 'on' : 'off'); window.dispatchEvent(new CustomEvent('rumen-notification-setting', { detail: value })); void persistPreferences({ notifications: value }) }}/></label>}
         {setting === 'ai' && <label className="setting-select">리타의 답변 방식<select value={aiStyle} onChange={(event) => { const value = event.target.value as UserPreferences['aiStyle']; setAiStyle(value); localStorage.setItem(ritaStyleKey, value); void persistPreferences({ aiStyle: value }) }}><option value="concise">간결하게</option><option value="warm">다정하게</option><option value="detailed">자세하게</option></select><small>계정에 저장되어 다른 기기에서도 같은 답변 방식을 사용합니다.</small></label>}

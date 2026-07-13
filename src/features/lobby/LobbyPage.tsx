@@ -8,9 +8,12 @@ import { lobbyGreetingLead, serviceDate } from '../../lib/serviceTime'
 import { useServiceDate } from '../../lib/useServiceDate'
 import { questOccursOn } from '../../lib/recurrence'
 import type { Quest } from '../../types'
+import { PrincessPortrait } from '../../components/PrincessPortrait'
+import { useSelectedPrincess } from '../../lib/princesses'
 
 export function LobbyPage() {
   const navigate = useNavigate()
+  const princess = useSelectedPrincess()
   const { events, quests, projects } = useKingdomStore()
   const today = useServiceDate()
   const todayEvents = events.filter((event) => event.date <= today && (event.endDate ?? event.date) >= today)
@@ -23,7 +26,7 @@ export function LobbyPage() {
 
   return <div className="lobby-hub">
     <section className="lobby-hero" aria-labelledby="lobby-briefing-title">
-      <img className="lobby-princess" src="/assets/characters/princess-full.webp" alt="루멘왕국의 공주"/>
+      <PrincessPortrait className="lobby-princess" princess={princess} variant="full"/>
       <div className="lobby-hero-glow"/>
       <div className="lobby-briefing-copy">
         <div className="lobby-rita-greeting"><RitaFace expression="welcome"/><span><small>RITA'S MORNING REPORT</small><b>리타의 오늘 브리핑</b></span></div>

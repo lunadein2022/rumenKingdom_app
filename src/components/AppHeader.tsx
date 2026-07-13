@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bell, Crown, LogOut, Menu, Search, Sparkles, X } from 'lucide-react'
+import { Bell, LogOut, Menu, Search, Sparkles, X } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { navigation } from '../app/navigation'
 import { useKingdomStore } from '../store'
@@ -7,6 +7,8 @@ import type { PageId } from '../types'
 import { useServiceDate } from '../lib/useServiceDate'
 import { accountStorageKey } from '../lib/accountScope'
 import { BodyAreaOverlay } from './BodyAreaOverlay'
+import { PrincessPortrait } from './PrincessPortrait'
+import { useSelectedPrincess } from '../lib/princesses'
 
 export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boolean; page: PageId; onMenu: () => void; onSignOut: () => Promise<void> }) {
   const navigate = useNavigate()
@@ -15,6 +17,7 @@ export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boo
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [query, setQuery] = useState('')
   const serviceToday = useServiceDate()
+  const princess = useSelectedPrincess()
   const notificationReadKey = accountStorageKey('rumen-read-notifications')
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem(accountStorageKey('rumen-in-app-notifications')) !== 'off')
   useEffect(() => {
@@ -61,7 +64,7 @@ export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boo
         <button aria-label="전체 검색" onClick={() => setSearchOpen(true)}><Search size={18}/></button>
         <button aria-label={`알림 ${unreadCount}개`} className={notificationOpen ? 'active' : ''} onClick={() => setNotificationOpen((value) => !value)}><Bell size={18}/>{unreadCount > 0 && <i/>}</button>
         <NavLink className="header-shortcut rita-shortcut" to="/rita" aria-label="리타 바로가기"><Sparkles size={17}/><span>리타</span></NavLink>
-        <NavLink className="header-shortcut throne-shortcut" to="/throne" aria-label="왕좌의 방"><Crown size={17}/><span>왕좌</span></NavLink>
+        <NavLink className="header-shortcut throne-shortcut" to="/throne" aria-label="왕좌의 방"><PrincessPortrait className="header-princess-avatar" princess={princess}/><span>왕좌</span></NavLink>
         <button className="header-shortcut logout-shortcut" aria-label={demoMode ? '로그인하기' : '로그아웃'} onClick={() => void onSignOut()}><LogOut size={17}/><span>{demoMode ? '로그인' : '로그아웃'}</span></button>
         <button className="menu-button" aria-label="메뉴" onClick={onMenu}><Menu size={20}/></button>
       </div>

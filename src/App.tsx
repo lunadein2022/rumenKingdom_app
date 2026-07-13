@@ -7,6 +7,7 @@ import { supabase } from './lib/supabase'
 import { activateKingdomAccount, deactivateKingdomAccount, useKingdomStore } from './store'
 import { accountStorageKey } from './lib/accountScope'
 import { loadPreferences } from './services/settingsRepository'
+import { storeSelectedPrincessId } from './lib/princesses'
 
 function App() {
   const hydrateEvents = useKingdomStore((state) => state.hydrateEvents)
@@ -81,6 +82,7 @@ function App() {
           localStorage.setItem(accountStorageKey('rumen-princess-intro'), preferences.profileIntro)
           localStorage.setItem(accountStorageKey('rumen-in-app-notifications'), preferences.notifications ? 'on' : 'off')
           localStorage.setItem(accountStorageKey('rumen-rita-style'), preferences.aiStyle)
+          storeSelectedPrincessId(preferences.selectedPrincessId)
         }
         await Promise.all([hydrateEvents(), hydrateProjects(), hydrateMemos(), hydrateRelationshipGroups(), hydrateRelationships(), hydrateDiaries()])
         await hydrateQuests()

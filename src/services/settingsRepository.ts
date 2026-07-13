@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { PageId } from '../types'
+import type { PrincessId } from '../lib/princesses'
 
 export type UserPreferences = {
   profileName: string
@@ -8,6 +9,7 @@ export type UserPreferences = {
   aiStyle: 'concise' | 'warm' | 'detailed'
   timezone: string
   serviceDayStartsAt: string
+  selectedPrincessId: PrincessId
 }
 
 export type RoomBackground = { room: PageId; storagePath: string; position: string; url: string }
@@ -23,6 +25,7 @@ export const defaultPreferences: UserPreferences = {
   aiStyle: 'concise',
   timezone: 'Asia/Seoul',
   serviceDayStartsAt: '06:00',
+  selectedPrincessId: 'default',
 }
 
 async function getUserId() {
