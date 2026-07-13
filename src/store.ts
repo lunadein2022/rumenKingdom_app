@@ -6,11 +6,12 @@ import { createProject as createProjectRow, listProjects, removeProject as remov
 import { createQuest as createQuestRow, listQuests, removeQuest as removeQuestRow, updateQuest as updateQuestRow } from './services/questRepository'
 import { createMemo as createMemoRow, listMemos, removeMemo as removeMemoRow, updateMemo as updateMemoRow } from './services/memoRepository'
 import { createRelationship as createRelationshipRow, listRelationships, removeRelationship as removeRelationshipRow, updateRelationship as updateRelationshipRow } from './services/relationshipRepository'
+import { createRelationshipGroup as createRelationshipGroupRow, listRelationshipGroups, removeRelationshipGroup as removeRelationshipGroupRow, updateRelationshipGroup as updateRelationshipGroupRow } from './services/relationshipGroupRepository'
 import { createDiary as createDiaryRow, listDiaries, removeDiary as removeDiaryRow, updateDiary as updateDiaryRow } from './services/diaryRepository'
-import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, Project, Quest, Relationship } from './types'
+import { listQuestCompletions, removeQuestCompletion, saveQuestCompletion } from './services/questCompletionRepository'
+import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, Project, Quest, QuestCompletion, Relationship, RelationshipGroup } from './types'
 import { getActiveAccountScope, setActiveAccountScope } from './lib/accountScope'
 import { serviceDate } from './lib/serviceTime'
-import { questOccursOn } from './lib/recurrence'
 
 type ProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 type QuestInput = Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
@@ -22,9 +23,11 @@ interface KingdomState {
   selectedDate: string
   events: CalendarEvent[]
   quests: Quest[]
+  questCompletions: QuestCompletion[]
   projects: Project[]
   memos: Memo[]
   relationships: Relationship[]
+  relationshipGroups: RelationshipGroup[]
   diaries: DiaryEntry[]
   /** 집무실에서 사용자가 드래그로 지정한 퀘스트 표시 순서 (id → 순번). 로컬에만 보관. */
   questOrder: Record<string, number>
@@ -40,6 +43,7 @@ interface KingdomState {
   hydrateQuests: () => Promise<void>
   hydrateMemos: () => Promise<void>
   hydrateRelationships: () => Promise<void>
+  hydrateRelationshipGroups: () => Promise<void>
   hydrateDiaries: () => Promise<void>
   clearCalendarSync: () => void
   resetForAccount: (demo: boolean) => void
@@ -49,8 +53,8 @@ interface KingdomState {
   updateQuest: (id: string, quest: Partial<Quest>) => Promise<boolean>
   deleteQuest: (id: string) => Promise<boolean>
   reorderQuests: (orderedIds: string[]) => void
-  /** 새 서비스일이 되면 지난 날 완료한 반복 퀘스트를 다시 미완료로 되돌린다. */
-  rolloverRecurringQuests: (today: string) => void
+  /** 현재 서비스일의 완료 로그를 반복 퀘스트 화면 상태에 반영한다. */
+  refreshRecurringQuestState: (today: string) => void
   addProject: (project: ProjectInput) => Promise<string | null>
   updateProject: (id: string, project: Partial<ProjectInput>) => Promise<boolean>
   deleteProject: (id: string) => Promise<boolean>
@@ -61,6 +65,9 @@ interface KingdomState {
   addRelationship: (relationship: RelationshipInput) => Promise<string | null>
   updateRelationship: (id: string, relationship: Partial<RelationshipInput>) => Promise<boolean>
   deleteRelationship: (id: string) => Promise<boolean>
+  addRelationshipGroup: (name: string, color?: string) => Promise<string | null>
+  updateRelationshipGroup: (id: string, patch: Partial<Pick<RelationshipGroup, 'name' | 'color' | 'sortOrder'>>) => Promise<boolean>
+  deleteRelationshipGroup: (id: string) => Promise<boolean>
   upsertDiary: (entry: DiaryInput) => Promise<string | null>
   deleteDiary: (id: string) => Promise<boolean>
   toggleLibraryFavorite: (type: LibraryRecordType, id: string) => Promise<boolean>
@@ -106,7 +113,11 @@ const initialMemos: Memo[] = [
 ]
 
 const initialRelationships: Relationship[] = [
-  { id: 'r1', name: '세라핀 드 로제', organization: '로제 상단', position: '상단 대표', phone: '', email: 'seraphine@example.com', social: '', relationshipType: '협력자', firstMetAt: monthDate(2), lastContactedAt: today, memo: 'Hydro Hawk 브랜딩 자문을 맡고 있다.', tags: ['Hydro Hawk', '협력자'], favorite: true, source: 'manual', createdAt, updatedAt: createdAt },
+  { id: 'r1', name: '세라핀 드 로제', organization: '로제 상단', position: '상단 대표', phone: '', email: 'seraphine@example.com', social: '', relationshipType: '협력자', firstMetAt: monthDate(2), lastContactedAt: today, memo: 'Hydro Hawk 브랜딩 자문을 맡고 있다.', tags: ['Hydro Hawk', '협력자'], groupIds: ['rg1'], favorite: true, source: 'manual', createdAt, updatedAt: createdAt },
+]
+
+const initialRelationshipGroups: RelationshipGroup[] = [
+  { id: 'rg1', name: '협력자', color: '#9a78b6', sortOrder: 0, createdAt, updatedAt: createdAt },
 ]
 
 const initialDiaries: DiaryEntry[] = [
@@ -125,9 +136,11 @@ const accountData = (demo: boolean) => ({
   selectedDate: today,
   events: demo ? [...initialEvents] : [],
   quests: demo ? [...initialQuests] : [],
+  questCompletions: [],
   projects: demo ? [...initialProjects] : [],
   memos: demo ? [...initialMemos] : [],
   relationships: demo ? [...initialRelationships] : [],
+  relationshipGroups: demo ? [...initialRelationshipGroups] : [],
   diaries: demo ? [...initialDiaries] : [],
   questOrder: {},
   calendarSync: { status: 'idle' as const, message: '' },
@@ -149,9 +162,11 @@ type PersistedState = {
   selectedDate?: string
   events?: CalendarEvent[]
   quests?: Array<Partial<Quest> & Pick<Quest, 'id' | 'title'>>
+  questCompletions?: QuestCompletion[]
   projects?: Array<Partial<Project> & Pick<Project, 'id' | 'title'>>
   memos?: Memo[]
   relationships?: Relationship[]
+  relationshipGroups?: RelationshipGroup[]
   diaries?: DiaryEntry[]
   questOrder?: Record<string, number>
 }
@@ -160,9 +175,11 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
   selectedDate: today,
   events: initialEvents,
   quests: initialQuests,
+  questCompletions: [],
   projects: initialProjects,
   memos: initialMemos,
   relationships: initialRelationships,
+  relationshipGroups: initialRelationshipGroups,
   diaries: initialDiaries,
   questOrder: {},
   calendarSync: { status: 'idle', message: '' },
@@ -216,17 +233,27 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
   hydrateProjects: async () => { try { const savedProjects = await listProjects(); if (savedProjects) set({ projects: savedProjects }) } catch { set({ recordSync: { status: 'error', message: '메인퀘스트를 불러오지 못했어요.' } }) } },
   hydrateQuests: async () => {
     try {
-      const savedQuests = await listQuests()
+      const [savedQuests, savedCompletions] = await Promise.all([listQuests(), listQuestCompletions()])
       if (savedQuests) set((state) => ({
+        questCompletions: savedCompletions ?? [],
         quests: savedQuests.map((quest) => ({
           ...quest,
           project: quest.projectId ? state.projects.find((project) => project.id === quest.projectId)?.title : undefined,
+          ...(quest.recurrenceRule ? (() => {
+            const completion = (savedCompletions ?? []).find((item) => item.questId === quest.id && item.occurrenceDate === serviceDate())
+            return {
+              done: Boolean(completion),
+              status: completion ? 'completed' as const : quest.status === 'completed' ? 'active' as const : quest.status,
+              completedAt: completion?.completedAt,
+            }
+          })() : {}),
         })),
       }))
     } catch { set({ recordSync: { status: 'error', message: '퀘스트를 불러오지 못했어요.' } }) }
   },
   hydrateMemos: async () => { try { const saved = await listMemos(); if (saved) set({ memos: saved }) } catch { set({ recordSync: { status: 'error', message: '비망록을 불러오지 못했어요.' } }) } },
   hydrateRelationships: async () => { try { const saved = await listRelationships(); if (saved) set({ relationships: saved }) } catch { set({ recordSync: { status: 'error', message: '인연록을 불러오지 못했어요.' } }) } },
+  hydrateRelationshipGroups: async () => { try { const saved = await listRelationshipGroups(); if (saved) set({ relationshipGroups: saved }) } catch { set({ recordSync: { status: 'error', message: '인연록 그룹을 불러오지 못했어요.' } }) } },
   hydrateDiaries: async () => { try { const saved = await listDiaries(); if (saved) set({ diaries: saved }) } catch { set({ recordSync: { status: 'error', message: '다이어리를 불러오지 못했어요.' } }) } },
   clearCalendarSync: () => set({ calendarSync: { status: 'idle', message: '' } }),
   clearRecordSync: () => set({ recordSync: { status: 'idle', message: '' } }),
@@ -237,6 +264,33 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     const nextDone = !previous.done
     const nextStatus: Quest['status'] = nextDone ? 'completed' : 'active'
     const nextCompletedAt = nextDone ? timestamp() : undefined
+    if (previous.recurrenceRule) {
+      const occurrenceDate = serviceDate()
+      const previousCompletions = get().questCompletions
+      const nextCompletion = nextDone ? { questId: id, occurrenceDate, completedAt: nextCompletedAt as string } : undefined
+      set((state) => ({
+        quests: state.quests.map((quest) => quest.id === id ? { ...quest, done: nextDone, status: nextStatus, completedAt: nextCompletedAt, updatedAt: timestamp() } : quest),
+        questCompletions: nextDone
+          ? [...state.questCompletions.filter((item) => item.questId !== id || item.occurrenceDate !== occurrenceDate), nextCompletion as QuestCompletion]
+          : state.questCompletions.filter((item) => item.questId !== id || item.occurrenceDate !== occurrenceDate),
+        recordSync: { status: 'saving', message: '반복 퀘스트 완료 기록을 저장하고 있어요.' },
+      }))
+      try {
+        const stored = nextCompletion
+          ? await saveQuestCompletion(nextCompletion)
+          : await removeQuestCompletion(id, occurrenceDate)
+        assertStoredWhenRequired(stored)
+        set({ recordSync: { status: 'saved', message: nextDone ? '오늘의 반복 퀘스트를 완료했어요.' : '오늘의 완료 기록을 취소했어요.' } })
+        return true
+      } catch {
+        set((state) => ({
+          quests: state.quests.map((quest) => quest.id === id ? previous : quest),
+          questCompletions: previousCompletions,
+          recordSync: { status: 'error', message: '반복 퀘스트 완료 기록을 저장하지 못해 되돌렸어요.' },
+        }))
+        return false
+      }
+    }
     set((state) => ({ quests: state.quests.map((quest) => quest.id === id ? { ...quest, done: nextDone, status: nextStatus, completedAt: nextCompletedAt, updatedAt: timestamp() } : quest), recordSync: { status: 'saving', message: '퀘스트 상태를 저장하고 있어요.' } }))
     try {
       assertStoredWhenRequired(await updateQuestRow(id, { status: nextStatus, completedAt: nextCompletedAt }))
@@ -251,39 +305,101 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     const id = crypto.randomUUID()
     const now = timestamp()
     const full: Quest = { ...quest, id, completedAt: quest.done ? now : undefined, createdAt: now, updatedAt: now }
-    set((state) => ({ quests: [...state.quests, full], recordSync: { status: 'saving', message: '퀘스트를 저장하고 있어요.' } }))
+    const occurrenceDate = serviceDate()
+    const completion = full.recurrenceRule && full.done
+      ? { questId: id, occurrenceDate, completedAt: full.completedAt as string }
+      : undefined
+    const storedQuest = full.recurrenceRule
+      ? { ...full, status: full.status === 'completed' ? 'active' as const : full.status, done: false, completedAt: undefined }
+      : full
+    set((state) => ({
+      quests: [...state.quests, full],
+      questCompletions: completion ? [...state.questCompletions, completion] : state.questCompletions,
+      recordSync: { status: 'saving', message: '퀘스트를 저장하고 있어요.' },
+    }))
     try {
-      assertStoredWhenRequired(await createQuestRow(full))
+      assertStoredWhenRequired(await createQuestRow(storedQuest))
+      if (completion) assertStoredWhenRequired(await saveQuestCompletion(completion))
       set({ recordSync: { status: 'saved', message: '퀘스트를 저장했어요.' } })
       return id
     } catch {
-      set((state) => ({ quests: state.quests.filter((item) => item.id !== id), recordSync: { status: 'error', message: '퀘스트를 저장하지 못했어요.' } }))
+      if (cloudAccountActive()) void removeQuestRow(id).catch(() => undefined)
+      set((state) => ({
+        quests: state.quests.filter((item) => item.id !== id),
+        questCompletions: state.questCompletions.filter((item) => item.questId !== id),
+        recordSync: { status: 'error', message: '퀘스트를 저장하지 못했어요.' },
+      }))
       return null
     }
   },
   updateQuest: async (id, quest) => {
     const previous = get().quests.find((item) => item.id === id)
     if (!previous) return false
-    set((state) => ({ quests: state.quests.map((item) => item.id === id ? { ...item, ...quest, updatedAt: timestamp() } : item), recordSync: { status: 'saving', message: '퀘스트 변경사항을 저장하고 있어요.' } }))
+    const previousCompletions = get().questCompletions
+    const nextRecurrenceRule = 'recurrenceRule' in quest ? quest.recurrenceRule : previous.recurrenceRule
+    const occurrenceDate = serviceDate()
+    const requestedDone = quest.done !== undefined
+      ? quest.done
+      : quest.status !== undefined
+        ? quest.status === 'completed'
+        : previous.done
+    const requestedCompletedAt = requestedDone ? quest.completedAt ?? previous.completedAt ?? timestamp() : undefined
+    const templateStatus: Quest['status'] = nextRecurrenceRule && requestedDone
+      ? 'active'
+      : quest.status ?? (nextRecurrenceRule && previous.status === 'completed' ? 'active' : previous.status)
+    const storagePatch: Partial<Quest> = nextRecurrenceRule
+      ? { ...quest, status: templateStatus, completedAt: undefined }
+      : quest
+    const localPatch: Partial<Quest> = nextRecurrenceRule
+      ? { ...quest, done: requestedDone, status: requestedDone ? 'completed' : templateStatus, completedAt: requestedCompletedAt }
+      : quest
+    const nextCompletion = nextRecurrenceRule && requestedDone
+      ? { questId: id, occurrenceDate, completedAt: requestedCompletedAt as string }
+      : undefined
+    set((state) => ({
+      quests: state.quests.map((item) => item.id === id ? { ...item, ...localPatch, updatedAt: timestamp() } : item),
+      questCompletions: nextRecurrenceRule
+        ? nextCompletion
+          ? [...state.questCompletions.filter((item) => item.questId !== id || item.occurrenceDate !== occurrenceDate), nextCompletion]
+          : state.questCompletions.filter((item) => item.questId !== id || item.occurrenceDate !== occurrenceDate)
+        : state.questCompletions,
+      recordSync: { status: 'saving', message: '퀘스트 변경사항을 저장하고 있어요.' },
+    }))
     try {
-      assertStoredWhenRequired(await updateQuestRow(id, quest))
+      assertStoredWhenRequired(await updateQuestRow(id, storagePatch))
+      if (nextRecurrenceRule) {
+        const stored = nextCompletion
+          ? await saveQuestCompletion(nextCompletion)
+          : await removeQuestCompletion(id, occurrenceDate)
+        assertStoredWhenRequired(stored)
+      }
       set({ recordSync: { status: 'saved', message: '퀘스트 변경사항을 저장했어요.' } })
       return true
     } catch {
-      set((state) => ({ quests: state.quests.map((item) => item.id === id ? previous : item), recordSync: { status: 'error', message: '퀘스트 변경사항을 저장하지 못해 되돌렸어요.' } }))
+      if (cloudAccountActive()) void updateQuestRow(id, previous).catch(() => undefined)
+      set((state) => ({
+        quests: state.quests.map((item) => item.id === id ? previous : item),
+        questCompletions: previousCompletions,
+        recordSync: { status: 'error', message: '퀘스트 변경사항을 저장하지 못해 되돌렸어요.' },
+      }))
       return false
     }
   },
   deleteQuest: async (id) => {
     const previous = get().quests
+    const previousCompletions = get().questCompletions
     if (!previous.some((quest) => quest.id === id)) return false
-    set({ quests: previous.filter((quest) => quest.id !== id), recordSync: { status: 'saving', message: '퀘스트를 삭제하고 있어요.' } })
+    set({
+      quests: previous.filter((quest) => quest.id !== id),
+      questCompletions: previousCompletions.filter((item) => item.questId !== id),
+      recordSync: { status: 'saving', message: '퀘스트를 삭제하고 있어요.' },
+    })
     try {
       assertStoredWhenRequired(await removeQuestRow(id))
       set({ recordSync: { status: 'saved', message: '퀘스트를 삭제했어요.' } })
       return true
     } catch {
-      set({ quests: previous, recordSync: { status: 'error', message: '퀘스트를 삭제하지 못해 복원했어요.' } })
+      set({ quests: previous, questCompletions: previousCompletions, recordSync: { status: 'error', message: '퀘스트를 삭제하지 못해 복원했어요.' } })
       return false
     }
   },
@@ -292,17 +408,19 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     orderedIds.forEach((id, index) => { order[id] = index })
     return { questOrder: order }
   }),
-  rolloverRecurringQuests: (today) => {
-    const toReset = get().quests.filter((quest) =>
-      quest.recurrenceRule && quest.done && quest.completedAt &&
-      serviceDate(new Date(quest.completedAt)) !== today &&
-      questOccursOn(quest, today, serviceDate(new Date(quest.createdAt))),
-    )
-    if (!toReset.length) return
-    const ids = new Set(toReset.map((quest) => quest.id))
-    set((state) => ({ quests: state.quests.map((quest) => ids.has(quest.id) ? { ...quest, done: false, status: 'active', completedAt: undefined, updatedAt: timestamp() } : quest) }))
-    // 클라우드에도 조용히 반영(알림 없이). 실패해도 로컬 리셋은 유지.
-    for (const quest of toReset) void updateQuestRow(quest.id, { status: 'active', completedAt: undefined }).catch(() => undefined)
+  refreshRecurringQuestState: (today) => {
+    set((state) => ({
+      quests: state.quests.map((quest) => {
+        if (!quest.recurrenceRule) return quest
+        const completion = state.questCompletions.find((item) => item.questId === quest.id && item.occurrenceDate === today)
+        return {
+          ...quest,
+          done: Boolean(completion),
+          status: completion ? 'completed' : quest.status === 'completed' ? 'active' : quest.status,
+          completedAt: completion?.completedAt,
+        }
+      }),
+    }))
   },
   addProject: async (project) => {
     const id = crypto.randomUUID()
@@ -430,6 +548,49 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
       return false
     }
   },
+  addRelationshipGroup: async (name, color = '#8f78b5') => {
+    const normalized = name.trim()
+    if (!normalized || get().relationshipGroups.some((group) => group.name.toLocaleLowerCase('ko') === normalized.toLocaleLowerCase('ko'))) return null
+    const now = timestamp()
+    const group: RelationshipGroup = { id: crypto.randomUUID(), name: normalized, color, sortOrder: get().relationshipGroups.length, createdAt: now, updatedAt: now }
+    set((state) => ({ relationshipGroups: [...state.relationshipGroups, group], recordSync: { status: 'saving', message: '인연록 그룹을 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await createRelationshipGroupRow(group))
+      set({ recordSync: { status: 'saved', message: '인연록 그룹을 만들었어요.' } })
+      return group.id
+    } catch {
+      set((state) => ({ relationshipGroups: state.relationshipGroups.filter((item) => item.id !== group.id), recordSync: { status: 'error', message: '인연록 그룹을 만들지 못했어요.' } }))
+      return null
+    }
+  },
+  updateRelationshipGroup: async (id, patch) => {
+    const previous = get().relationshipGroups.find((item) => item.id === id)
+    if (!previous) return false
+    const next = { ...patch, name: patch.name?.trim() || previous.name }
+    set((state) => ({ relationshipGroups: state.relationshipGroups.map((item) => item.id === id ? { ...item, ...next, updatedAt: timestamp() } : item), recordSync: { status: 'saving', message: '인연록 그룹을 저장하고 있어요.' } }))
+    try {
+      assertStoredWhenRequired(await updateRelationshipGroupRow(id, next))
+      set({ recordSync: { status: 'saved', message: '인연록 그룹을 수정했어요.' } })
+      return true
+    } catch {
+      set((state) => ({ relationshipGroups: state.relationshipGroups.map((item) => item.id === id ? previous : item), recordSync: { status: 'error', message: '인연록 그룹을 수정하지 못했어요.' } }))
+      return false
+    }
+  },
+  deleteRelationshipGroup: async (id) => {
+    const previousGroups = get().relationshipGroups
+    const previousRelationships = get().relationships
+    if (!previousGroups.some((item) => item.id === id)) return false
+    set({ relationshipGroups: previousGroups.filter((item) => item.id !== id), relationships: previousRelationships.map((item) => ({ ...item, groupIds: item.groupIds.filter((groupId) => groupId !== id) })), recordSync: { status: 'saving', message: '인연록 그룹을 삭제하고 있어요.' } })
+    try {
+      assertStoredWhenRequired(await removeRelationshipGroupRow(id))
+      set({ recordSync: { status: 'saved', message: '그룹만 삭제하고 인연록은 미분류로 보존했어요.' } })
+      return true
+    } catch {
+      set({ relationshipGroups: previousGroups, relationships: previousRelationships, recordSync: { status: 'error', message: '인연록 그룹을 삭제하지 못했어요.' } })
+      return false
+    }
+  },
   upsertDiary: async (entry) => {
     const previous = get().diaries
     let id = ''
@@ -481,10 +642,18 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
 }), {
   name: 'rumen-kingdom:v2:locked',
   skipHydration: true,
-  version: 5,
+  version: 7,
   migrate: (persisted) => {
     const old = (persisted ?? {}) as PersistedState
     const projectNames = new Map((old.projects ?? initialProjects).map((project) => [project.title, project.id]))
+    const migratedCompletions = old.questCompletions ?? (old.quests ?? [])
+      .filter((quest) => quest.recurrenceRule && quest.completedAt)
+      .map((quest) => ({
+        questId: quest.id,
+        occurrenceDate: serviceDate(new Date(quest.completedAt as string)),
+        completedAt: quest.completedAt as string,
+      }))
+    const completedToday = new Set(migratedCompletions.filter((item) => item.occurrenceDate === serviceDate()).map((item) => item.questId))
     return {
       ...old,
       selectedDate: old.selectedDate ?? today,
@@ -499,19 +668,24 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
           createdAt: project.createdAt ?? createdAt, updatedAt: project.updatedAt ?? createdAt,
         }
       }),
-      quests: (old.quests ?? initialQuests).map((quest) => ({
-        id: quest.id, title: quest.title, description: quest.description ?? '', memo: quest.memo ?? '', tags: quest.tags ?? [], projectId: quest.projectId ?? (quest.project ? projectNames.get(quest.project) : undefined), project: quest.project,
-        parentQuestId: quest.parentQuestId, type: quest.type ?? 'daily', status: quest.status ?? (quest.done ? 'completed' : 'active'),
-        due: quest.due ?? '', scheduledDate: quest.scheduledDate, scheduledTime: quest.scheduledTime, recurrenceRule: quest.recurrenceRule, done: quest.done ?? false, priority: quest.priority ?? 'medium', favorite: quest.favorite ?? false, completedAt: quest.completedAt,
-        createdAt: quest.createdAt ?? createdAt, updatedAt: quest.updatedAt ?? createdAt,
-      })),
+      quests: (old.quests ?? initialQuests).map((quest) => {
+        const recurringDone = Boolean(quest.recurrenceRule && completedToday.has(quest.id))
+        return {
+          id: quest.id, title: quest.title, description: quest.description ?? '', memo: quest.memo ?? '', tags: quest.tags ?? [], projectId: quest.projectId ?? (quest.project ? projectNames.get(quest.project) : undefined), project: quest.project,
+          parentQuestId: quest.parentQuestId, type: quest.type ?? 'daily', status: quest.recurrenceRule ? (recurringDone ? 'completed' : 'active') : quest.status ?? (quest.done ? 'completed' : 'active'),
+          due: quest.due ?? '', scheduledDate: quest.scheduledDate, scheduledTime: quest.scheduledTime, recurrenceRule: quest.recurrenceRule, done: quest.recurrenceRule ? recurringDone : quest.done ?? false, priority: quest.priority ?? 'medium', favorite: quest.favorite ?? false, completedAt: quest.recurrenceRule ? migratedCompletions.find((item) => item.questId === quest.id && item.occurrenceDate === serviceDate())?.completedAt : quest.completedAt,
+          createdAt: quest.createdAt ?? createdAt, updatedAt: quest.updatedAt ?? createdAt,
+        }
+      }),
+      questCompletions: migratedCompletions,
       memos: old.memos ?? initialMemos,
-      relationships: old.relationships ?? initialRelationships,
+      relationships: (old.relationships ?? initialRelationships).map((relationship) => ({ ...relationship, groupIds: relationship.groupIds ?? [] })),
+      relationshipGroups: old.relationshipGroups ?? initialRelationshipGroups,
       diaries: old.diaries ?? initialDiaries,
       questOrder: old.questOrder ?? {},
     }
   },
-  partialize: (state) => ({ selectedDate: state.selectedDate, events: state.events, quests: state.quests, projects: state.projects, memos: state.memos, relationships: state.relationships, diaries: state.diaries, questOrder: state.questOrder }),
+  partialize: (state) => ({ selectedDate: state.selectedDate, events: state.events, quests: state.quests, questCompletions: state.questCompletions, projects: state.projects, memos: state.memos, relationships: state.relationships, relationshipGroups: state.relationshipGroups, diaries: state.diaries, questOrder: state.questOrder }),
 }))
 
 let activeKingdomStorageKey = ''

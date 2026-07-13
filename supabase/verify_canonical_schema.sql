@@ -15,6 +15,9 @@ expected_columns(table_name, column_name) as (
     ('quests', 'status'), ('quests', 'priority'), ('quests', 'scheduled_on'),
     ('quests', 'due_on'), ('quests', 'due_at'), ('quests', 'favorite'),
     ('quests', 'completed_at'),
+    ('quest_completion_logs', 'quest_id'),
+    ('quest_completion_logs', 'occurrence_date'),
+    ('quest_completion_logs', 'completed_at'),
     ('calendar_events', 'event_date'), ('calendar_events', 'end_date'),
     ('calendar_events', 'starts_at'), ('calendar_events', 'ends_at'),
     ('calendar_events', 'all_day'), ('calendar_events', 'kind'),
@@ -26,6 +29,10 @@ expected_columns(table_name, column_name) as (
     ('relationships', 'name'), ('relationships', 'relationship_type'),
     ('relationships', 'notes'), ('relationships', 'tags'),
     ('relationships', 'organization'), ('relationships', 'favorite'),
+    ('relationship_groups', 'user_id'), ('relationship_groups', 'name'),
+    ('relationship_groups', 'color'), ('relationship_groups', 'sort_order'),
+    ('relationship_group_members', 'user_id'), ('relationship_group_members', 'group_id'),
+    ('relationship_group_members', 'relationship_id'),
     ('diary_quest_links', 'diary_id'), ('diary_quest_links', 'source_quest_id'),
     ('diary_quest_links', 'snapshot_title'), ('diary_quest_links', 'snapshot_note'),
     ('attachments', 'entity_type'), ('attachments', 'entity_id'),
@@ -61,7 +68,8 @@ quest_counts as (
 expected_tables(table_name) as (
   values ('main_quests'), ('quests'), ('calendar_events'), ('diary_entries'),
     ('diary_quest_links'), ('memos'), ('relationships'), ('attachments'),
-    ('notifications'), ('reminders'), ('user_settings'), ('room_backgrounds')
+    ('notifications'), ('reminders'), ('user_settings'), ('room_backgrounds'),
+    ('quest_completion_logs'), ('relationship_groups'), ('relationship_group_members')
 ),
 disabled_rls as (
   select expected.table_name

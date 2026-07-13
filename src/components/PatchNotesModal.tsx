@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Sparkles, X } from 'lucide-react'
 import { latestPatchNote } from '../lib/patchNotes'
 import { serviceDate } from '../lib/serviceTime'
+import { BodyAreaOverlay } from './BodyAreaOverlay'
 
 const DISMISS_KEY = 'rumen-patchnotes-dismissed-version'
 const SNOOZE_KEY = 'rumen-patchnotes-snooze-date'
@@ -15,8 +16,7 @@ function shouldShow(): boolean {
 }
 
 export function PatchNotesModal() {
-  const [open, setOpen] = useState(false)
-  useEffect(() => { setOpen(shouldShow()) }, [])
+  const [open, setOpen] = useState(shouldShow)
   if (!open) return null
 
   const close = () => setOpen(false)
@@ -29,7 +29,7 @@ export function PatchNotesModal() {
     close()
   }
 
-  return <div className="modal-backdrop patchnotes-backdrop" onMouseDown={close}>
+  return <BodyAreaOverlay className="modal-backdrop patchnotes-backdrop" onClose={close}>
     <section className="modal glass-panel patchnotes-modal" role="dialog" aria-modal="true" aria-labelledby="patchnotes-title" onMouseDown={(event) => event.stopPropagation()}>
       <div className="modal-head">
         <div>
@@ -47,5 +47,5 @@ export function PatchNotesModal() {
         <button type="button" className="primary" onClick={close}>확인</button>
       </div>
     </section>
-  </div>
+  </BodyAreaOverlay>
 }

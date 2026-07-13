@@ -22,7 +22,7 @@ function DiaryEditor() {
   const parsedRoute = routeDate ? parseISO(routeDate) : null
   const routeValid = !routeDate || (parsedRoute && isValid(parsedRoute) && routeDate <= today)
   const initialDate = routeValid && routeDate ? routeDate : today
-  const { diaries, quests, upsertDiary } = useKingdomStore()
+  const { diaries, quests, questCompletions, upsertDiary } = useKingdomStore()
   const existing = diaries.find((entry) => entry.date === initialDate)
   const entryDate = initialDate
   const dk = (field: string) => accountStorageKey(`draft-diary:${entryDate}:${field}`)
@@ -31,7 +31,10 @@ function DiaryEditor() {
   const [text, setText] = usePersistentState(dk('text'), existing?.content ?? '')
   const [mood, setMood] = usePersistentState(dk('mood'), existing?.mood ?? '평온')
   const [tags, setTags] = usePersistentState(dk('tags'), existing?.tags.join(', ') ?? '')
-  const completedQuests = quests.filter((quest) => quest.completedAt && serviceDate(new Date(quest.completedAt)) === entryDate)
+  const recurringCompletionIds = new Set(questCompletions.filter((item) => item.occurrenceDate === entryDate).map((item) => item.questId))
+  const completedQuests = quests.filter((quest) => quest.recurrenceRule
+    ? recurringCompletionIds.has(quest.id)
+    : quest.completedAt && serviceDate(new Date(quest.completedAt)) === entryDate)
   const [selectedQuestIds, setSelectedQuestIds] = useState(() => new Set(existing?.questSnapshots?.map((item) => item.sourceQuestId) ?? []))
   const moods = [{ label: '평온', icon: '☁' }, { label: '기쁨', icon: '✦' }, { label: '피곤', icon: '☾' }, { label: '설렘', icon: '♡' }]
   const changeDate = (date: string) => { navigate(`/diary/${date}`, { replace: routeDate === undefined }) }

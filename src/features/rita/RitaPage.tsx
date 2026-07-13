@@ -145,6 +145,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
         social: draft.social,
         memo: draft.memo,
         tags: draft.tags,
+        groupIds: draft.groupIds ?? [],
       } } })
     } else if (draft.kind === 'memorandum') {
       navigate('/library/memos/new', { state: { draft: {
@@ -337,6 +338,7 @@ function CalendarDraftConfirmation({ draft, onChange, onClose, onConfirm }: { dr
 
 function RelationshipDraftConfirmation({ draft, onChange, onClose, onConfirm }: { draft: RelationshipDraft; onChange: (draft: Draft) => void; onClose: () => void; onConfirm: () => void }) {
   const update = (change: Partial<RelationshipDraft>) => onChange({ ...draft, ...change })
+  const groups = useKingdomStore((state) => state.relationshipGroups)
   return <article className="rita-confirmation rita-action-draft">
     <div><span>RELATIONSHIP DRAFT</span><button aria-label="초안 닫기" onClick={onClose}><X size={14}/></button></div>
     <label>이름<input value={draft.name} onChange={(event) => update({ name: event.target.value })}/></label>
@@ -349,6 +351,7 @@ function RelationshipDraftConfirmation({ draft, onChange, onClose, onConfirm }: 
       <label>이메일<input value={draft.email} onChange={(event) => update({ email: event.target.value })}/></label>
     </div>
     <label>메모<textarea value={draft.memo} onChange={(event) => update({ memo: event.target.value })}/></label>
+    <fieldset className="rita-relationship-groups"><legend>어느 그룹에 보관할까요?</legend>{groups.length ? groups.map((group) => <label key={group.id}><input type="checkbox" checked={(draft.groupIds ?? []).includes(group.id)} onChange={() => update({ groupIds: (draft.groupIds ?? []).includes(group.id) ? (draft.groupIds ?? []).filter((id) => id !== group.id) : [...(draft.groupIds ?? []), group.id] })}/><i style={{ background: group.color }}/>{group.name}</label>) : <small>아직 그룹이 없어요. 인연록 확인 화면에서 새 그룹을 만들 수 있습니다.</small>}</fieldset>
     <button disabled={!draft.name.trim()} onClick={onConfirm}><Check size={15}/> 인연록에서 확인하고 저장</button>
   </article>
 }

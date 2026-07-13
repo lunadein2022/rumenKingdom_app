@@ -1,19 +1,8 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { AppHeader } from '../components/AppHeader'
 import { EmptyState } from '../components/Common'
 import { PageHeading } from '../components/PageHeading'
-import { CalendarPage } from '../features/calendar/CalendarPage'
-import { CalendarEventDetailPage } from '../features/calendar/CalendarEventDetailPage'
-import { DiaryPage } from '../features/diary/DiaryPage'
-import { GardenPage } from '../features/garden/GardenPage'
-import { LibraryCategoryPage, LibraryItemPage, LibraryPage } from '../features/library/LibraryPage'
-import { MemoPage } from '../features/library/MemoPage'
-import { RelationshipPage } from '../features/library/RelationshipPage'
-import { LobbyPage } from '../features/lobby/LobbyPage'
-import { CompletedProjectsPage, OfficePage, ProjectDetailPage } from '../features/office/OfficePage'
-import { RitaPage } from '../features/rita/RitaPage'
-import { ThronePage } from '../features/throne/ThronePage'
 import { navigation, pageIdFromPath, pagePaths } from './navigation'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { LoaderCircle, X } from 'lucide-react'
@@ -21,6 +10,22 @@ import { useKingdomStore } from '../store'
 import { loadRoomBackgrounds } from '../services/settingsRepository'
 import { PatchNotesModal } from '../components/PatchNotesModal'
 import { useServiceDate } from '../lib/useServiceDate'
+
+const LobbyPage = lazy(() => import('../features/lobby/LobbyPage').then((module) => ({ default: module.LobbyPage })))
+const OfficePage = lazy(() => import('../features/office/OfficePage').then((module) => ({ default: module.OfficePage })))
+const ProjectDetailPage = lazy(() => import('../features/office/OfficePage').then((module) => ({ default: module.ProjectDetailPage })))
+const CompletedProjectsPage = lazy(() => import('../features/office/OfficePage').then((module) => ({ default: module.CompletedProjectsPage })))
+const CalendarPage = lazy(() => import('../features/calendar/CalendarPage').then((module) => ({ default: module.CalendarPage })))
+const CalendarEventDetailPage = lazy(() => import('../features/calendar/CalendarEventDetailPage').then((module) => ({ default: module.CalendarEventDetailPage })))
+const LibraryPage = lazy(() => import('../features/library/LibraryPage').then((module) => ({ default: module.LibraryPage })))
+const LibraryCategoryPage = lazy(() => import('../features/library/LibraryPage').then((module) => ({ default: module.LibraryCategoryPage })))
+const LibraryItemPage = lazy(() => import('../features/library/LibraryPage').then((module) => ({ default: module.LibraryItemPage })))
+const MemoPage = lazy(() => import('../features/library/MemoPage').then((module) => ({ default: module.MemoPage })))
+const RelationshipPage = lazy(() => import('../features/library/RelationshipPage').then((module) => ({ default: module.RelationshipPage })))
+const DiaryPage = lazy(() => import('../features/diary/DiaryPage').then((module) => ({ default: module.DiaryPage })))
+const GardenPage = lazy(() => import('../features/garden/GardenPage').then((module) => ({ default: module.GardenPage })))
+const RitaPage = lazy(() => import('../features/rita/RitaPage').then((module) => ({ default: module.RitaPage })))
+const ThronePage = lazy(() => import('../features/throne/ThronePage').then((module) => ({ default: module.ThronePage })))
 
 export function AppRouter({ demoMode, onResetDemo, onSignOut }: { demoMode: boolean; onResetDemo: () => void; onSignOut: () => Promise<void> }) {
   return <Routes><Route element={<AppLayout demoMode={demoMode} onSignOut={onSignOut}/>}>
@@ -48,16 +53,17 @@ function AppLayout({ demoMode, onSignOut }: { demoMode: boolean; onSignOut: () =
   const location = useLocation()
   const page = pageIdFromPath(location.pathname)
   const [mobileNav, setMobileNav] = useState(false)
+  const [backgrounds, setBackgrounds] = useState<Partial<Record<string, string>>>({})
   const topLevel = Object.values(pagePaths).includes(location.pathname)
   const showPageHeading = topLevel && page !== 'lobby' && page !== 'garden'
   const recordSync = useKingdomStore((state) => state.recordSync)
   const clearRecordSync = useKingdomStore((state) => state.clearRecordSync)
-  const rolloverRecurringQuests = useKingdomStore((state) => state.rolloverRecurringQuests)
+  const refreshRecurringQuestState = useKingdomStore((state) => state.refreshRecurringQuestState)
   const serviceToday = useServiceDate()
   useEffect(() => {
-    // 새 서비스일이 되면 반복 퀘스트를 다시 미완료로 되돌린다.
-    rolloverRecurringQuests(serviceToday)
-  }, [serviceToday, rolloverRecurringQuests])
+    // 날짜별 완료 로그를 기준으로 현재 반복 퀘스트 상태만 다시 계산한다.
+    refreshRecurringQuestState(serviceToday)
+  }, [serviceToday, refreshRecurringQuestState])
   useEffect(() => {
     // 저장/오류 알림은 일정 시간 뒤 자동으로 사라진다. 진행 중('saving')은 유지.
     if (recordSync.status !== 'saved' && recordSync.status !== 'error') return
@@ -65,19 +71,17 @@ function AppLayout({ demoMode, onSignOut }: { demoMode: boolean; onSignOut: () =
     return () => window.clearTimeout(timer)
   }, [recordSync.status, recordSync.message, clearRecordSync])
   useEffect(() => {
-    let backgrounds: Partial<Record<string, string>> = {}
-    const apply = () => {
-      const shell = document.querySelector<HTMLElement>('.app-shell')
-      if (backgrounds[page]) shell?.style.setProperty('--page-bg', `url("${backgrounds[page]}")`)
-      else shell?.style.removeProperty('--page-bg')
-    }
-    void loadRoomBackgrounds().then((items) => { backgrounds = Object.fromEntries(items.filter((item) => item.url).map((item) => [item.room, item.url])); apply() }).catch(() => undefined)
-    const listener = (event: Event) => { const detail = (event as CustomEvent<{ room: string; url?: string }>).detail; backgrounds[detail.room] = detail.url; apply() }
+    void loadRoomBackgrounds().then((items) => setBackgrounds(Object.fromEntries(items.filter((item) => item.url).map((item) => [item.room, item.url])))).catch(() => undefined)
+    const listener = (event: Event) => { const detail = (event as CustomEvent<{ room: string; url?: string }>).detail; setBackgrounds((current) => ({ ...current, [detail.room]: detail.url ?? '' })) }
     window.addEventListener('rumen-background-updated', listener)
-    window.setTimeout(apply, 0)
     return () => window.removeEventListener('rumen-background-updated', listener)
-  }, [page])
-  return <div className={`app-shell page-${page}`}><RouteEffects/><div className="ambient ambient-one"/><div className="ambient ambient-two"/><AppHeader demoMode={demoMode} page={page} onMenu={() => setMobileNav((value) => !value)} onSignOut={onSignOut}/>{mobileNav && <nav className="mobile-nav glass-panel" aria-label="모바일 메뉴">{navigation.map((item) => { const Icon = item.icon; return <NavLink key={item.id} to={item.path} end={item.path === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileNav(false)}><Icon size={15}/>{item.label}</NavLink> })}<NavLink className="nav-item" to="/rita" onClick={() => setMobileNav(false)}>리타</NavLink><NavLink className="nav-item" to="/throne" onClick={() => setMobileNav(false)}>왕좌의 방</NavLink><button className="nav-item" onClick={() => void onSignOut()}>{demoMode ? '로그인하기' : '로그아웃'}</button></nav>}<main className="main-wrap">{showPageHeading && <PageHeading page={page}/>}<Outlet/></main><footer><span>Copyright © RUMEN KINGDOM</span><span>All Rights Reserved.</span></footer>{recordSync.status !== 'idle' && <div className={`calendar-sync ${recordSync.status}`} role="status">{recordSync.status === 'saving' && <LoaderCircle size={15} className="spin"/>}<span>{recordSync.message}</span>{recordSync.status !== 'saving' && <button onClick={clearRecordSync} aria-label="저장 알림 닫기"><X size={14}/></button>}</div>}<PatchNotesModal/></div>
+  }, [])
+  useEffect(() => {
+    const shell = document.querySelector<HTMLElement>('.app-shell')
+    if (backgrounds[page]) shell?.style.setProperty('--page-bg', `url("${backgrounds[page]}")`)
+    else shell?.style.removeProperty('--page-bg')
+  }, [backgrounds, page])
+  return <div className={`app-shell page-${page}`}><RouteEffects/><div className="ambient ambient-one"/><div className="ambient ambient-two"/><AppHeader demoMode={demoMode} page={page} onMenu={() => setMobileNav((value) => !value)} onSignOut={onSignOut}/>{mobileNav && <nav className="mobile-nav glass-panel" aria-label="모바일 메뉴">{navigation.map((item) => { const Icon = item.icon; return <NavLink key={item.id} to={item.path} end={item.path === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileNav(false)}><Icon size={15}/>{item.label}</NavLink> })}<NavLink className="nav-item" to="/rita" onClick={() => setMobileNav(false)}>리타</NavLink><NavLink className="nav-item" to="/throne" onClick={() => setMobileNav(false)}>왕좌의 방</NavLink><button className="nav-item" onClick={() => void onSignOut()}>{demoMode ? '로그인하기' : '로그아웃'}</button></nav>}<main className="main-wrap">{showPageHeading && <PageHeading page={page}/>}<Suspense fallback={<div className="route-loading" role="status"><LoaderCircle size={22} className="spin"/><span>왕궁의 방을 준비하고 있어요.</span></div>}><Outlet/></Suspense></main><footer><span>Copyright © RUMEN KINGDOM</span><span>All Rights Reserved.</span></footer>{recordSync.status !== 'idle' && <div className={`calendar-sync ${recordSync.status}`} role="status">{recordSync.status === 'saving' && <LoaderCircle size={15} className="spin"/>}<span>{recordSync.message}</span>{recordSync.status !== 'saving' && <button onClick={clearRecordSync} aria-label="저장 알림 닫기"><X size={14}/></button>}</div>}<PatchNotesModal/></div>
 }
 
 function RouteEffects() {

@@ -37,7 +37,7 @@ async function getUserId(): Promise<string | null> {
   return data.session?.user?.id ?? null
 }
 
-const fromRow = (row: RelationshipRow): Relationship => ({
+const fromRow = (row: RelationshipRow, groupIds: string[] = []): Relationship => ({
   id: row.id,
   name: row.name,
   organization: row.organization ?? '',
@@ -51,12 +51,28 @@ const fromRow = (row: RelationshipRow): Relationship => ({
   lastContactedAt: row.last_contacted_at ?? undefined,
   memo: row.notes ?? '',
   tags: row.tags ?? [],
+  groupIds,
   favorite: row.favorite ?? false,
   businessCardOcrText: row.business_card_ocr_text ?? undefined,
   source: row.source === 'rita' ? 'rita' : 'manual',
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 })
+
+async function syncRelationshipGroups(userId: string, relationshipId: string, groupIds: string[]) {
+  if (!supabase) return
+  const { error: deleteError } = await supabase
+    .from('relationship_group_members')
+    .delete()
+    .eq('relationship_id', relationshipId)
+  if (deleteError) throw deleteError
+  const uniqueIds = Array.from(new Set(groupIds.filter(isUuid)))
+  if (!uniqueIds.length) return
+  const { error } = await supabase.from('relationship_group_members').insert(
+    uniqueIds.map((groupId) => ({ user_id: userId, relationship_id: relationshipId, group_id: groupId })),
+  )
+  if (error) throw error
+}
 
 const toRow = (value: Partial<Relationship>): Record<string, unknown> => {
   const row: Record<string, unknown> = {}
@@ -83,10 +99,20 @@ export async function listRelationships(): Promise<Relationship[] | null> {
   if (!supabase || !userId) return null
   const { data, error } = await supabase.from('relationships').select(COLUMNS).order('created_at', { ascending: false })
   if (error) throw error
-  const attachments = await listAttachmentMap('relationship')
+  const [{ data: memberships, error: membershipError }, attachments] = await Promise.all([
+    supabase.from('relationship_group_members').select('relationship_id,group_id'),
+    listAttachmentMap('relationship'),
+  ])
+  if (membershipError) throw membershipError
+  const groupMap = new Map<string, string[]>()
+  for (const membership of memberships ?? []) {
+    const ids = groupMap.get(membership.relationship_id) ?? []
+    ids.push(membership.group_id)
+    groupMap.set(membership.relationship_id, ids)
+  }
   return (data as RelationshipRow[]).map((row) => {
     const attachment = attachments.get(row.id)
-    return { ...fromRow(row), sourceAttachment: attachment, businessCardImageRef: attachment?.storagePath }
+    return { ...fromRow(row, groupMap.get(row.id)), sourceAttachment: attachment, businessCardImageRef: attachment?.storagePath }
   })
 }
 
@@ -101,6 +127,7 @@ export async function createRelationship(relationship: Relationship): Promise<bo
     updated_at: relationship.updatedAt,
   })
   if (error) throw error
+  await syncRelationshipGroups(userId, relationship.id, relationship.groupIds)
   await saveAttachment('relationship', relationship.id, relationship.sourceAttachment)
   return true
 }
@@ -113,6 +140,7 @@ export async function updateRelationship(id: string, patch: Partial<Relationship
     .update({ ...toRow(patch), updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
+  if (patch.groupIds !== undefined) await syncRelationshipGroups(userId, id, patch.groupIds)
   return true
 }
 

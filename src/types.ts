@@ -51,6 +51,13 @@ export interface Quest {
   updatedAt: string
 }
 
+/** A dated completion of a recurring quest. The quest row remains the reusable template. */
+export interface QuestCompletion {
+  questId: string
+  occurrenceDate: string
+  completedAt: string
+}
+
 export type ProjectStatus = 'planned' | 'active' | 'completed' | 'archived'
 
 export interface Project {
@@ -112,11 +119,21 @@ export interface Relationship {
   lastContactedAt?: string
   memo: string
   tags: string[]
+  groupIds: string[]
   favorite: boolean
   businessCardImageRef?: string
   businessCardOcrText?: string
   sourceAttachment?: SourceAttachment
   source: 'manual' | 'rita'
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RelationshipGroup {
+  id: string
+  name: string
+  color: string
+  sortOrder: number
   createdAt: string
   updatedAt: string
 }

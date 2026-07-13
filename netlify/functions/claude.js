@@ -25,7 +25,8 @@ export const handler = async (event) => {
   const model = process.env.CLAUDE_MODEL
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
-  if (!apiKey || !model) return json(503, { error: 'Claude 환경 변수가 설정되지 않았습니다.' })
+  if (!apiKey) return json(503, { error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' })
+  if (!model) return json(503, { error: 'CLAUDE_MODEL이 설정되지 않았습니다.' })
   if (!supabaseUrl || !supabaseAnonKey) return json(503, { error: 'Supabase 인증 환경 변수가 설정되지 않았습니다.' })
 
   const authorization = event.headers.authorization ?? event.headers.Authorization
@@ -43,7 +44,9 @@ export const handler = async (event) => {
     return await chat(input, apiKey, model)
   } catch (error) {
     console.error('Claude function error', error)
-    return json(500, { error: error instanceof Error ? error.message : '요청을 처리하지 못했습니다.' })
+    const requestedStatus = Number(error?.statusCode)
+    const statusCode = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus <= 599 ? requestedStatus : 500
+    return json(statusCode, { error: error instanceof Error ? error.message : '요청을 처리하지 못했습니다.' })
   }
 }
 
@@ -219,14 +222,14 @@ async function extractDocumentText(bytes, mimeType) {
 }
 
 async function transcribeAudio(bytes, metadata, openAiKey) {
-  if (!openAiKey) throw new Error('음성 전사를 사용하려면 Netlify에 OPENAI_API_KEY를 설정해 주세요.')
+  if (!openAiKey) throw Object.assign(new Error('음성 전사를 사용하려면 Netlify에 OPENAI_API_KEY를 설정해 주세요.'), { statusCode: 503 })
   const form = new FormData()
   form.append('model', process.env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe')
   form.append('language', 'ko')
   form.append('file', new Blob([bytes], { type: metadata.mimeType }), metadata.name)
   const response = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${openAiKey}` }, body: form })
   const result = await response.json()
-  if (!response.ok || !result.text) throw new Error('음성 파일을 텍스트로 변환하지 못했습니다.')
+  if (!response.ok || !result.text) throw Object.assign(new Error('음성 파일을 텍스트로 변환하지 못했습니다.'), { statusCode: 502 })
   return String(result.text).trim()
 }
 
@@ -250,7 +253,7 @@ async function callClaude(apiKey, model, body) {
   const result = await response.json()
   if (!response.ok) {
     console.error('Anthropic API error', response.status, result?.error?.type)
-    throw new Error('리타가 파일을 분석하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+    throw Object.assign(new Error('리타가 파일을 분석하지 못했습니다. 잠시 후 다시 시도해 주세요.'), { statusCode: 502 })
   }
   return result
 }

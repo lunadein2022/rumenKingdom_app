@@ -1,13 +1,13 @@
 import type { DiaryEntry, LibraryCategory, LibraryRecord, Memo, Project, Quest, Relationship } from '../../types'
 
 export const libraryCategories: Array<{ id: LibraryCategory; title: string; description: string; image: string }> = [
-  { id: 'all', title: '전체 기록', description: '왕국의 모든 기록', image: '/assets/books/book-all-records-compatible.webp' },
-  { id: 'main-quests', title: '메인퀘스트', description: '왕국의 목표와 여정', image: '/assets/books/book-mainquest.webp' },
-  { id: 'daily-quests', title: '일일퀘스트', description: '오늘 실행할 작은 임무', image: '/assets/books/book-dailyquest.webp' },
-  { id: 'sub-quests', title: '서브퀘스트', description: '독립적이거나 연결된 세부 임무', image: '/assets/books/book-subquest.webp' },
-  { id: 'relationships', title: '인연록', description: '소중한 사람과 만남의 기록', image: '/assets/books/book-relationship.webp' },
-  { id: 'memos', title: '비망록', description: '놓치고 싶지 않은 생각과 정보', image: '/assets/books/book-memorandum.webp' },
-  { id: 'diaries', title: '다이어리', description: '공주님의 하루와 마음', image: '/assets/books/book-diary.webp' },
+  { id: 'all', title: '전체 기록', description: '왕국의 모든 기록', image: '/assets/books/thumbs/book-all-records-compatible.webp' },
+  { id: 'main-quests', title: '메인퀘스트', description: '왕국의 목표와 여정', image: '/assets/books/thumbs/book-mainquest.webp' },
+  { id: 'daily-quests', title: '일일퀘스트', description: '오늘 실행할 작은 임무', image: '/assets/books/thumbs/book-dailyquest.webp' },
+  { id: 'sub-quests', title: '서브퀘스트', description: '독립적이거나 연결된 세부 임무', image: '/assets/books/thumbs/book-subquest.webp' },
+  { id: 'relationships', title: '인연록', description: '소중한 사람과 만남의 기록', image: '/assets/books/thumbs/book-relationship.webp' },
+  { id: 'memos', title: '비망록', description: '놓치고 싶지 않은 생각과 정보', image: '/assets/books/thumbs/book-memorandum.webp' },
+  { id: 'diaries', title: '다이어리', description: '공주님의 하루와 마음', image: '/assets/books/thumbs/book-diary.webp' },
 ]
 
 export function buildLibraryRecords(data: { projects: Project[]; quests: Quest[]; relationships: Relationship[]; memos: Memo[]; diaries: DiaryEntry[] }): LibraryRecord[] {
