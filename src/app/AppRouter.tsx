@@ -20,6 +20,7 @@ import { LoaderCircle, X } from 'lucide-react'
 import { useKingdomStore } from '../store'
 import { loadRoomBackgrounds } from '../services/settingsRepository'
 import { PatchNotesModal } from '../components/PatchNotesModal'
+import { useServiceDate } from '../lib/useServiceDate'
 
 export function AppRouter({ demoMode, onResetDemo, onSignOut }: { demoMode: boolean; onResetDemo: () => void; onSignOut: () => Promise<void> }) {
   return <Routes><Route element={<AppLayout demoMode={demoMode} onSignOut={onSignOut}/>}>
@@ -51,6 +52,12 @@ function AppLayout({ demoMode, onSignOut }: { demoMode: boolean; onSignOut: () =
   const showPageHeading = topLevel && page !== 'lobby' && page !== 'garden'
   const recordSync = useKingdomStore((state) => state.recordSync)
   const clearRecordSync = useKingdomStore((state) => state.clearRecordSync)
+  const rolloverRecurringQuests = useKingdomStore((state) => state.rolloverRecurringQuests)
+  const serviceToday = useServiceDate()
+  useEffect(() => {
+    // 새 서비스일이 되면 반복 퀘스트를 다시 미완료로 되돌린다.
+    rolloverRecurringQuests(serviceToday)
+  }, [serviceToday, rolloverRecurringQuests])
   useEffect(() => {
     // 저장/오류 알림은 일정 시간 뒤 자동으로 사라진다. 진행 중('saving')은 유지.
     if (recordSync.status !== 'saved' && recordSync.status !== 'error') return

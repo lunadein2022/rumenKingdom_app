@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { ArchiveRestore, Check, CheckCircle2, ChevronRight, Clock3, GripVertical, Link2, Pencil, Plus, Search, Sparkles, Trash2, Unlink, X } from 'lucide-react'
+import { ArchiveRestore, Check, CheckCircle2, ChevronRight, Clock3, GripVertical, Link2, Pencil, Plus, Repeat, Search, Sparkles, Trash2, Unlink, X } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BackButton } from '../../components/BackButton'
 import { EmptyState, Metric, SectionTitle } from '../../components/Common'
@@ -9,6 +9,7 @@ import { serviceDate } from '../../lib/serviceTime'
 import { useServiceDate } from '../../lib/useServiceDate'
 import { accountStorageKey } from '../../lib/accountScope'
 import { clearPersistentState, usePersistentState } from '../../lib/usePersistentState'
+import { buildRecurrenceRule, parseRecurrenceRule, questOccursOn } from '../../lib/recurrence'
 
 type ProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 type QuestInput = Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
@@ -193,7 +194,7 @@ function OfficeQuestItem({ quest, project, dragging, reorderTarget, onEdit, onDe
   return <article data-quest-id={quest.id} className={`office-quest-item ${quest.done ? 'done' : ''} ${onPointerDragStart ? 'drag-enabled' : ''} ${dragging ? 'is-dragging' : ''} ${reorderTarget ? 'reorder-target' : ''}`}>
     <span className="quest-drag-handle" onPointerDown={(event) => onPointerDragStart?.(quest.id, event)} aria-label={`${quest.title} 드래그하여 순서 변경 또는 메인퀘스트에 연결`} title="드래그하여 순서를 바꾸거나, 메인퀘스트로 끌어 연결하세요"><GripVertical size={15}/></span>
     <button className="quest-toggle" onClick={() => toggleQuest(quest.id)} aria-label={`${quest.title} ${quest.done ? '미완료로 변경' : '완료'}`}><span>{quest.done && <Check size={13}/>}</span></button>
-    <div className="office-quest-copy" onPointerDown={(event) => onPointerDragStart?.(quest.id, event)}><div><b>{quest.title}</b><em>{quest.type === 'daily' ? '일일' : '서브'}</em></div><small className={project ? 'linked-label' : 'independent-label'}>{project ? <><Link2 size={11}/>{project.title}</> : <><Unlink size={11}/>독립 퀘스트</>}</small></div>
+    <div className="office-quest-copy" onPointerDown={(event) => onPointerDragStart?.(quest.id, event)}><div><b>{quest.title}</b><em>{quest.type === 'daily' ? '일일' : '서브'}</em>{quest.recurrenceRule && <em className="recur-badge"><Repeat size={9}/>{recurrenceShort(quest.recurrenceRule)}</em>}</div><small className={project ? 'linked-label' : 'independent-label'}>{project ? <><Link2 size={11}/>{project.title}</> : <><Unlink size={11}/>독립 퀘스트</>}</small></div>
     <time><Clock3 size={12}/>{questDueLabel(quest)}</time>
     <i className={`priority ${quest.priority}`}/>
     <button className="quest-icon-action" onClick={onEdit} aria-label={`${quest.title} 편집`}><Pencil size={14}/></button>
@@ -289,11 +290,13 @@ function QuestModal({ quest, projects, defaultProjectId, onClose, onSave }: { qu
   const [scheduledDate, setScheduledDate] = usePersistentState(dk('scheduledDate'), quest?.scheduledDate ?? dateFromLegacyDue(quest?.due) ?? isoToday())
   const [scheduledTime, setScheduledTime] = usePersistentState(dk('scheduledTime'), quest?.scheduledTime ?? timeFromDue(quest?.due) ?? '')
   const [priority, setPriority] = usePersistentState<QuestPriority>(dk('priority'), quest?.priority ?? 'medium')
-  const clearDraft = () => clearPersistentState(dk('title'), dk('description'), dk('memo'), dk('tags'), dk('type'), dk('projectId'), dk('scheduledDate'), dk('scheduledTime'), dk('priority'))
+  const [recurrence, setRecurrence] = usePersistentState<string>(dk('recurrence'), parseRecurrenceRule(quest?.recurrenceRule).frequency ?? '')
+  const [recurUntil, setRecurUntil] = usePersistentState<string>(dk('recurUntil'), parseRecurrenceRule(quest?.recurrenceRule).until ?? '')
+  const clearDraft = () => clearPersistentState(dk('title'), dk('description'), dk('memo'), dk('tags'), dk('type'), dk('projectId'), dk('scheduledDate'), dk('scheduledTime'), dk('priority'), dk('recurrence'), dk('recurUntil'))
   const handleClose = () => { clearDraft(); onClose() }
   useEscapeClose(handleClose)
   const project = projects.find((item) => item.id === projectId)
-  return <div className="modal-backdrop" onMouseDown={handleClose}><form className="modal glass-panel quest-modal" role="dialog" aria-modal="true" aria-labelledby="quest-modal-title" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); clearDraft(); onSave({ title: title.trim(), description: description.trim(), memo: memo.trim(), tags: tags.split(',').map((item) => item.trim()).filter(Boolean), type, projectId: projectId || undefined, project: project?.title, parentQuestId: quest?.parentQuestId, status: quest?.status ?? 'active', scheduledDate: scheduledDate || undefined, scheduledTime: scheduledTime || undefined, due: scheduledDate ? `${scheduledDate}${scheduledTime ? ` ${scheduledTime}` : ''}` : '일정 없음', done: quest?.done ?? false, priority, favorite: quest?.favorite ?? false }) }}><div className="modal-head"><div><span className="eyebrow">QUEST</span><h2 id="quest-modal-title">{quest ? '퀘스트 편집' : '새 퀘스트'}</h2></div><button type="button" onClick={handleClose} aria-label="닫기"><X size={18}/></button></div><label>제목<input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} required/></label><label>상세 내용<textarea className="modal-textarea compact" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="무엇을 해야 하는지 간단히 적어 주세요."/></label><label>메모<textarea className="modal-textarea" value={memo} onChange={(event) => setMemo(event.target.value)} placeholder="링크, 회의 내용, 떠오른 생각을 자유롭게 기록하세요."/></label><fieldset className="quest-type-field"><legend>유형</legend><label><input type="radio" checked={type === 'daily'} onChange={() => setType('daily')}/> 일일퀘스트</label><label><input type="radio" checked={type === 'sub'} onChange={() => setType('sub')}/> 서브퀘스트</label></fieldset><label>메인퀘스트 연결<select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">없음 · 독립 퀘스트</option>{projects.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select><small>언제든 연결하거나 독립 퀘스트로 되돌릴 수 있어요.</small></label><div className="form-row"><label>마감일<input type="date" value={scheduledDate} onChange={(event) => setScheduledDate(event.target.value)}/></label><label>마감시간<input type="time" value={scheduledTime} onChange={(event) => setScheduledTime(event.target.value)}/></label></div><div className="form-row"><label>우선순위<select value={priority} onChange={(event) => setPriority(event.target.value as QuestPriority)}><option value="high">높음</option><option value="medium">보통</option><option value="low">낮음</option></select></label><label>태그<input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="쉼표로 구분"/></label></div><div className="modal-actions"><button type="button" className="ghost" onClick={handleClose}>취소</button><button type="submit" className="primary"><Plus size={15}/>{quest ? '저장' : '추가'}</button></div></form></div>
+  return <div className="modal-backdrop" onMouseDown={handleClose}><form className="modal glass-panel quest-modal" role="dialog" aria-modal="true" aria-labelledby="quest-modal-title" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); clearDraft(); onSave({ title: title.trim(), description: description.trim(), memo: memo.trim(), tags: tags.split(',').map((item) => item.trim()).filter(Boolean), type, projectId: projectId || undefined, project: project?.title, parentQuestId: quest?.parentQuestId, status: quest?.status ?? 'active', scheduledDate: scheduledDate || undefined, scheduledTime: scheduledTime || undefined, recurrenceRule: buildRecurrenceRule(recurrence, recurUntil || undefined), due: scheduledDate ? `${scheduledDate}${scheduledTime ? ` ${scheduledTime}` : ''}` : '일정 없음', done: quest?.done ?? false, priority, favorite: quest?.favorite ?? false }) }}><div className="modal-head"><div><span className="eyebrow">QUEST</span><h2 id="quest-modal-title">{quest ? '퀘스트 편집' : '새 퀘스트'}</h2></div><button type="button" onClick={handleClose} aria-label="닫기"><X size={18}/></button></div><label>제목<input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} required/></label><label>상세 내용<textarea className="modal-textarea compact" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="무엇을 해야 하는지 간단히 적어 주세요."/></label><label>메모<textarea className="modal-textarea" value={memo} onChange={(event) => setMemo(event.target.value)} placeholder="링크, 회의 내용, 떠오른 생각을 자유롭게 기록하세요."/></label><fieldset className="quest-type-field"><legend>유형</legend><label><input type="radio" checked={type === 'daily'} onChange={() => setType('daily')}/> 일일퀘스트</label><label><input type="radio" checked={type === 'sub'} onChange={() => setType('sub')}/> 서브퀘스트</label></fieldset><label>메인퀘스트 연결<select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">없음 · 독립 퀘스트</option>{projects.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select><small>언제든 연결하거나 독립 퀘스트로 되돌릴 수 있어요.</small></label><div className="form-row"><label>마감일<input type="date" value={scheduledDate} onChange={(event) => setScheduledDate(event.target.value)}/></label><label>마감시간<input type="time" value={scheduledTime} onChange={(event) => setScheduledTime(event.target.value)}/></label></div><div className="form-row"><label>반복<select value={recurrence} onChange={(event) => setRecurrence(event.target.value)}><option value="">반복 안 함</option><option value="DAILY">매일</option><option value="WEEKLY">매주</option><option value="MONTHLY">매월</option></select></label>{recurrence && <label>반복 종료일<input type="date" min={scheduledDate} value={recurUntil} onChange={(event) => setRecurUntil(event.target.value || '')}/></label>}</div>{recurrence && <p className="quest-recur-note"><Repeat size={12}/> {recurrence === 'DAILY' ? '매일' : recurrence === 'WEEKLY' ? '매주 같은 요일' : '매월 같은 날짜'} 반복되며, 완료해도 다음 날 다시 나타납니다.</p>}<div className="form-row"><label>우선순위<select value={priority} onChange={(event) => setPriority(event.target.value as QuestPriority)}><option value="high">높음</option><option value="medium">보통</option><option value="low">낮음</option></select></label><label>태그<input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="쉼표로 구분"/></label></div><div className="modal-actions"><button type="button" className="ghost" onClick={handleClose}>취소</button><button type="submit" className="primary"><Plus size={15}/>{quest ? '저장' : '추가'}</button></div></form></div>
 }
 
 function useEscapeClose(onClose: () => void) {
@@ -305,7 +308,10 @@ function isoToday() {
 }
 function dateFromLegacyDue(due?: string) { const match = due?.match(/\d{4}-\d{2}-\d{2}/); return match?.[0] }
 function timeFromDue(due?: string) { const match = due?.match(/\d{2}:\d{2}/); return match?.[0] }
-function isTodayQuest(quest: Quest) { return quest.scheduledDate === isoToday() || quest.due.startsWith('오늘') }
+function isTodayQuest(quest: Quest) {
+  if (quest.recurrenceRule) return questOccursOn(quest, isoToday(), serviceDate(new Date(quest.createdAt)))
+  return quest.scheduledDate === isoToday() || quest.due.startsWith('오늘')
+}
 function isThisWeekQuest(quest: Quest) {
   if (isTodayQuest(quest) || quest.due.startsWith('내일')) return true
   if (!quest.scheduledDate) return false
@@ -313,6 +319,10 @@ function isThisWeekQuest(quest: Quest) {
   const date = new Date(`${quest.scheduledDate}T00:00:00`)
   const days = (date.getTime() - today.getTime()) / 86400000
   return days >= 0 && days <= 6
+}
+function recurrenceShort(rule?: string) {
+  const frequency = parseRecurrenceRule(rule).frequency
+  return frequency === 'DAILY' ? '매일' : frequency === 'WEEKLY' ? '매주' : frequency === 'MONTHLY' ? '매월' : ''
 }
 function questDueLabel(quest: Quest) {
   if (quest.scheduledDate === isoToday()) return `오늘${quest.scheduledTime ? ` ${quest.scheduledTime}` : ''}`

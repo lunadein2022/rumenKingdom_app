@@ -4,8 +4,9 @@ import { QuestRow } from '../../components/QuestRow'
 import { RitaFace } from '../../components/RitaFace'
 import { EmptyState, SectionTitle } from '../../components/Common'
 import { projectProgress, useKingdomStore } from '../../store'
-import { lobbyGreetingLead } from '../../lib/serviceTime'
+import { lobbyGreetingLead, serviceDate } from '../../lib/serviceTime'
 import { useServiceDate } from '../../lib/useServiceDate'
+import { questOccursOn } from '../../lib/recurrence'
 import type { Quest } from '../../types'
 
 export function LobbyPage() {
@@ -70,6 +71,8 @@ function LobbyVital({ label, value }: { label: string; value: number }) {
 }
 
 function isTodayQuest(quest: Quest, today: string) {
+  // 반복 퀘스트는 오늘 해당하는 날에만 표시.
+  if (quest.recurrenceRule) return questOccursOn(quest, today, serviceDate(new Date(quest.createdAt)))
   // 오늘의 퀘스트 = 모든 서브퀘스트 + 오늘로 설정된 일일퀘스트 (메인퀘스트는 제외)
   if (quest.type === 'sub') return true
   return quest.scheduledDate === today || quest.due.startsWith('오늘')

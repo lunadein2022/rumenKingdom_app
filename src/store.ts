@@ -10,6 +10,7 @@ import { createDiary as createDiaryRow, listDiaries, removeDiary as removeDiaryR
 import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, Project, Quest, Relationship } from './types'
 import { getActiveAccountScope, setActiveAccountScope } from './lib/accountScope'
 import { serviceDate } from './lib/serviceTime'
+import { questOccursOn } from './lib/recurrence'
 
 type ProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 type QuestInput = Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
@@ -48,6 +49,8 @@ interface KingdomState {
   updateQuest: (id: string, quest: Partial<Quest>) => Promise<boolean>
   deleteQuest: (id: string) => Promise<boolean>
   reorderQuests: (orderedIds: string[]) => void
+  /** 새 서비스일이 되면 지난 날 완료한 반복 퀘스트를 다시 미완료로 되돌린다. */
+  rolloverRecurringQuests: (today: string) => void
   addProject: (project: ProjectInput) => Promise<string | null>
   updateProject: (id: string, project: Partial<ProjectInput>) => Promise<boolean>
   deleteProject: (id: string) => Promise<boolean>
@@ -289,6 +292,18 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     orderedIds.forEach((id, index) => { order[id] = index })
     return { questOrder: order }
   }),
+  rolloverRecurringQuests: (today) => {
+    const toReset = get().quests.filter((quest) =>
+      quest.recurrenceRule && quest.done && quest.completedAt &&
+      serviceDate(new Date(quest.completedAt)) !== today &&
+      questOccursOn(quest, today, serviceDate(new Date(quest.createdAt))),
+    )
+    if (!toReset.length) return
+    const ids = new Set(toReset.map((quest) => quest.id))
+    set((state) => ({ quests: state.quests.map((quest) => ids.has(quest.id) ? { ...quest, done: false, status: 'active', completedAt: undefined, updatedAt: timestamp() } : quest) }))
+    // 클라우드에도 조용히 반영(알림 없이). 실패해도 로컬 리셋은 유지.
+    for (const quest of toReset) void updateQuestRow(quest.id, { status: 'active', completedAt: undefined }).catch(() => undefined)
+  },
   addProject: async (project) => {
     const id = crypto.randomUUID()
     const now = timestamp()
@@ -487,7 +502,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
       quests: (old.quests ?? initialQuests).map((quest) => ({
         id: quest.id, title: quest.title, description: quest.description ?? '', memo: quest.memo ?? '', tags: quest.tags ?? [], projectId: quest.projectId ?? (quest.project ? projectNames.get(quest.project) : undefined), project: quest.project,
         parentQuestId: quest.parentQuestId, type: quest.type ?? 'daily', status: quest.status ?? (quest.done ? 'completed' : 'active'),
-        due: quest.due ?? '', scheduledDate: quest.scheduledDate, scheduledTime: quest.scheduledTime, done: quest.done ?? false, priority: quest.priority ?? 'medium', favorite: quest.favorite ?? false, completedAt: quest.completedAt,
+        due: quest.due ?? '', scheduledDate: quest.scheduledDate, scheduledTime: quest.scheduledTime, recurrenceRule: quest.recurrenceRule, done: quest.done ?? false, priority: quest.priority ?? 'medium', favorite: quest.favorite ?? false, completedAt: quest.completedAt,
         createdAt: quest.createdAt ?? createdAt, updatedAt: quest.updatedAt ?? createdAt,
       })),
       memos: old.memos ?? initialMemos,

@@ -18,6 +18,7 @@ type QuestRow = {
   scheduled_on: string | null
   due_on: string | null
   due_at: string | null
+  recurrence_rule: string | null
   favorite: boolean | null
   completed_at: string | null
   created_at: string
@@ -25,7 +26,7 @@ type QuestRow = {
 }
 
 const COLUMNS =
-  'id,main_quest_id,parent_quest_id,kind,title,description,memo,tags,status,priority,scheduled_on,due_on,due_at,favorite,completed_at,created_at,updated_at'
+  'id,main_quest_id,parent_quest_id,kind,title,description,memo,tags,status,priority,scheduled_on,due_on,due_at,recurrence_rule,favorite,completed_at,created_at,updated_at'
 
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -53,6 +54,7 @@ const fromRow = (row: QuestRow): Quest => {
     due: scheduledDate ? `${scheduledDate}${scheduledTime ? ` ${scheduledTime}` : ''}` : '일정 없음',
     scheduledDate,
     scheduledTime,
+    recurrenceRule: row.recurrence_rule ?? undefined,
     done: row.status === 'completed',
     priority: row.priority,
     favorite: row.favorite ?? false,
@@ -90,6 +92,7 @@ export async function createQuest(quest: Quest): Promise<boolean> {
     scheduled_on: quest.scheduledDate || null,
     due_on: quest.scheduledDate || null,
     due_at: quest.scheduledTime || null,
+    recurrence_rule: quest.recurrenceRule || null,
     favorite: quest.favorite ?? false,
     completed_at: completed ? quest.completedAt ?? new Date().toISOString() : null,
     created_at: quest.createdAt,
@@ -117,6 +120,7 @@ export async function updateQuest(id: string, patch: Partial<Quest>): Promise<bo
     row.due_on = patch.scheduledDate || null
   }
   if ('scheduledTime' in patch) row.due_at = patch.scheduledTime || null
+  if ('recurrenceRule' in patch) row.recurrence_rule = patch.recurrenceRule || null
   if (patch.status !== undefined) {
     row.status = patch.status
     row.completed_at = patch.status === 'completed' ? patch.completedAt ?? new Date().toISOString() : null

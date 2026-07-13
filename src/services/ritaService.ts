@@ -50,6 +50,16 @@ export interface RitaProjectContext {
   status: string
 }
 
+/** 응답을 JSON으로 파싱한다. 서버가 HTML(예: SPA fallback)을 돌려주면 원인을 알려주는 오류를 던진다. */
+async function readJson<T>(response: Response): Promise<T> {
+  const text = await response.text()
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    throw new Error('리타 서버(Netlify 함수)에 연결하지 못했어요. 로컬 실행 중이라면 `netlify dev`로 띄우고, 배포 환경이라면 Netlify 함수 배포와 환경 변수(ANTHROPIC_API_KEY 등)를 확인해 주세요.')
+  }
+}
+
 async function authHeaders() {
   const { data } = await supabase?.auth.getSession() ?? { data: { session: null } }
   const accessToken = data.session?.access_token
@@ -64,7 +74,7 @@ export async function askRita(messages: RitaMessage[]): Promise<string> {
     body: JSON.stringify({ action: 'chat', messages }),
   })
 
-  const payload = await response.json() as { reply?: string; error?: string }
+  const payload = await readJson<{ reply?: string; error?: string }>(response)
   if (!response.ok || !payload.reply) throw new Error(payload.error ?? '리타와 연결할 수 없습니다.')
   return payload.reply
 }
@@ -82,7 +92,7 @@ export async function interpretRitaRequest(messages: RitaMessage[], projects: Ri
     }),
   })
 
-  const payload = await response.json() as { analysis?: RitaRequestAnalysis; error?: string }
+  const payload = await readJson<{ analysis?: RitaRequestAnalysis; error?: string }>(response)
   if (!response.ok || !payload.analysis) throw new Error(payload.error ?? '리타가 요청을 정리하지 못했습니다.')
   return payload.analysis
 }
@@ -104,7 +114,7 @@ export async function analyzeRitaAttachment(file: File, intent: AttachmentIntent
     }),
   })
 
-  const payload = await response.json() as { analysis?: RitaAttachmentAnalysis; error?: string }
+  const payload = await readJson<{ analysis?: RitaAttachmentAnalysis; error?: string }>(response)
   if (!response.ok || !payload.analysis) throw new Error(payload.error ?? '첨부 파일을 분석하지 못했습니다.')
   const storagePath = await uploadOriginalAttachment(file).catch(() => undefined)
   return { ...payload.analysis, attachment: { ...payload.analysis.attachment, storagePath } }

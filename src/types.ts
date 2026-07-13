@@ -41,6 +41,8 @@ export interface Quest {
   due: string
   scheduledDate?: string
   scheduledTime?: string
+  /** 반복 규칙(RRULE 형식, 예: FREQ=DAILY, FREQ=WEEKLY;UNTIL=20260901). 없으면 1회성. */
+  recurrenceRule?: string
   done: boolean
   priority: QuestPriority
   favorite: boolean
