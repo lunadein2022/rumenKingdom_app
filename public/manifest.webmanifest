@@ -1,13 +1,25 @@
 {
-  "name": "루멘왕국, 공주의 하루",
+  "id": "/",
+  "name": "루멘왕국, 공주님의 하루",
   "short_name": "루멘왕국",
-  "description": "왕실 메이드 리타와 함께 관리하는 공주의 라이프 OS",
+  "description": "왕실 메이드 리타와 함께 관리하는 공주님의 일정·퀘스트·기록 OS",
   "start_url": "/",
+  "scope": "/",
+  "lang": "ko-KR",
+  "dir": "ltr",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
   "background_color": "#f7f2ee",
-  "theme_color": "#3b1268",
+  "theme_color": "#6d5395",
+  "categories": ["productivity", "lifestyle"],
+  "prefer_related_applications": false,
   "icons": [
-    { "src": "/assets/favicon.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "/assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+    { "src": "/assets/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "왕실 일정표", "short_name": "일정", "url": "/calendar", "icons": [{ "src": "/assets/favicon.png", "sizes": "512x512", "type": "image/png" }] },
+    { "name": "리타와 대화하기", "short_name": "리타", "url": "/rita", "icons": [{ "src": "/assets/favicon.png", "sizes": "512x512", "type": "image/png" }] }
   ]
 }

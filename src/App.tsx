@@ -9,6 +9,7 @@ import { clearDemoSessionStorage, createDemoSessionId, currentDemoSessionId, DEM
 import { loadPreferences } from './services/settingsRepository'
 import { storeSelectedPrincessId } from './lib/princesses'
 import { configureServiceTime, resetServiceTime } from './lib/serviceTime'
+import { WebAppStatus } from './components/WebAppStatus'
 
 function App() {
   const hydrateEvents = useKingdomStore((state) => state.hydrateEvents)
@@ -138,6 +139,7 @@ function App() {
           ? <div className="auth-loading"><img src="/assets/brand/main-logo.webp" alt="루멘왕국, 공주의 하루"/><span>공주님의 왕국 기록을 불러오고 있어요...</span></div>
           : <AppRouter demoMode={guestMode && !session} onResetDemo={resetDemo} onSignOut={signOut}/>
     }
+    <WebAppStatus/>
   </BrowserRouter>
 }
 
