@@ -1,4 +1,4 @@
-import { Bell, ChevronRight, Cloud, Crown, Database, Image, LogOut, Pencil, Save, Sparkles, UserRound, X } from 'lucide-react'
+import { Bell, ChevronRight, Cloud, Coins, Crown, Database, Gift, History, Image, LogOut, Pencil, Save, Sparkles, UserRound, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { readAccountStorage, writeAccountStorage } from '../../lib/accountScope'
@@ -8,6 +8,8 @@ import type { PageId } from '../../types'
 import { PrincessPortrait } from '../../components/PrincessPortrait'
 import { getPrincess, princessOptions, readSelectedPrincessId, storeSelectedPrincessId, type PrincessId } from '../../lib/princesses'
 import { configureServiceTime } from '../../lib/serviceTime'
+import { getRitaActivity, type RitaActivity } from '../../services/ritaService'
+import { useRitaUsage } from '../../lib/useRitaUsage'
 
 type SettingId = 'profile' | 'background' | 'notifications' | 'ai' | 'data' | null
 
@@ -26,8 +28,18 @@ export function ThronePage({ demoMode = false, onResetDemo = () => undefined, on
   const [draftPrincessId, setDraftPrincessId] = useState<PrincessId>(princessId)
   const selectedPrincess = getPrincess(princessId)
   const recordCount = store.projects.length + store.quests.length + store.memos.length + store.relationships.length + store.diaries.length
+  const { usage } = useRitaUsage(!demoMode)
+  const [activity, setActivity] = useState<RitaActivity>({ usage: [], gifts: [] })
+  const [activityError, setActivityError] = useState('')
 
   useEffect(() => { void loadPreferences().then((saved) => { if (!saved) return; const savedPrincessId = storeSelectedPrincessId(saved.selectedPrincessId); setName(saved.profileName); setDraftName(saved.profileName); setIntro(saved.profileIntro); setDraftIntro(saved.profileIntro); setNotifications(saved.notifications); setAiStyle(saved.aiStyle); setTimezone(saved.timezone); setServiceDayStartsAt(saved.serviceDayStartsAt); setPrincessId(savedPrincessId); setDraftPrincessId(savedPrincessId) }).catch(() => undefined) }, [])
+  useEffect(() => {
+    if (demoMode) return
+    const refresh = () => void getRitaActivity().then((value) => { setActivity(value); setActivityError('') }).catch(() => setActivityError('이용 기록을 불러오지 못했습니다.'))
+    refresh()
+    window.addEventListener('rumen-ai-usage-changed', refresh)
+    return () => window.removeEventListener('rumen-ai-usage-changed', refresh)
+  }, [demoMode])
   const persistPreferences = (patch: Partial<UserPreferences>) => savePreferences({ ...defaultPreferences, profileName: name, profileIntro: intro, notifications, aiStyle: aiStyle as UserPreferences['aiStyle'], timezone, serviceDayStartsAt, selectedPrincessId: princessId, ...patch })
 
   const saveProfile = async () => {
@@ -72,6 +84,23 @@ export function ThronePage({ demoMode = false, onResetDemo = () => undefined, on
 
     <section className="kingdom-status-strip glass-panel"><div><small>진행 중 메인퀘스트</small><b>{store.projects.filter((item) => item.status === 'active').length}</b></div><div><small>완료한 퀘스트</small><b>{store.quests.filter((item) => item.done).length}</b></div><div><small>소중한 인연</small><b>{store.relationships.length}</b></div><div><small>왕국의 비망록</small><b>{store.memos.length}</b></div></section>
 
+    <section className="account-activity panel glass-panel">
+      <header><div><span className="eyebrow">RITA POINTS & HISTORY</span><h2>리타 포인트와 이용 기록</h2><p>현재 잔액, 이번 달 사용량과 왕실에서 받은 선물을 확인하세요.</p></div><Coins size={24}/></header>
+      {demoMode ? <p className="account-activity-empty">로그인하면 계정별 포인트와 이용 기록을 확인할 수 있어요.</p> : <>
+        <div className="point-summary-grid">
+          <AccountPoint label="현재 총 포인트" value={usage?.totalRemaining} accent/>
+          <AccountPoint label="이번 달 남은 포인트" value={usage?.monthlyRemaining}/>
+          <AccountPoint label="보너스·선물 포인트" value={usage?.bonusRemaining}/>
+          <span className="point-plan"><b>{tierLabel(usage?.tier)}</b><small>현재 이용 등급</small><em>이번 달 {usage?.monthlyUsed ?? 0}P 사용</em></span>
+        </div>
+        {activityError && <p className="account-activity-error">{activityError}</p>}
+        <div className="activity-columns">
+          <section><h3><History size={16}/>AI 이용 기록</h3>{activity.usage.length ? <div className="activity-list">{activity.usage.map((item) => <article key={item.id}><span><b>{requestTypeLabel(item.requestType)}</b><small>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.model || '처리 전'}</small></span><strong className={item.status}>{item.status === 'released' ? '환불' : item.status === 'reserved' ? '처리 중' : `-${item.points}P`}</strong></article>)}</div> : <p className="account-activity-empty">아직 리타 AI 이용 기록이 없습니다.</p>}</section>
+          <section><h3><Gift size={16}/>받은 선물</h3>{activity.gifts.length ? <div className="activity-list">{activity.gifts.map((item) => <article key={item.id}><span><b>{giftLabel(item)}</b><small>{new Date(item.createdAt).toLocaleString('ko-KR')}{item.reason ? ` · ${item.reason}` : ''}</small></span><strong className="gift">{item.benefitType === 'ai_points' ? `+${item.amount}P` : '선물'}</strong></article>)}</div> : <p className="account-activity-empty">아직 받은 선물이 없습니다.</p>}</section>
+        </div>
+      </>}
+    </section>
+
     <section className="kingdom-settings panel glass-panel">
       <header><span className="eyebrow">PALACE SETTINGS</span><h2>환경 설정</h2><p>공주님의 왕국과 리타를 원하는 방식으로 관리하세요.</p></header>
       <div className="setting-list">
@@ -113,6 +142,10 @@ export function ThronePage({ demoMode = false, onResetDemo = () => undefined, on
 }
 
 function AccountStat({ label, value }: { label: string; value: number }) { return <span><b>{value}</b><small>{label}</small></span> }
+function AccountPoint({ label, value, accent = false }: { label: string; value?: number; accent?: boolean }) { return <span className={accent ? 'accent' : ''}><b>{value === undefined ? '—' : `${value.toLocaleString()}P`}</b><small>{label}</small></span> }
+function tierLabel(tier?: 'free' | 'royal' | 'royal_ai') { return tier === 'royal_ai' ? 'Royal AI' : tier === 'royal' ? 'Royal' : 'Free' }
+function requestTypeLabel(value: string) { if (value === 'interpret-request') return '리타 대화·요청 정리'; if (value.startsWith('attachment:')) return '첨부 파일 분석'; return value === 'chat' ? '리타 대화' : value }
+function giftLabel(item: RitaActivity['gifts'][number]) { return item.benefitType === 'ai_points' ? `리타 포인트 ${item.amount}점` : item.benefitType === 'all_access' ? '전체 기능 이용권' : `꾸미기 이용권 · ${item.benefitKey}` }
 
 const roomLabels: Record<PageId, string> = { lobby: '로비', office: '집무실', calendar: '왕실 일정표', library: '왕국 도서관', diary: '공주의 침실', garden: '비밀정원', rita: '리타', throne: '왕좌의 방' }
 

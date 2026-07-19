@@ -61,6 +61,34 @@ export interface RitaUsage {
   totalRemaining: number
 }
 
+export interface RitaUsageActivity {
+  id: string
+  requestType: string
+  model?: string
+  points: number
+  status: 'reserved' | 'consumed' | 'released'
+  inputTokens: number
+  outputTokens: number
+  estimatedCostUsd: number
+  createdAt: string
+  completedAt?: string
+}
+
+export interface RitaGiftActivity {
+  id: string
+  benefitType: 'ai_points' | 'cosmetic' | 'all_access'
+  benefitKey: string
+  amount: number
+  expiresAt?: string
+  reason: string
+  createdAt: string
+}
+
+export interface RitaActivity {
+  usage: RitaUsageActivity[]
+  gifts: RitaGiftActivity[]
+}
+
 function responseStyle() {
   const value = readAccountStorage('rumen-rita-style')
   return value === 'warm' || value === 'detailed' ? value : 'concise'
@@ -90,6 +118,17 @@ export async function getRitaUsage(): Promise<RitaUsage> {
   return data as RitaUsage
 }
 
+export async function getRitaActivity(): Promise<RitaActivity> {
+  if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
+  const { data, error } = await supabase.rpc('get_my_ai_activity', { p_limit: 30 })
+  if (error) throw new Error('리타 AI 이용 기록을 불러오지 못했습니다.')
+  return data as RitaActivity
+}
+
+function signalUsageChanged() {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('rumen-ai-usage-changed'))
+}
+
 export async function askRita(messages: RitaMessage[]): Promise<string> {
   const response = await fetch('/.netlify/functions/claude', {
     method: 'POST',
@@ -99,6 +138,7 @@ export async function askRita(messages: RitaMessage[]): Promise<string> {
 
   const payload = await readJson<{ reply?: string; error?: string }>(response)
   if (!response.ok || !payload.reply) throw new Error(payload.error ?? '리타와 연결할 수 없습니다.')
+  signalUsageChanged()
   return payload.reply
 }
 
@@ -119,6 +159,7 @@ export async function interpretRitaRequest(messages: RitaMessage[], projects: Ri
 
   const payload = await readJson<{ analysis?: RitaRequestAnalysis; error?: string }>(response)
   if (!response.ok || !payload.analysis) throw new Error(payload.error ?? '리타가 요청을 정리하지 못했습니다.')
+  signalUsageChanged()
   return payload.analysis
 }
 
@@ -141,6 +182,7 @@ export async function analyzeRitaAttachment(file: File, intent: AttachmentIntent
 
   const payload = await readJson<{ analysis?: RitaAttachmentAnalysis; error?: string }>(response)
   if (!response.ok || !payload.analysis) throw new Error(payload.error ?? '첨부 파일을 분석하지 못했습니다.')
+  signalUsageChanged()
   const storagePath = await uploadOriginalAttachment(file).catch(() => undefined)
   return { ...payload.analysis, attachment: { ...payload.analysis.attachment, storagePath } }
 }

@@ -57,6 +57,8 @@ export function AdminPage() {
         expiresAt: expiresAt ? new Date(`${expiresAt}T23:59:59+09:00`).toISOString() : undefined,
         reason,
       })
+      window.dispatchEvent(new Event('rumen-ai-usage-changed'))
+      window.dispatchEvent(new Event('rumen-notifications-changed'))
       setMessage(`${user.email} 계정에 ${benefitLabels[benefitType]} 지급을 완료했습니다.`)
       setUser(await findAdminUser(user.email))
       setGrants(await listAdminGrants())

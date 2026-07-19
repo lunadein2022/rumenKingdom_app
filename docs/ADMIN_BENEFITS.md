@@ -21,6 +21,8 @@
 
 모든 지급은 `admin_benefit_grants`에 지급자, 수령자, 혜택, 수량, 만료일, 사유와 함께 기록된다. 동일한 `idempotency_key`는 한 번만 처리한다.
 
+`202607190009_account_activity_notifications.sql`까지 적용하면 포인트 선물과 이용권 지급 시 수령자 알림이 같은 트랜잭션에서 생성된다. 사용자는 상단바에서 총 포인트를 확인하고, 왕좌의 방에서 월간 잔액·보너스 잔액·AI 이용/환불 기록·받은 선물 이력을 확인할 수 있다.
+
 관리자 화면은 `/admin`에 있으며 메뉴에는 노출하지 않는다. 브라우저는 사용자 세션만 전송하고, 관리자 여부와 실제 지급은 Netlify 함수와 service role 전용 RPC가 검증한다.
 
 ## 적용
@@ -31,3 +33,5 @@
 4. 소유자 이메일 인증이 완료되어 있는지 확인하고 해당 계정에서 다시 로그인
 5. `/admin` 접속
 6. 본인 이메일 검색 후 `royal_ai`, 10,000점, `all_access` 확인
+7. `202607190009_account_activity_notifications.sql` 실행
+8. `verify_account_activity.sql` 실행 후 네 항목이 모두 `PASS`인지 확인
