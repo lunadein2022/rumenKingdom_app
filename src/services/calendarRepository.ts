@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { hourMinute } from '../lib/clockTime'
 import type { CalendarEvent } from '../types'
 
 type CalendarRow = {
@@ -21,8 +22,8 @@ const fromRow = (row: CalendarRow): CalendarEvent => ({
   description: row.description,
   date: row.event_date,
   endDate: row.end_date ?? undefined,
-  start: row.all_day ? '' : row.starts_at,
-  end: row.ends_at ?? undefined,
+  start: row.all_day ? '' : hourMinute(row.starts_at) ?? '',
+  end: hourMinute(row.ends_at),
   allDay: row.all_day,
   kind: row.kind,
   important: row.important,
@@ -58,8 +59,8 @@ export async function createCalendarEvent(event: Omit<CalendarEvent, 'id'>): Pro
       description: event.description ?? '',
       event_date: event.date,
       end_date: event.endDate ?? event.date,
-      starts_at: event.allDay ? '00:00' : event.start || '09:00',
-      ends_at: event.end ?? null,
+      starts_at: event.allDay ? '00:00' : hourMinute(event.start) || '09:00',
+      ends_at: hourMinute(event.end) ?? null,
       all_day: event.allDay ?? false,
       kind: event.kind,
       important: event.important ?? false,
@@ -87,8 +88,8 @@ export async function updateCalendarEvent(id: string, event: Omit<CalendarEvent,
       description: event.description ?? '',
       event_date: event.date,
       end_date: event.endDate ?? event.date,
-      starts_at: event.allDay ? '00:00' : event.start || '09:00',
-      ends_at: event.end ?? null,
+      starts_at: event.allDay ? '00:00' : hourMinute(event.start) || '09:00',
+      ends_at: hourMinute(event.end) ?? null,
       all_day: event.allDay ?? false,
       kind: event.kind,
       important: event.important ?? false,

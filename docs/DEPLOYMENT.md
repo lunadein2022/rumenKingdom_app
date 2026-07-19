@@ -12,7 +12,11 @@
 6. `supabase/migrations/202607190005_atomic_record_saves.sql`
 7. `supabase/migrations/202607190006_ai_usage_controls.sql`
 8. `supabase/migrations/202607190007_ai_usage_security_hardening.sql`
-9. `supabase/verify_canonical_schema.sql` 실행 후 모든 필수 항목 확인
+9. `supabase/migrations/202607190008_admin_benefits.sql`
+10. `supabase/migrations/202607190009_account_activity_notifications.sql`
+11. `supabase/migrations/202607190010_fix_admin_grant_history.sql`
+12. `supabase/migrations/202607190011_shared_app_releases.sql`
+13. `supabase/verify_canonical_schema.sql`, `supabase/verify_admin_benefits.sql`, `supabase/verify_shared_backend.sql` 실행 후 모든 필수 항목 확인
 
 브라우저 환경변수:
 
