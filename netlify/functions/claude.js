@@ -21,6 +21,7 @@ const SYSTEM_PROMPT = `당신은 루멘왕국의 왕실 메이드이자 일정·
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 const TEXT_TYPES = new Set(['text/plain', 'text/markdown', 'text/csv'])
 const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+let pointPolicyCache = { value: null, expiresAt: 0 }
 
 const responseStylePrompt = (value) => value === 'warm'
   ? '공주님의 감정을 먼저 짧게 헤아리고, 리타답게 다정하고 자연스럽게 답하되 핵심은 분명하게 전달하세요.'
@@ -145,7 +146,7 @@ export const handler = async (event) => {
     const input = validateAiInput(parsed)
     requestId = randomUUID()
     const model = modelForRequest(input, models)
-    const points = pointsForRequest(input)
+    const points = pointsForRequest(input, await loadPointPolicy(serviceClient))
     const requestType = input.action === 'analyze-attachment'
       ? `attachment:${String(input.intent || 'document')}`
       : String(input.action || 'chat')
@@ -207,6 +208,18 @@ export const handler = async (event) => {
     const statusCode = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus <= 599 ? requestedStatus : 500
     return json(statusCode, { error: error instanceof Error ? error.message : '요청을 처리하지 못했습니다.' })
   }
+}
+
+async function loadPointPolicy(client) {
+  if (pointPolicyCache.value && pointPolicyCache.expiresAt > Date.now()) return pointPolicyCache.value
+  const { data, error } = await client.from('app_runtime_config')
+    .select('ai_point_policy')
+    .eq('environment', 'production')
+    .maybeSingle()
+  if (error) console.warn('Failed to load live AI point policy; using safe defaults', error.message)
+  const value = data?.ai_point_policy ?? undefined
+  pointPolicyCache = { value, expiresAt: Date.now() + 30_000 }
+  return value
 }
 
 function aiControlError(error) {

@@ -5,6 +5,7 @@ import { serviceDate } from '../lib/serviceTime'
 import { BodyAreaOverlay } from './BodyAreaOverlay'
 import { loadLatestPatchNote } from '../services/releaseNotesService'
 import type { PatchNote } from '../lib/patchNotes'
+import { NavLink } from 'react-router-dom'
 
 const DISMISS_KEY = 'rumen-patchnotes-dismissed-version'
 const SNOOZE_KEY = 'rumen-patchnotes-snooze-date'
@@ -54,6 +55,7 @@ export function PatchNotesModal() {
         {note.items.map((item, index) => <li key={index}>{item}</li>)}
       </ul>
       <div className="patchnotes-actions">
+        <NavLink className="patchnotes-all" to="/patch-notes" onClick={close}>전체 업데이트 보기</NavLink>
         <button type="button" className="ghost" onClick={snoozeToday}>오늘 안 보기</button>
         <button type="button" className="ghost" onClick={dismissForever}>아예 안 보기</button>
         <button type="button" className="primary" onClick={close}>확인</button>

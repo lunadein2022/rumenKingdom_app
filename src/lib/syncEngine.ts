@@ -28,6 +28,8 @@ const QUEUE_KEY = 'rumen-sync-outbox-v1'
 const REVISION_KEY = 'rumen-sync-revisions-v1'
 const CURSOR_KEY = 'rumen-sync-cursors-v1'
 
+export function pendingSyncCount() { return readJson<QueueItem[]>(QUEUE_KEY, []).length }
+
 function readJson<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(key) ?? '') as T } catch { return fallback }
 }
@@ -87,7 +89,7 @@ async function send(item: QueueItem): Promise<MutationResponse> {
 }
 
 function announce(type: 'queued' | 'flushed' | 'conflict', detail: unknown) {
-  window.dispatchEvent(new CustomEvent(`rumen-sync-${type}`, { detail }))
+  window.dispatchEvent(new CustomEvent(`rumen-sync-${type}`, { detail: { value: detail, pending: pendingSyncCount() } }))
 }
 
 export async function applySyncMutation(input: {
@@ -167,6 +169,7 @@ export async function flushSyncQueue() {
     }
   }
   writeJson(QUEUE_KEY, remaining)
+  window.dispatchEvent(new CustomEvent('rumen-sync-queue-changed', { detail: { pending: remaining.length } }))
 }
 
 export function startSyncEngine(onRemoteChanges: () => void) {

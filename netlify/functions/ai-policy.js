@@ -24,6 +24,14 @@ export const AI_TIER_LIMITS = Object.freeze({
   royal_ai: Object.freeze({ monthlyPoints: 288, dailyRequests: 100, signupBonus: 12 }),
 })
 
+export const DEFAULT_AI_POINT_POLICY = Object.freeze({
+  requestCosts: Object.freeze({
+    chat: Object.freeze({ concise: 1, warm: 1, detailed: 4 }),
+    interpretRequest: 1,
+    attachment: Object.freeze({ businessCard: 5, audioBase: 5, audioPerMiB: 4, documentBase: 5, documentPerMiB: 5, maximum: 30 }),
+  }),
+})
+
 function attachmentBytes(attachment = {}) {
   const encoded = typeof attachment.data === 'string' ? attachment.data : ''
   if (encoded) {
@@ -92,14 +100,31 @@ export function validateAiInput(value) {
   return input
 }
 
-export function pointsForRequest(input = {}) {
-  if (input.action === 'interpret-request') return 1
-  if (input.action !== 'analyze-attachment') return input.responseStyle === 'detailed' ? 4 : 1
+function policyInteger(value, fallback, minimum = 1, maximum = 30) {
+  const parsed = Number(value)
+  return Number.isInteger(parsed) ? Math.min(maximum, Math.max(minimum, parsed)) : fallback
+}
+
+export function pointsForRequest(input = {}, policy = DEFAULT_AI_POINT_POLICY) {
+  const costs = policy?.requestCosts ?? DEFAULT_AI_POINT_POLICY.requestCosts
+  if (input.action === 'interpret-request') return policyInteger(costs.interpretRequest, 1)
+  if (input.action !== 'analyze-attachment') {
+    const fallback = input.responseStyle === 'detailed' ? 4 : 1
+    return policyInteger(costs.chat?.[input.responseStyle] ?? costs.chat?.concise, fallback)
+  }
 
   const bytes = attachmentBytes(input.attachment)
-  if (input.intent === 'business-card') return 5
-  if (input.intent === 'audio') return Math.min(30, 5 + Math.ceil(bytes / MEBIBYTE) * 4)
-  return Math.min(30, 5 + Math.ceil(bytes / MEBIBYTE) * 5)
+  const attachment = costs.attachment ?? DEFAULT_AI_POINT_POLICY.requestCosts.attachment
+  const maximum = policyInteger(attachment.maximum, 30)
+  if (input.intent === 'business-card') return policyInteger(attachment.businessCard, 5, 1, maximum)
+  if (input.intent === 'audio') {
+    const base = policyInteger(attachment.audioBase, 5, 1, maximum)
+    const perMiB = policyInteger(attachment.audioPerMiB, 4, 1, maximum)
+    return Math.min(maximum, base + Math.ceil(bytes / MEBIBYTE) * perMiB)
+  }
+  const base = policyInteger(attachment.documentBase, 5, 1, maximum)
+  const perMiB = policyInteger(attachment.documentPerMiB, 5, 1, maximum)
+  return Math.min(maximum, base + Math.ceil(bytes / MEBIBYTE) * perMiB)
 }
 
 export function modelForRequest(input, models) {

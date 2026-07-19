@@ -13,6 +13,7 @@ import { WebAppStatus } from './components/WebAppStatus'
 import { startSyncEngine } from './lib/syncEngine'
 import { Capacitor } from '@capacitor/core'
 import { MobileServiceSetup } from './components/MobileServiceSetup'
+import { RuntimeConfigProvider } from './features/runtime/RuntimeConfig'
 
 function App() {
   if (Capacitor.isNativePlatform() && !isSupabaseConfigured) return <MobileServiceSetup />
@@ -151,7 +152,7 @@ function ConfiguredApp() {
     resetServiceTime()
     setDemoSessionId(createDemoSessionId())
   }
-  return <BrowserRouter>
+  return <BrowserRouter><RuntimeConfigProvider>
     {!authReady
       ? <div className="auth-loading"><img src="/assets/brand/main-logo.webp" alt="루멘왕국, 공주의 하루"/><span>왕실 문을 준비하고 있어요...</span></div>
       : !session && !guestMode
@@ -161,7 +162,7 @@ function ConfiguredApp() {
           : <AppRouter demoMode={guestMode && !session} onResetDemo={resetDemo} onSignOut={signOut}/>
     }
     <WebAppStatus/>
-  </BrowserRouter>
+  </RuntimeConfigProvider></BrowserRouter>
 }
 
 export default App

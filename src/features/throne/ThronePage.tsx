@@ -12,11 +12,13 @@ import { configureServiceTime } from '../../lib/serviceTime'
 import { getRitaActivity, type RitaActivity } from '../../services/ritaService'
 import { useRitaUsage } from '../../lib/useRitaUsage'
 import { deleteMyAccount } from '../../services/accountService'
+import { useRuntimeConfig } from '../runtime/RuntimeConfig'
 
 type SettingId = 'profile' | 'background' | 'notifications' | 'ai' | 'data' | null
 
 export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = () => undefined, onSignOut }: { demoMode?: boolean; isAdmin?: boolean; onResetDemo?: () => void; onSignOut: () => Promise<void> }) {
   const store = useKingdomStore()
+  const { config } = useRuntimeConfig()
   const [setting, setSetting] = useState<SettingId>(null)
   const [deletingAccount, setDeletingAccount] = useState(false)
   const [name, setName] = useState(() => readAccountStorage('rumen-princess-name') || '루멘왕국의 공주')
@@ -110,6 +112,7 @@ export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = ()
           <section><h3><History size={16}/>AI 이용 기록</h3>{activity.usage.length ? <div className="activity-list">{activity.usage.map((item) => <article key={item.id}><span><b>{requestTypeLabel(item.requestType)}</b><small>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.model || '처리 전'}</small></span><strong className={item.status}>{item.status === 'released' ? '환불' : item.status === 'reserved' ? '처리 중' : `-${item.points}P`}</strong></article>)}</div> : <p className="account-activity-empty">아직 리타 AI 이용 기록이 없습니다.</p>}</section>
           <section><h3><Gift size={16}/>받은 선물</h3>{activity.gifts.length ? <div className="activity-list">{activity.gifts.map((item) => <article key={item.id}><span><b>{giftLabel(item)}</b><small>{new Date(item.createdAt).toLocaleString('ko-KR')}{item.reason ? ` · ${item.reason}` : ''}</small></span><strong className="gift">{item.benefitType === 'ai_points' ? `+${item.amount}P` : '선물'}</strong></article>)}</div> : <p className="account-activity-empty">아직 받은 선물이 없습니다.</p>}</section>
         </div>
+        <NavLink className="plans-link" to="/plans"><Crown size={15}/>요금제와 {config.planCatalog.trialDays}일 무료 체험 비교<ChevronRight size={15}/></NavLink>
       </>}
     </section>
 

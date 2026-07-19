@@ -17,6 +17,13 @@ test('request points increase for detailed and attachment work', () => {
   assert.equal(pointsForRequest({ action: 'analyze-attachment', intent: 'document', attachment: { size: 20 * 1024 * 1024 } }), 30)
 })
 
+test('request points can be changed by the live server policy', () => {
+  const policy = { requestCosts: { chat: { concise: 2, warm: 3, detailed: 6 }, interpretRequest: 2, attachment: { businessCard: 7, audioBase: 6, audioPerMiB: 5, documentBase: 8, documentPerMiB: 6, maximum: 25 } } }
+  assert.equal(pointsForRequest({ action: 'chat', responseStyle: 'detailed' }, policy), 6)
+  assert.equal(pointsForRequest({ action: 'interpret-request' }, policy), 2)
+  assert.equal(pointsForRequest({ action: 'analyze-attachment', intent: 'business-card' }, policy), 7)
+})
+
 test('model routing keeps basic work on Haiku and detailed work on Sonnet', () => {
   const models = { haiku: 'claude-haiku', sonnet: 'claude-sonnet' }
   assert.equal(modelForRequest({ action: 'chat', responseStyle: 'concise' }, models), models.haiku)
