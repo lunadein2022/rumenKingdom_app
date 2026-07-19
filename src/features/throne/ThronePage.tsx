@@ -1,5 +1,6 @@
-import { Bell, ChevronRight, Cloud, Coins, Crown, Database, Gift, History, Image, LogOut, Pencil, Save, Sparkles, UserRound, X } from 'lucide-react'
+import { Bell, ChevronRight, Cloud, Coins, Crown, Database, Gift, History, Image, LogOut, Pencil, Save, ShieldCheck, Sparkles, UserRound, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { NavLink } from 'react-router-dom'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { readAccountStorage, writeAccountStorage } from '../../lib/accountScope'
 import { useKingdomStore } from '../../store'
@@ -13,7 +14,7 @@ import { useRitaUsage } from '../../lib/useRitaUsage'
 
 type SettingId = 'profile' | 'background' | 'notifications' | 'ai' | 'data' | null
 
-export function ThronePage({ demoMode = false, onResetDemo = () => undefined, onSignOut }: { demoMode?: boolean; onResetDemo?: () => void; onSignOut: () => Promise<void> }) {
+export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = () => undefined, onSignOut }: { demoMode?: boolean; isAdmin?: boolean; onResetDemo?: () => void; onSignOut: () => Promise<void> }) {
   const store = useKingdomStore()
   const [setting, setSetting] = useState<SettingId>(null)
   const [name, setName] = useState(() => readAccountStorage('rumen-princess-name') || '루멘왕국의 공주')
@@ -109,6 +110,7 @@ export function ThronePage({ demoMode = false, onResetDemo = () => undefined, on
         <SettingRow icon={Bell} title="알림 설정" description="왕국 안에서 일정과 기록 알림 받기" onClick={() => setSetting('notifications')}/>
         <SettingRow icon={Sparkles} title="AI 설정" description="AI 메이드 리타의 답변 방식" onClick={() => setSetting('ai')}/>
         <SettingRow icon={Database} title="데이터 관리" description="왕국 기록 내보내기와 보관" onClick={() => setSetting('data')}/>
+        {isAdmin && <NavLink className="admin-setting-link" to="/admin"><span><ShieldCheck size={18}/></span><div><b>왕실 관리</b><small>포인트·꾸미기 선물과 지급 이력</small></div><ChevronRight size={16}/></NavLink>}
       </div>
       {setting && <SettingPanel setting={setting} onClose={() => setSetting(null)}>
         {setting === 'profile' && <div className="setting-form">

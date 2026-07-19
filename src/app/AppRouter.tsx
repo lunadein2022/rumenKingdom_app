@@ -5,11 +5,12 @@ import { EmptyState } from '../components/Common'
 import { PageHeading } from '../components/PageHeading'
 import { navigation, pageIdFromPath, pagePaths } from './navigation'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { LoaderCircle, X } from 'lucide-react'
+import { LoaderCircle, ShieldCheck, X } from 'lucide-react'
 import { useKingdomStore } from '../store'
 import { loadRoomBackgrounds } from '../services/settingsRepository'
 import { PatchNotesModal } from '../components/PatchNotesModal'
 import { useServiceDate } from '../lib/useServiceDate'
+import { getAdminContext, type AdminContext } from '../services/adminService'
 
 const LobbyPage = lazy(() => import('../features/lobby/LobbyPage').then((module) => ({ default: module.LobbyPage })))
 const OfficePage = lazy(() => import('../features/office/OfficePage').then((module) => ({ default: module.OfficePage })))
@@ -29,7 +30,15 @@ const ThronePage = lazy(() => import('../features/throne/ThronePage').then((modu
 const AdminPage = lazy(() => import('../features/admin/AdminPage').then((module) => ({ default: module.AdminPage })))
 
 export function AppRouter({ demoMode, onResetDemo, onSignOut }: { demoMode: boolean; onResetDemo: () => void; onSignOut: () => Promise<void> }) {
-  return <Routes><Route element={<AppLayout demoMode={demoMode} onSignOut={onSignOut}/>}>
+  const [adminRole, setAdminRole] = useState<AdminContext['role']>()
+  useEffect(() => {
+    if (demoMode) return
+    let active = true
+    void getAdminContext().then((context) => { if (active && context.isAdmin) setAdminRole(context.role) }).catch(() => undefined)
+    return () => { active = false }
+  }, [demoMode])
+  return <Routes>
+    <Route element={<AppLayout demoMode={demoMode} adminRole={adminRole} onSignOut={onSignOut}/>}>
     <Route index element={<LobbyPage/>}/>
     <Route path="office" element={<OfficePage/>}/>
     <Route path="office/projects/:projectId" element={<ProjectDetailPage/>}/>
@@ -45,13 +54,14 @@ export function AppRouter({ demoMode, onResetDemo, onSignOut }: { demoMode: bool
     <Route path="diary/:date" element={<DiaryPage/>}/>
     <Route path="garden" element={<GardenPage/>}/>
     <Route path="rita" element={<RitaPage demoMode={demoMode}/>}/>
-    <Route path="throne" element={<ThronePage demoMode={demoMode} onResetDemo={onResetDemo} onSignOut={onSignOut}/>}/>
+    <Route path="throne" element={<ThronePage demoMode={demoMode} isAdmin={Boolean(adminRole)} onResetDemo={onResetDemo} onSignOut={onSignOut}/>}/>
     <Route path="admin" element={<AdminPage/>}/>
     <Route path="*" element={<NotFoundPage/>}/>
-  </Route></Routes>
+    </Route>
+  </Routes>
 }
 
-function AppLayout({ demoMode, onSignOut }: { demoMode: boolean; onSignOut: () => Promise<void> }) {
+function AppLayout({ demoMode, adminRole, onSignOut }: { demoMode: boolean; adminRole?: AdminContext['role']; onSignOut: () => Promise<void> }) {
   const location = useLocation()
   const page = pageIdFromPath(location.pathname)
   const [mobileNav, setMobileNav] = useState(false)
@@ -83,7 +93,7 @@ function AppLayout({ demoMode, onSignOut }: { demoMode: boolean; onSignOut: () =
     if (backgrounds[page]) shell?.style.setProperty('--page-bg', `url("${backgrounds[page]}")`)
     else shell?.style.removeProperty('--page-bg')
   }, [backgrounds, page])
-  return <div className={`app-shell page-${page}`}><RouteEffects/><div className="ambient ambient-one"/><div className="ambient ambient-two"/><AppHeader demoMode={demoMode} page={page} onMenu={() => setMobileNav((value) => !value)} onSignOut={onSignOut}/>{mobileNav && <nav className="mobile-nav glass-panel" aria-label="모바일 메뉴">{navigation.map((item) => { const Icon = item.icon; return <NavLink key={item.id} to={item.path} end={item.path === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileNav(false)}><Icon size={15}/>{item.label}</NavLink> })}<NavLink className="nav-item" to="/rita" onClick={() => setMobileNav(false)}>리타</NavLink><NavLink className="nav-item" to="/throne" onClick={() => setMobileNav(false)}>왕좌의 방</NavLink><button className="nav-item" onClick={() => void onSignOut()}>{demoMode ? '로그인하기' : '로그아웃'}</button></nav>}<main className="main-wrap">{showPageHeading && <PageHeading page={page}/>}<Suspense fallback={<div className="route-loading" role="status"><LoaderCircle size={22} className="spin"/><span>왕궁의 방을 준비하고 있어요.</span></div>}><Outlet/></Suspense></main><footer><span>Copyright © RUMEN KINGDOM</span><span>All Rights Reserved.</span></footer>{recordSync.status !== 'idle' && <div className={`calendar-sync ${recordSync.status}`} role="status">{recordSync.status === 'saving' && <LoaderCircle size={15} className="spin"/>}<span>{recordSync.message}</span>{recordSync.status !== 'saving' && <button onClick={clearRecordSync} aria-label="저장 알림 닫기"><X size={14}/></button>}</div>}<PatchNotesModal/></div>
+  return <div className={`app-shell page-${page}`}><RouteEffects/><div className="ambient ambient-one"/><div className="ambient ambient-two"/><AppHeader demoMode={demoMode} isAdmin={Boolean(adminRole)} page={page} onMenu={() => setMobileNav((value) => !value)} onSignOut={onSignOut}/>{mobileNav && <nav className="mobile-nav glass-panel" aria-label="모바일 메뉴">{navigation.map((item) => { const Icon = item.icon; return <NavLink key={item.id} to={item.path} end={item.path === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={() => setMobileNav(false)}><Icon size={15}/>{item.label}</NavLink> })}<NavLink className="nav-item" to="/rita" onClick={() => setMobileNav(false)}>리타</NavLink><NavLink className="nav-item" to="/throne" onClick={() => setMobileNav(false)}>왕좌의 방</NavLink>{adminRole && <NavLink className="nav-item admin-nav-item" to="/admin" onClick={() => setMobileNav(false)}><ShieldCheck size={15}/>왕실 관리</NavLink>}<button className="nav-item" onClick={() => void onSignOut()}>{demoMode ? '로그인하기' : '로그아웃'}</button></nav>}<main className="main-wrap">{showPageHeading && <PageHeading page={page}/>}<Suspense fallback={<div className="route-loading" role="status"><LoaderCircle size={22} className="spin"/><span>왕궁의 방을 준비하고 있어요.</span></div>}><Outlet/></Suspense></main><footer><span>Copyright © RUMEN KINGDOM</span><span>All Rights Reserved.</span></footer>{recordSync.status !== 'idle' && <div className={`calendar-sync ${recordSync.status}`} role="status">{recordSync.status === 'saving' && <LoaderCircle size={15} className="spin"/>}<span>{recordSync.message}</span>{recordSync.status !== 'saving' && <button onClick={clearRecordSync} aria-label="저장 알림 닫기"><X size={14}/></button>}</div>}<PatchNotesModal/></div>
 }
 
 function RouteEffects() {

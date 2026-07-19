@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bell, Coins, LogOut, Menu, Search, Sparkles, X } from 'lucide-react'
+import { Bell, Coins, LogOut, Menu, Search, ShieldCheck, Sparkles, X } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { navigation } from '../app/navigation'
 import { useKingdomStore } from '../store'
@@ -14,7 +14,7 @@ import { useRitaUsage } from '../lib/useRitaUsage'
 
 type HeaderNotification = { id: string; title: string; meta: string; path: string; read: boolean; remoteId?: string }
 
-export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boolean; page: PageId; onMenu: () => void; onSignOut: () => Promise<void> }) {
+export function AppHeader({ demoMode, isAdmin, page, onMenu, onSignOut }: { demoMode: boolean; isAdmin: boolean; page: PageId; onMenu: () => void; onSignOut: () => Promise<void> }) {
   const navigate = useNavigate()
   const { events, quests, projects, memos, relationships, diaries, setSelectedDate } = useKingdomStore()
   const [searchOpen, setSearchOpen] = useState(false)
@@ -90,6 +90,7 @@ export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boo
         <button aria-label={`알림 ${unreadCount}개`} className={notificationOpen ? 'active' : ''} onClick={() => setNotificationOpen((value) => !value)}><Bell size={18}/>{unreadCount > 0 && <i/>}</button>
         <NavLink className="header-shortcut rita-shortcut" to="/rita" aria-label="리타 바로가기"><Sparkles size={17}/><span>리타</span></NavLink>
         <NavLink className="header-shortcut throne-shortcut" to="/throne" aria-label="왕좌의 방"><PrincessPortrait className="header-princess-avatar" princess={princess}/><span>왕좌</span></NavLink>
+        {isAdmin && <NavLink className="header-shortcut admin-shortcut" to="/admin" aria-label="왕실 관리자 페이지"><ShieldCheck size={17}/><span>관리</span></NavLink>}
         <button className="header-shortcut logout-shortcut" aria-label={demoMode ? '로그인하기' : '로그아웃'} onClick={() => void onSignOut()}><LogOut size={17}/><span>{demoMode ? '로그인' : '로그아웃'}</span></button>
         <button className="menu-button" aria-label="메뉴" onClick={onMenu}><Menu size={20}/></button>
       </div>

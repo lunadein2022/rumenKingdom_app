@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs'
 const migration = readFileSync(new URL('../supabase/migrations/202607190008_admin_benefits.sql', import.meta.url), 'utf8')
 const handler = readFileSync(new URL('../netlify/functions/admin-benefits.js', import.meta.url), 'utf8')
 const verification = readFileSync(new URL('../supabase/verify_admin_benefits.sql', import.meta.url), 'utf8')
+const router = readFileSync(new URL('../src/app/AppRouter.tsx', import.meta.url), 'utf8')
+const adminPage = readFileSync(new URL('../src/features/admin/AdminPage.tsx', import.meta.url), 'utf8')
 
 test('owner provisioning grants complimentary access without hardcoding a personal email', () => {
   assert.match(migration, /function public\.provision_internal_account/)
@@ -34,4 +36,12 @@ test('admin API authenticates the user and uses privileged RPCs only on the serv
   assert.match(handler, /createClient\(supabaseUrl, serviceRoleKey/)
   assert.match(handler, /serviceClient\.rpc\('admin_grant_benefit'/)
   assert.match(handler, /idempotencyKey/)
+})
+
+test('admin accounts receive visible management menus and point grant audit filters', () => {
+  assert.match(router, /adminRole && <NavLink[^>]+to="\/admin"/)
+  assert.match(router, /isAdmin=\{Boolean\(adminRole\)\}/)
+  assert.match(adminPage, /관리자 지급 이력/)
+  assert.match(adminPage, /포인트 총/)
+  assert.match(adminPage, /setHistoryFilter\('ai_points'\)/)
 })

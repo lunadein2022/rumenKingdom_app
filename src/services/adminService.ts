@@ -40,7 +40,7 @@ async function request<T>(body: Record<string, unknown>): Promise<T> {
 
 export const getAdminContext = () => request<AdminContext>({ action: 'context' })
 export const findAdminUser = async (email: string) => (await request<{ user: AdminUser }>({ action: 'find-user', email })).user
-export const listAdminGrants = async () => (await request<{ grants: AdminGrant[] }>({ action: 'list-grants', limit: 30 })).grants
+export const listAdminGrants = async () => (await request<{ grants: AdminGrant[] }>({ action: 'list-grants', limit: 100 })).grants
 
 export async function grantAdminBenefit(input: {
   email: string
