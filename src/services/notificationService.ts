@@ -9,14 +9,14 @@ export type AccountNotification = {
   createdAt: string
 }
 
-export async function loadAccountNotifications(): Promise<AccountNotification[]> {
+export async function loadAccountNotifications(limit = 30): Promise<AccountNotification[]> {
   if (!supabase) return []
   const { data, error } = await supabase
     .from('notifications')
     .select('id,title,body,kind,read_at,created_at')
     .or(`scheduled_for.is.null,scheduled_for.lte.${new Date().toISOString()}`)
     .order('created_at', { ascending: false })
-    .limit(30)
+    .limit(Math.min(Math.max(Math.trunc(limit) || 30, 1), 100))
   if (error) throw new Error('계정 알림을 불러오지 못했습니다.')
   return (data ?? []).map((item) => ({
     id: item.id,

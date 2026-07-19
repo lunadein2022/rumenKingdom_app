@@ -1,18 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Bell, Coins, LogOut, Menu, Search, ShieldCheck, Sparkles, X } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { navigation } from '../app/navigation'
 import { useKingdomStore } from '../store'
 import type { PageId } from '../types'
-import { useServiceDate } from '../lib/useServiceDate'
-import { accountStorage, accountStorageKey, readAccountStorage } from '../lib/accountScope'
 import { BodyAreaOverlay } from './BodyAreaOverlay'
 import { PrincessPortrait } from './PrincessPortrait'
 import { useSelectedPrincess } from '../lib/princesses'
-import { loadAccountNotifications, markAccountNotificationRead, markAccountNotificationsRead, type AccountNotification } from '../services/notificationService'
 import { useRitaUsage } from '../lib/useRitaUsage'
-
-type HeaderNotification = { id: string; title: string; meta: string; path: string; read: boolean; remoteId?: string }
+import { useNotificationCenter, type KingdomNotification } from '../features/notifications/notificationContext'
 
 export function AppHeader({ demoMode, isAdmin, page, onMenu, onSignOut }: { demoMode: boolean; isAdmin: boolean; page: PageId; onMenu: () => void; onSignOut: () => Promise<void> }) {
   const navigate = useNavigate()
@@ -20,46 +16,11 @@ export function AppHeader({ demoMode, isAdmin, page, onMenu, onSignOut }: { demo
   const [searchOpen, setSearchOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [accountNotifications, setAccountNotifications] = useState<AccountNotification[]>([])
-  const serviceToday = useServiceDate()
   const princess = useSelectedPrincess()
   const { usage } = useRitaUsage(!demoMode)
-  const scopedStorage = accountStorage()
-  const notificationReadKey = accountStorageKey('rumen-read-notifications')
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => readAccountStorage('rumen-in-app-notifications') !== 'off')
-  useEffect(() => {
-    const listener = (event: Event) => setNotificationsEnabled((event as CustomEvent<boolean>).detail)
-    window.addEventListener('rumen-notification-setting', listener)
-    return () => window.removeEventListener('rumen-notification-setting', listener)
-  }, [])
-  const [readNotifications, setReadNotifications] = useState<string[]>(() => {
-    try { return JSON.parse(scopedStorage.getItem(notificationReadKey) ?? '[]') as string[] } catch { return [] }
-  })
-  useEffect(() => {
-    if (demoMode) return
-    let active = true
-    const refresh = () => void loadAccountNotifications().then((items) => { if (active) setAccountNotifications(items) }).catch(() => undefined)
-    refresh()
-    const interval = window.setInterval(refresh, 30_000)
-    window.addEventListener('focus', refresh)
-    window.addEventListener('rumen-notifications-changed', refresh)
-    return () => { active = false; window.clearInterval(interval); window.removeEventListener('focus', refresh); window.removeEventListener('rumen-notifications-changed', refresh) }
-  }, [demoMode])
-  const notificationItems = useMemo<HeaderNotification[]>(() => [
-    ...accountNotifications.map((item) => ({ id: `server:${item.id}`, remoteId: item.id, title: item.title, meta: item.body, path: '/throne', read: Boolean(item.readAt) })),
-    ...events.filter((event) => event.date <= serviceToday && (event.endDate ?? event.date) >= serviceToday).map((event) => ({ id: `event:${event.id}:${serviceToday}`, title: event.title, meta: event.allDay ? '오늘 · 종일 일정' : `오늘 ${event.start || '시간 미정'}`, path: `/calendar/event/${event.id}`, read: readNotifications.includes(`event:${event.id}:${serviceToday}`) })),
-    ...quests.flatMap((quest) => { const due = quest.scheduledDate; const id = `quest:${quest.id}:${due}`; return !quest.done && due && due <= serviceToday ? [{ id, title: quest.title, meta: due < serviceToday ? '마감일이 지났어요' : `오늘 ${quest.scheduledTime ?? '마감'}`, path: `/library/item/${encodeURIComponent(`${quest.type === 'daily' ? 'dailyQuest' : 'subQuest'}:${quest.id}`)}`, read: readNotifications.includes(id) }] : [] }),
-    ...memos.filter((memo) => memo.status === 'review').map((memo) => { const id = `memo:${memo.id}`; return { id, title: memo.title, meta: '확인이 필요한 비망록', path: `/library/memos/${memo.id}`, read: readNotifications.includes(id) } }),
-  ].slice(0, 20), [accountNotifications, events, memos, quests, readNotifications, serviceToday])
-  const unreadCount = notificationsEnabled ? notificationItems.filter((item) => !item.read).length : 0
-  const openNotification = (item: HeaderNotification) => {
-    if (item.remoteId) {
-      setAccountNotifications((current) => current.map((entry) => entry.id === item.remoteId ? { ...entry, readAt: new Date().toISOString() } : entry))
-      void markAccountNotificationRead(item.remoteId).catch(() => undefined)
-    } else {
-      const next = Array.from(new Set([...readNotifications, item.id]))
-      setReadNotifications(next); scopedStorage.setItem(notificationReadKey, JSON.stringify(next))
-    }
+  const { notifications: notificationItems, notificationsEnabled, unreadCount, markRead, markAllRead } = useNotificationCenter()
+  const openNotification = (item: KingdomNotification) => {
+    markRead(item)
     setNotificationOpen(false); navigate(item.path)
   }
   const normalized = query.trim().toLocaleLowerCase('ko')
@@ -103,7 +64,11 @@ export function AppHeader({ demoMode, isAdmin, page, onMenu, onSignOut }: { demo
         <button className="header-shortcut logout-shortcut" aria-label={demoMode ? '로그인하기' : '로그아웃'} onClick={() => void onSignOut()}><LogOut size={17}/><span>{demoMode ? '로그인' : '로그아웃'}</span></button>
         <button className="menu-button" aria-label="메뉴" onClick={onMenu}><Menu size={20}/></button>
       </div>
-      {notificationOpen && <aside className="notification-popover glass-panel" role="dialog" aria-label="알림 목록"><div><b>왕실 알림 · {unreadCount}</b><button onClick={() => setNotificationOpen(false)} aria-label="알림 닫기"><X size={14}/></button></div>{!notificationsEnabled ? <p>왕좌의 방에서 앱 내부 알림이 꺼져 있습니다.</p> : notificationItems.length ? <div className="notification-items">{notificationItems.map((item) => <button key={item.id} className={item.read ? 'read' : ''} onClick={() => openNotification(item)}><b>{item.title}</b><small>{item.meta}</small></button>)}</div> : <p>새로운 알림이 없습니다.</p>}{unreadCount > 0 && <button className="notification-read-all" onClick={() => { const localIds = notificationItems.filter((item) => !item.remoteId).map((item) => item.id); const remoteIds = notificationItems.flatMap((item) => item.remoteId ? [item.remoteId] : []); setReadNotifications(Array.from(new Set([...readNotifications, ...localIds]))); scopedStorage.setItem(notificationReadKey, JSON.stringify(Array.from(new Set([...readNotifications, ...localIds])))); setAccountNotifications((current) => current.map((item) => remoteIds.includes(item.id) ? { ...item, readAt: new Date().toISOString() } : item)); void markAccountNotificationsRead(remoteIds).catch(() => undefined) }}>모두 읽음</button>}</aside>}
+      {notificationOpen && <aside className="notification-popover glass-panel" role="dialog" aria-label="알림 목록">
+        <div className="notification-popover-head"><b>왕실 알림</b><span>{unreadCount ? `미확인 ${unreadCount}` : '모두 확인'}</span><button onClick={() => setNotificationOpen(false)} aria-label="알림 닫기"><X size={14}/></button></div>
+        {!notificationsEnabled ? <p>왕좌의 방에서 앱 내부 알림이 꺼져 있습니다.</p> : notificationItems.length ? <div className="notification-items">{notificationItems.slice(0, 5).map((item) => <button key={item.id} className={item.read ? 'read' : ''} onClick={() => openNotification(item)}><span className="notification-line"><b>{item.title}</b>{item.summary && <small> · {item.summary}</small>}</span>{!item.read && <i aria-label="미확인"/>}</button>)}</div> : <p>새로운 알림이 없습니다.</p>}
+        <div className="notification-popover-actions">{unreadCount > 0 && <button className="notification-read-all" onClick={markAllRead}>모두 읽음</button>}<button className="notification-view-all" onClick={() => { setNotificationOpen(false); navigate('/notifications') }}>전체 알림 보기</button></div>
+      </aside>}
     </header>
     {searchOpen && <BodyAreaOverlay className="search-overlay" onClose={() => setSearchOpen(false)}><section className="global-search glass-panel" role="dialog" aria-modal="true" aria-labelledby="global-search-title" onMouseDown={(event) => event.stopPropagation()}><div className="global-search-input"><Search size={20}/><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="일정, 퀘스트, 인연, 메모 검색" aria-label="전체 검색"/><button onClick={() => setSearchOpen(false)} aria-label="검색 닫기"><X size={18}/></button></div><h2 id="global-search-title" className="sr-only">전체 검색</h2><div className="global-results">{normalized ? results.length ? results.map((result) => <button key={`${result.path}-${result.id}`} onClick={() => selectResult(result)}><b>{result.title}</b><small>{result.meta}</small></button>) : <p>검색 결과가 없습니다.</p> : <p>찾고 싶은 기록의 제목이나 내용을 입력하세요.</p>}</div></section></BodyAreaOverlay>}
   </>
