@@ -38,7 +38,10 @@ expected_columns(table_name, column_name) as (
     ('attachments', 'entity_type'), ('attachments', 'entity_id'),
     ('attachments', 'storage_path'), ('attachments', 'file_name'),
     ('user_settings', 'preferences'),
-    ('room_backgrounds', 'room_key'), ('room_backgrounds', 'storage_path')
+    ('room_backgrounds', 'room_key'), ('room_backgrounds', 'storage_path'),
+    ('ai_usage_accounts', 'tier'), ('ai_usage_accounts', 'signup_bonus_remaining'),
+    ('ai_usage_ledger', 'request_id'), ('ai_usage_ledger', 'points'),
+    ('ai_usage_ledger', 'status'), ('ai_usage_ledger', 'estimated_cost_usd')
 ),
 missing_columns as (
   select expected.table_name, expected.column_name
@@ -69,7 +72,8 @@ expected_tables(table_name) as (
   values ('main_quests'), ('quests'), ('calendar_events'), ('diary_entries'),
     ('diary_quest_links'), ('memos'), ('relationships'), ('attachments'),
     ('notifications'), ('reminders'), ('user_settings'), ('room_backgrounds'),
-    ('quest_completion_logs'), ('relationship_groups'), ('relationship_group_members')
+    ('quest_completion_logs'), ('relationship_groups'), ('relationship_group_members'),
+    ('ai_usage_accounts'), ('ai_usage_ledger')
 ),
 disabled_rls as (
   select expected.table_name
@@ -104,7 +108,11 @@ missing_functions as (
   from (values
     ('public.save_relationship_with_groups(jsonb,uuid[],jsonb)'),
     ('public.save_diary_with_snapshots(jsonb,jsonb)'),
-    ('public.create_memo_with_attachment(jsonb,jsonb)')
+    ('public.create_memo_with_attachment(jsonb,jsonb)'),
+    ('public.reserve_ai_usage(uuid,text,integer)'),
+    ('public.finalize_ai_usage(uuid,text,integer,integer,integer,integer,numeric,jsonb)'),
+    ('public.release_ai_usage(uuid,text)'),
+    ('public.get_my_ai_usage()')
   ) expected(signature)
   where to_regprocedure(expected.signature) is null
 )

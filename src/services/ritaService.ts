@@ -52,6 +52,15 @@ export interface RitaProjectContext {
   status: string
 }
 
+export interface RitaUsage {
+  tier: 'free' | 'royal' | 'royal_ai'
+  monthlyLimit: number
+  monthlyUsed: number
+  monthlyRemaining: number
+  bonusRemaining: number
+  totalRemaining: number
+}
+
 function responseStyle() {
   const value = readAccountStorage('rumen-rita-style')
   return value === 'warm' || value === 'detailed' ? value : 'concise'
@@ -72,6 +81,13 @@ async function authHeaders() {
   const accessToken = data.session?.access_token
   if (!accessToken) throw new Error('리타와 대화하려면 왕국 계정 로그인이 필요합니다.')
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }
+}
+
+export async function getRitaUsage(): Promise<RitaUsage> {
+  if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
+  const { data, error } = await supabase.rpc('get_my_ai_usage')
+  if (error) throw new Error('리타 AI 사용량을 불러오지 못했습니다.')
+  return data as RitaUsage
 }
 
 export async function askRita(messages: RitaMessage[]): Promise<string> {

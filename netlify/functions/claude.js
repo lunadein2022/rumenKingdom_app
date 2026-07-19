@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import mammoth from 'mammoth'
+import { estimateClaudeCostUsd, modelForRequest, pointsForRequest } from './ai-policy.js'
 
 const SYSTEM_PROMPT = `당신은 루멘왕국의 왕실 메이드이자 일정·프로젝트 비서인 리타입니다.
 사용자를 항상 공주님이라고 부르세요. 말투는 부드럽고 차분하며 신뢰감 있어야 합니다.
@@ -18,9 +19,9 @@ const responseStylePrompt = (value) => value === 'warm'
     ? '답변은 필요한 배경과 다음 행동을 포함해 자세히 작성하세요.'
     : '답변은 핵심만 간결하게 작성하세요.'
 
-const json = (statusCode, body) => ({
+const json = (statusCode, body, headers = {}) => ({
   statusCode,
-  headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+  headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers },
   body: JSON.stringify(body),
 })
 
@@ -28,27 +29,89 @@ export const handler = async (event) => {
   if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' })
 
   const apiKey = process.env.ANTHROPIC_API_KEY
-  const model = process.env.CLAUDE_MODEL
+  const fallbackModel = process.env.CLAUDE_MODEL
+  const models = {
+    haiku: process.env.CLAUDE_HAIKU_MODEL || fallbackModel,
+    sonnet: process.env.CLAUDE_SONNET_MODEL || fallbackModel,
+  }
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
   if (!apiKey) return json(503, { error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' })
-  if (!model) return json(503, { error: 'CLAUDE_MODEL이 설정되지 않았습니다.' })
+  if (!models.haiku || !models.sonnet) return json(503, { error: 'Claude 모델 환경 변수가 설정되지 않았습니다.' })
   if (!supabaseUrl || !supabaseAnonKey) return json(503, { error: 'Supabase 인증 환경 변수가 설정되지 않았습니다.' })
 
   const authorization = event.headers.authorization ?? event.headers.Authorization
   const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null
   if (!token) return json(401, { error: '로그인이 필요합니다.' })
 
-  const authClient = createClient(supabaseUrl, supabaseAnonKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
   const { data: authData, error: authError } = await authClient.auth.getUser(token)
   if (authError || !authData.user) return json(401, { error: '로그인 세션이 유효하지 않습니다.' })
 
+  let requestId
+  let reserved = false
   try {
     const input = JSON.parse(event.body ?? '{}')
-    if (input.action === 'analyze-attachment') return await analyzeAttachment(input, apiKey, model)
-    if (input.action === 'interpret-request') return await interpretRequest(input, apiKey, model)
-    return await chat(input, apiKey, model)
+    requestId = crypto.randomUUID()
+    const model = modelForRequest(input, models)
+    const points = pointsForRequest(input)
+    const requestType = input.action === 'analyze-attachment'
+      ? `attachment:${String(input.intent || 'document')}`
+      : String(input.action || 'chat')
+    const { data: allowance, error: reserveError } = await authClient.rpc('reserve_ai_usage', {
+      p_request_id: requestId,
+      p_request_type: requestType,
+      p_points: points,
+    })
+    if (reserveError) throw allowanceError(reserveError)
+    reserved = true
+
+    const metering = { claudeUsage: null, openAiUsage: null }
+    let response
+    if (input.action === 'analyze-attachment') response = await analyzeAttachment(input, apiKey, model, metering)
+    else if (input.action === 'interpret-request') response = await interpretRequest(input, apiKey, model, metering)
+    else response = await chat(input, apiKey, model, metering)
+
+    if (response.statusCode >= 400) {
+      await releaseReservation(authClient, requestId, `http_${response.statusCode}`)
+      reserved = false
+      return response
+    }
+
+    const usage = metering.claudeUsage ?? {}
+    const estimatedCostUsd = estimateClaudeCostUsd(model, usage)
+    const { error: finalizeError } = await authClient.rpc('finalize_ai_usage', {
+      p_request_id: requestId,
+      p_model: model,
+      p_input_tokens: usage.input_tokens ?? 0,
+      p_output_tokens: usage.output_tokens ?? 0,
+      p_cache_write_tokens: usage.cache_creation_input_tokens ?? 0,
+      p_cache_read_tokens: usage.cache_read_input_tokens ?? 0,
+      p_estimated_cost_usd: estimatedCostUsd,
+      p_metadata: {
+        action: input.action || 'chat',
+        intent: input.intent || null,
+        responseStyle: input.responseStyle || null,
+        openAiUsage: metering.openAiUsage,
+        transcriptionModel: input.intent === 'audio' ? (process.env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe') : null,
+      },
+    })
+    if (finalizeError) console.error('Failed to finalize AI usage', requestId, finalizeError.message)
+    reserved = false
+
+    return {
+      ...response,
+      headers: {
+        ...response.headers,
+        'X-Rita-Points-Charged': String(points),
+        'X-Rita-Points-Remaining': String(allowance?.totalRemaining ?? ''),
+      },
+    }
   } catch (error) {
+    if (reserved && requestId) await releaseReservation(authClient, requestId, 'request_failed')
     console.error('Claude function error', error)
     const requestedStatus = Number(error?.statusCode)
     const statusCode = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus <= 599 ? requestedStatus : 500
@@ -56,10 +119,27 @@ export const handler = async (event) => {
   }
 }
 
-async function interpretRequest(input, apiKey, model) {
+function allowanceError(error) {
+  const message = String(error?.message ?? '')
+  if (message.includes('AI_DAILY_REQUEST_LIMIT_REACHED')) {
+    return Object.assign(new Error('오늘의 리타 AI 요청 한도에 도달했어요. 내일 다시 이용해 주세요.'), { statusCode: 429 })
+  }
+  if (message.includes('AI_MONTHLY_POINTS_EXHAUSTED')) {
+    return Object.assign(new Error('이번 달 리타 AI 포인트를 모두 사용했어요.'), { statusCode: 429 })
+  }
+  console.error('AI allowance RPC error', error)
+  return Object.assign(new Error('AI 사용량을 확인할 수 없어 요청을 안전하게 중단했어요.'), { statusCode: 503 })
+}
+
+async function releaseReservation(client, requestId, reason) {
+  const { error } = await client.rpc('release_ai_usage', { p_request_id: requestId, p_reason: reason })
+  if (error) console.error('Failed to release AI usage', requestId, error.message)
+}
+
+async function interpretRequest(input, apiKey, model, metering) {
   const messages = Array.isArray(input.messages)
-    ? input.messages.filter((message) => message?.role === 'user' || message?.role === 'assistant').slice(-12)
-      .map((message) => ({ role: message.role, content: String(message.content).slice(0, 6000) }))
+    ? input.messages.filter((message) => message?.role === 'user' || message?.role === 'assistant').slice(-8)
+      .map((message) => ({ role: message.role, content: String(message.content).slice(0, 4000) }))
     : []
   if (!messages.length) return json(400, { error: '분석할 요청이 필요합니다.' })
 
@@ -101,9 +181,9 @@ async function interpretRequest(input, apiKey, model) {
 
   const result = await callClaude(apiKey, model, {
     system: `${SYSTEM_PROMPT}\n${responseStylePrompt(input.responseStyle)}\n\n${instruction}`,
-    max_tokens: 1200,
+    max_tokens: 900,
     messages,
-  })
+  }, metering)
   const parsed = parseClaudeJson(textFromClaude(result))
   return json(200, { analysis: normalizeRequestAnalysis(parsed, projects) })
 }
@@ -158,18 +238,18 @@ function normalizeRequestAnalysis(value, projects) {
 const isoDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(clean(value)) ? clean(value) : undefined
 const clockTime = (value) => /^([01]\d|2[0-3]):[0-5]\d$/.test(clean(value)) ? clean(value) : undefined
 
-async function chat(input, apiKey, model) {
+async function chat(input, apiKey, model, metering) {
   const messages = Array.isArray(input.messages)
-    ? input.messages.filter((message) => message?.role === 'user' || message?.role === 'assistant').slice(-20)
-      .map((message) => ({ role: message.role, content: String(message.content).slice(0, 8000) }))
+    ? input.messages.filter((message) => message?.role === 'user' || message?.role === 'assistant').slice(-8)
+      .map((message) => ({ role: message.role, content: String(message.content).slice(0, 4000) }))
     : []
   if (!messages.length) return json(400, { error: '대화 내용이 필요합니다.' })
-  const result = await callClaude(apiKey, model, { system: `${SYSTEM_PROMPT}\n${responseStylePrompt(input.responseStyle)}`, messages, max_tokens: input.responseStyle === 'detailed' ? 1400 : 900 })
+  const result = await callClaude(apiKey, model, { system: `${SYSTEM_PROMPT}\n${responseStylePrompt(input.responseStyle)}`, messages, max_tokens: input.responseStyle === 'detailed' ? 1000 : 600 }, metering)
   const reply = textFromClaude(result)
   return reply ? json(200, { reply }) : json(502, { error: '리타의 응답이 비어 있습니다.' })
 }
 
-async function analyzeAttachment(input, apiKey, model) {
+async function analyzeAttachment(input, apiKey, model, metering) {
   const attachment = input.attachment ?? {}
   const data = String(attachment.data ?? '')
   const bytes = Buffer.from(data, 'base64')
@@ -189,7 +269,7 @@ async function analyzeAttachment(input, apiKey, model) {
 반드시 JSON 하나만 반환하세요: {"name":"","organization":"","position":"","phone":"","email":"","address":"","social":"","memo":"","tags":[],"ocrText":""}.
 명함이 아니거나 이름을 식별할 수 없으면 name을 빈 문자열로 두세요. tags는 최대 5개 한국어 키워드입니다.` },
       ] }],
-    })
+    }, metering)
     const parsed = parseClaudeJson(textFromClaude(result))
     if (!parsed.name) return json(422, { error: '명함으로 인식하지 못했어요. 글자가 선명하게 보이도록 다시 촬영해 주세요.' })
     return json(200, { analysis: {
@@ -200,8 +280,8 @@ async function analyzeAttachment(input, apiKey, model) {
   }
 
   if (input.intent === 'audio') {
-    const transcript = await transcribeAudio(bytes, metadata, process.env.OPENAI_API_KEY)
-    const summary = await summarizeText(apiKey, model, transcript, `음성 기록 ${metadata.name}`)
+    const transcript = await transcribeAudio(bytes, metadata, process.env.OPENAI_API_KEY, metering)
+    const summary = await summarizeText(apiKey, model, transcript, `음성 기록 ${metadata.name}`, metering)
     return json(200, { analysis: { kind: 'memorandum', ...summary, transcript, attachment: metadata } })
   }
 
@@ -211,9 +291,9 @@ async function analyzeAttachment(input, apiKey, model) {
       { type: 'text', text: memorandumPrompt(metadata.name) }]
   } else {
     const text = await extractDocumentText(bytes, mimeType)
-    content = `${memorandumPrompt(metadata.name)}\n\n<document>\n${text.slice(0, 120000)}\n</document>`
+    content = `${memorandumPrompt(metadata.name)}\n\n<document>\n${text.slice(0, 60000)}\n</document>`
   }
-  const result = await callClaude(apiKey, model, { system: SYSTEM_PROMPT, max_tokens: 1400, messages: [{ role: 'user', content }] })
+  const result = await callClaude(apiKey, model, { system: SYSTEM_PROMPT, max_tokens: 1000, messages: [{ role: 'user', content }] }, metering)
   const parsed = parseClaudeJson(textFromClaude(result))
   return json(200, { analysis: { kind: 'memorandum', title: clean(parsed.title) || metadata.name, summary: clean(parsed.summary), tags: stringArray(parsed.tags), attachment: metadata } })
 }
@@ -227,7 +307,7 @@ async function extractDocumentText(bytes, mimeType) {
   throw Object.assign(new Error('PDF, DOCX, TXT, MD, CSV 문서만 지원합니다.'), { statusCode: 415 })
 }
 
-async function transcribeAudio(bytes, metadata, openAiKey) {
+async function transcribeAudio(bytes, metadata, openAiKey, metering) {
   if (!openAiKey) throw Object.assign(new Error('음성 전사를 사용하려면 Netlify에 OPENAI_API_KEY를 설정해 주세요.'), { statusCode: 503 })
   const form = new FormData()
   form.append('model', process.env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe')
@@ -236,11 +316,12 @@ async function transcribeAudio(bytes, metadata, openAiKey) {
   const response = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: `Bearer ${openAiKey}` }, body: form })
   const result = await response.json()
   if (!response.ok || !result.text) throw Object.assign(new Error('음성 파일을 텍스트로 변환하지 못했습니다.'), { statusCode: 502 })
+  metering.openAiUsage = result.usage ?? null
   return String(result.text).trim()
 }
 
-async function summarizeText(apiKey, model, text, fallbackTitle) {
-  const result = await callClaude(apiKey, model, { system: SYSTEM_PROMPT, max_tokens: 1200, messages: [{ role: 'user', content: `${memorandumPrompt(fallbackTitle)}\n\n<transcript>\n${text.slice(0, 120000)}\n</transcript>` }] })
+async function summarizeText(apiKey, model, text, fallbackTitle, metering) {
+  const result = await callClaude(apiKey, model, { system: SYSTEM_PROMPT, max_tokens: 1000, messages: [{ role: 'user', content: `${memorandumPrompt(fallbackTitle)}\n\n<transcript>\n${text.slice(0, 60000)}\n</transcript>` }] }, metering)
   const parsed = parseClaudeJson(textFromClaude(result))
   return { title: clean(parsed.title) || fallbackTitle, summary: clean(parsed.summary), tags: stringArray(parsed.tags) }
 }
@@ -250,7 +331,7 @@ function memorandumPrompt(filename) {
 반드시 JSON 하나만 반환하세요: {"title":"짧은 제목","summary":"읽기 좋은 요약","tags":["최대 5개"]}. 추측한 내용은 포함하지 마세요.`
 }
 
-async function callClaude(apiKey, model, body) {
+async function callClaude(apiKey, model, body, metering) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
@@ -261,7 +342,13 @@ async function callClaude(apiKey, model, body) {
     console.error('Anthropic API error', response.status, result?.error?.type)
     throw Object.assign(new Error('리타가 파일을 분석하지 못했습니다. 잠시 후 다시 시도해 주세요.'), { statusCode: 502 })
   }
+  metering.claudeUsage = addUsage(metering.claudeUsage, result.usage)
   return result
+}
+
+function addUsage(current = {}, next = {}) {
+  const fields = ['input_tokens', 'output_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens']
+  return Object.fromEntries(fields.map((field) => [field, (Number(current?.[field]) || 0) + (Number(next?.[field]) || 0)]))
 }
 
 function textFromClaude(result) {
