@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const migration = readFileSync(new URL('../supabase/migrations/202607190008_admin_benefits.sql', import.meta.url), 'utf8')
+const historyFix = readFileSync(new URL('../supabase/migrations/202607190010_fix_admin_grant_history.sql', import.meta.url), 'utf8')
 const handler = readFileSync(new URL('../netlify/functions/admin-benefits.js', import.meta.url), 'utf8')
 const verification = readFileSync(new URL('../supabase/verify_admin_benefits.sql', import.meta.url), 'utf8')
 const router = readFileSync(new URL('../src/app/AppRouter.tsx', import.meta.url), 'utf8')
@@ -44,4 +45,11 @@ test('admin accounts receive visible management menus and point grant audit filt
   assert.match(adminPage, /관리자 지급 이력/)
   assert.match(adminPage, /포인트 총/)
   assert.match(adminPage, /setHistoryFilter\('ai_points'\)/)
+})
+
+test('admin grant history orders by the JSON row alias used by the aggregate', () => {
+  assert.match(migration, /order by grant_row\."createdAt" desc/)
+  assert.match(historyFix, /order by grant_row\."createdAt" desc/)
+  assert.doesNotMatch(historyFix, /grant_row\.created_at/)
+  assert.match(historyFix, /grant execute on function public\.admin_list_benefit_grants\(uuid, integer\) to service_role/)
 })

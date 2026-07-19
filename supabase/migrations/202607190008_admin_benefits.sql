@@ -381,7 +381,7 @@ begin
     raise exception 'ADMIN_FORBIDDEN' using errcode = '42501';
   end if;
 
-  select coalesce(jsonb_agg(to_jsonb(grant_row) order by grant_row.created_at desc), '[]'::jsonb)
+  select coalesce(jsonb_agg(to_jsonb(grant_row) order by grant_row."createdAt" desc), '[]'::jsonb)
   into v_result
   from (
     select id, recipient_email as "recipientEmail", benefit_type as "benefitType",
