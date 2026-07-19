@@ -31,6 +31,9 @@ test('AI handler enforces body and attachment validation before provider calls',
 
 test('AI handler requires schema-valid request interpretation and records safe failure codes', () => {
   assert.match(handler, /output_config: \{ format: \{ type: 'json_schema', schema: REQUEST_ANALYSIS_SCHEMA \} \}/)
+  assert.match(handler, /providerType === 'invalid_request_error' && body\.output_config && !options\.structuredFallbackUsed/)
+  assert.match(handler, /delete fallbackBody\.output_config/)
+  assert.doesNotMatch(handler, /maxItems:/)
   assert.match(handler, /safeFailureCode\(error\)/)
   assert.match(handler, /code: 'invalid_structured_output'/)
 })

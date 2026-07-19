@@ -55,7 +55,7 @@ const REQUEST_ANALYSIS_SCHEMA = {
     questType: { type: 'string', enum: ['daily', 'sub'] },
     projectId: { type: 'string' },
     calendarKind: { type: 'string', enum: ['royal', 'personal', 'work', 'project', 'anniversary'] },
-    tags: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+    tags: { type: 'array', items: { type: 'string' } },
     allDay: { type: 'boolean' },
     important: { type: 'boolean' },
     needsProjectSelection: { type: 'boolean' },
@@ -433,7 +433,7 @@ function memorandumPrompt(filename) {
 반드시 JSON 하나만 반환하세요: {"title":"짧은 제목","summary":"읽기 좋은 요약","tags":["최대 5개"]}. 추측한 내용은 포함하지 마세요.`
 }
 
-async function callClaude(apiKey, model, body, metering) {
+async function callClaude(apiKey, model, body, metering, options = {}) {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
@@ -442,6 +442,12 @@ async function callClaude(apiKey, model, body, metering) {
   const result = await response.json()
   if (!response.ok) {
     const providerType = String(result?.error?.type || `http_${response.status}`).toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 50)
+    if (providerType === 'invalid_request_error' && body.output_config && !options.structuredFallbackUsed) {
+      console.warn('Anthropic structured output unavailable; retrying with prompt-enforced JSON')
+      const fallbackBody = { ...body }
+      delete fallbackBody.output_config
+      return callClaude(apiKey, model, fallbackBody, metering, { structuredFallbackUsed: true })
+    }
     console.error('Anthropic API error', response.status, providerType)
     throw Object.assign(new Error('리타가 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'), {
       statusCode: 502,
