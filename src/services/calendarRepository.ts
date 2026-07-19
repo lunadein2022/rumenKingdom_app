@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { hourMinute } from '../lib/clockTime'
 import type { CalendarEvent } from '../types'
+import { applySyncMutation, rememberSyncRevision } from '../lib/syncEngine'
 
 type CalendarRow = {
   id: string
@@ -14,10 +15,14 @@ type CalendarRow = {
   kind: CalendarEvent['kind']
   important: boolean
   recurrence_rule: string | null
+  revision: number
 }
 
-const fromRow = (row: CalendarRow): CalendarEvent => ({
+const fromRow = (row: CalendarRow): CalendarEvent => {
+  rememberSyncRevision('calendar_event', row.id, row.revision)
+  return ({
   id: row.id,
+  revision: row.revision,
   title: row.title,
   description: row.description,
   date: row.event_date,
@@ -28,7 +33,8 @@ const fromRow = (row: CalendarRow): CalendarEvent => ({
   kind: row.kind,
   important: row.important,
   recurrenceRule: row.recurrence_rule ?? undefined,
-})
+  })
+}
 
 async function hasAuthenticatedUser(): Promise<boolean> {
   if (!supabase) return false
@@ -42,7 +48,7 @@ export async function listCalendarEvents(): Promise<CalendarEvent[] | null> {
   if (!supabase || !(await hasAuthenticatedUser())) return null
   const { data, error } = await supabase
     .from('calendar_events')
-    .select('id,title,description,event_date,end_date,starts_at,ends_at,all_day,kind,important,recurrence_rule')
+    .select('id,title,description,event_date,end_date,starts_at,ends_at,all_day,kind,important,recurrence_rule,revision')
     .order('event_date')
     .order('starts_at')
 
@@ -52,9 +58,8 @@ export async function listCalendarEvents(): Promise<CalendarEvent[] | null> {
 
 export async function createCalendarEvent(event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent | null> {
   if (!supabase || !(await hasAuthenticatedUser())) return null
-  const { data, error } = await supabase
-    .from('calendar_events')
-    .insert({
+  const id = crypto.randomUUID()
+  const result = await applySyncMutation({ entityType: 'calendar_event', operation: 'create', recordId: id, payload: {
       title: event.title,
       description: event.description ?? '',
       event_date: event.date,
@@ -65,25 +70,19 @@ export async function createCalendarEvent(event: Omit<CalendarEvent, 'id'>): Pro
       kind: event.kind,
       important: event.important ?? false,
       recurrence_rule: event.recurrenceRule ?? null,
-    })
-    .select('id,title,description,event_date,end_date,starts_at,ends_at,all_day,kind,important,recurrence_rule')
-    .single()
-
-  if (error) throw error
-  return fromRow(data as CalendarRow)
+  } })
+  const record = 'record' in result ? result.record as CalendarRow | undefined : undefined
+  return record ? fromRow(record) : { ...event, id, revision: 1 }
 }
 
 export async function updateCalendarEventDate(id: string, date: string, endDate?: string): Promise<void> {
   if (!supabase || !isUuid(id) || !(await hasAuthenticatedUser())) return
-  const { error } = await supabase.from('calendar_events').update({ event_date: date, end_date: endDate ?? date }).eq('id', id)
-  if (error) throw error
+  await applySyncMutation({ entityType: 'calendar_event', operation: 'update', recordId: id, payload: { event_date: date, end_date: endDate ?? date } })
 }
 
 export async function updateCalendarEvent(id: string, event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent | null> {
   if (!supabase || !isUuid(id) || !(await hasAuthenticatedUser())) return null
-  const { data, error } = await supabase
-    .from('calendar_events')
-    .update({
+  const result = await applySyncMutation({ entityType: 'calendar_event', operation: 'update', recordId: id, expectedRevision: event.revision, payload: {
       title: event.title,
       description: event.description ?? '',
       event_date: event.date,
@@ -94,17 +93,12 @@ export async function updateCalendarEvent(id: string, event: Omit<CalendarEvent,
       kind: event.kind,
       important: event.important ?? false,
       recurrence_rule: event.recurrenceRule ?? null,
-    })
-    .eq('id', id)
-    .select('id,title,description,event_date,end_date,starts_at,ends_at,all_day,kind,important,recurrence_rule')
-    .single()
-
-  if (error) throw error
-  return fromRow(data as CalendarRow)
+  } })
+  const record = 'record' in result ? result.record as CalendarRow | undefined : undefined
+  return record ? fromRow(record) : { ...event, id }
 }
 
 export async function removeCalendarEvent(id: string): Promise<void> {
   if (!supabase || !isUuid(id) || !(await hasAuthenticatedUser())) return
-  const { error } = await supabase.from('calendar_events').delete().eq('id', id)
-  if (error) throw error
+  await applySyncMutation({ entityType: 'calendar_event', operation: 'delete', recordId: id })
 }

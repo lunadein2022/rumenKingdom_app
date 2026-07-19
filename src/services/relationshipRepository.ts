@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type { Relationship } from '../types'
 import { listAttachmentMap } from './attachmentRepository'
+import { applySyncMutation, rememberSyncRevision } from '../lib/syncEngine'
 
 // Relationships map to the expanded `relationships` table; private business
 // card metadata is joined from the owner-scoped attachments table.
@@ -23,10 +24,11 @@ type RelationshipRow = {
   source: string | null
   created_at: string
   updated_at: string
+  revision: number
 }
 
 const COLUMNS =
-  'id,name,organization,position,phone,email,social,address,relationship_type,first_met_at,last_contacted_at,notes,tags,favorite,business_card_ocr_text,source,created_at,updated_at'
+  'id,name,organization,position,phone,email,social,address,relationship_type,first_met_at,last_contacted_at,notes,tags,favorite,business_card_ocr_text,source,created_at,updated_at,revision'
 
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -37,8 +39,11 @@ async function getUserId(): Promise<string | null> {
   return data.session?.user?.id ?? null
 }
 
-const fromRow = (row: RelationshipRow, groupIds: string[] = []): Relationship => ({
+const fromRow = (row: RelationshipRow, groupIds: string[] = []): Relationship => {
+  rememberSyncRevision('relationship', row.id, row.revision)
+  return ({
   id: row.id,
+  revision: row.revision,
   name: row.name,
   organization: row.organization ?? '',
   position: row.position ?? '',
@@ -57,7 +62,8 @@ const fromRow = (row: RelationshipRow, groupIds: string[] = []): Relationship =>
   source: row.source === 'rita' ? 'rita' : 'manual',
   createdAt: row.created_at,
   updatedAt: row.updated_at,
-})
+  })
+}
 
 const toRow = (value: Partial<Relationship>): Record<string, unknown> => {
   const row: Record<string, unknown> = {}
@@ -79,30 +85,24 @@ const toRow = (value: Partial<Relationship>): Record<string, unknown> => {
   return row
 }
 
-async function saveRelationshipAtomically(relationship: Relationship) {
-  if (!supabase) return false
+async function saveRelationshipAtomically(relationship: Relationship, operation: 'create' | 'update') {
   const attachment = relationship.sourceAttachment?.storagePath ? {
     storage_path: relationship.sourceAttachment.storagePath,
     file_name: relationship.sourceAttachment.name,
     mime_type: relationship.sourceAttachment.mimeType,
     size_bytes: relationship.sourceAttachment.size,
   } : null
-  const { error } = await supabase.rpc('save_relationship_with_groups', {
-    p_relationship: {
-      id: relationship.id,
+  await applySyncMutation({
+    entityType: 'relationship',
+    operation,
+    recordId: relationship.id,
+    expectedRevision: relationship.revision,
+    payload: {
       ...toRow(relationship),
-      created_at: relationship.createdAt,
-      updated_at: relationship.updatedAt,
+      group_ids: Array.from(new Set(relationship.groupIds.filter(isUuid))),
+      attachment,
     },
-    p_group_ids: Array.from(new Set(relationship.groupIds.filter(isUuid))),
-    p_attachment: attachment,
   })
-  if (error) {
-    if (error.code === 'PGRST202' || /save_relationship_with_groups/i.test(error.message ?? '')) {
-      throw new Error('인연록 원자 저장 함수가 없습니다. Supabase에 202607190004_atomic_relationship_save.sql을 적용해 주세요.')
-    }
-    throw error
-  }
   return true
 }
 
@@ -131,19 +131,18 @@ export async function listRelationships(): Promise<Relationship[] | null> {
 export async function createRelationship(relationship: Relationship): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(relationship.id)) return false
-  return saveRelationshipAtomically(relationship)
+  return saveRelationshipAtomically(relationship, 'create')
 }
 
 export async function updateRelationship(id: string, patch: Partial<Relationship>): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(id)) return false
-  return saveRelationshipAtomically(patch as Relationship)
+  return saveRelationshipAtomically(patch as Relationship, 'update')
 }
 
 export async function removeRelationship(id: string): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(id)) return false
-  const { error } = await supabase.from('relationships').delete().eq('id', id)
-  if (error) throw error
+  await applySyncMutation({ entityType: 'relationship', operation: 'delete', recordId: id })
   return true
 }

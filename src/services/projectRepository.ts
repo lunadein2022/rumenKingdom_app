@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { Project } from '../types'
+import { applySyncMutation, rememberSyncRevision } from '../lib/syncEngine'
 
 // Projects map to main_quests using the canonical schema column names.
 type ProjectRow = {
@@ -18,10 +19,11 @@ type ProjectRow = {
   completed_at: string | null
   created_at: string
   updated_at: string
+  revision: number
 }
 
 const COLUMNS =
-  'id,title,goal,description,memo,tags,manual_progress,starts_on,due_on,status,priority,favorite,completed_at,created_at,updated_at'
+  'id,title,goal,description,memo,tags,manual_progress,starts_on,due_on,status,priority,favorite,completed_at,created_at,updated_at,revision'
 
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -32,8 +34,11 @@ async function getUserId(): Promise<string | null> {
   return data.session?.user?.id ?? null
 }
 
-const fromRow = (row: ProjectRow): Project => ({
+const fromRow = (row: ProjectRow): Project => {
+  rememberSyncRevision('project', row.id, row.revision)
+  return ({
   id: row.id,
+  revision: row.revision,
   title: row.title,
   goal: row.goal ?? '',
   description: row.description ?? '',
@@ -50,7 +55,8 @@ const fromRow = (row: ProjectRow): Project => ({
   completedAt: row.completed_at ?? undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
-})
+  })
+}
 
 export async function listProjects(): Promise<Project[] | null> {
   const userId = await getUserId()
@@ -63,9 +69,7 @@ export async function listProjects(): Promise<Project[] | null> {
 export async function createProject(project: Project): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(project.id)) return false
-  const { error } = await supabase.from('main_quests').insert({
-    id: project.id,
-    user_id: userId,
+  await applySyncMutation({ entityType: 'project', operation: 'create', recordId: project.id, payload: {
     title: project.title,
     goal: project.goal ?? '',
     description: project.description ?? '',
@@ -78,17 +82,14 @@ export async function createProject(project: Project): Promise<boolean> {
     priority: project.priority,
     favorite: project.favorite ?? false,
     completed_at: project.completedAt ?? null,
-    created_at: project.createdAt,
-    updated_at: project.updatedAt,
-  })
-  if (error) throw error
+  } })
   return true
 }
 
 export async function updateProject(id: string, patch: Partial<Project>): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(id)) return false
-  const row: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  const row: Record<string, unknown> = {}
   if (patch.title !== undefined) row.title = patch.title
   if (patch.goal !== undefined) row.goal = patch.goal
   if (patch.description !== undefined) row.description = patch.description
@@ -101,15 +102,13 @@ export async function updateProject(id: string, patch: Partial<Project>): Promis
   if (patch.priority !== undefined) row.priority = patch.priority
   if (patch.favorite !== undefined) row.favorite = patch.favorite
   if ('completedAt' in patch) row.completed_at = patch.completedAt ?? null
-  const { error } = await supabase.from('main_quests').update(row).eq('id', id)
-  if (error) throw error
+  await applySyncMutation({ entityType: 'project', operation: 'update', recordId: id, payload: row, expectedRevision: patch.revision })
   return true
 }
 
 export async function removeProject(id: string): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(id)) return false
-  const { error } = await supabase.from('main_quests').delete().eq('id', id)
-  if (error) throw error
+  await applySyncMutation({ entityType: 'project', operation: 'delete', recordId: id })
   return true
 }

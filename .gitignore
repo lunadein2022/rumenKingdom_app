@@ -6,3 +6,6 @@ vite.config.js
 vite.config.d.ts
 .env
 .env.local
+.android-sdk/
+.jdk21/
+mobile-artifacts/

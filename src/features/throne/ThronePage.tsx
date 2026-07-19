@@ -11,12 +11,14 @@ import { getPrincess, princessOptions, readSelectedPrincessId, storeSelectedPrin
 import { configureServiceTime } from '../../lib/serviceTime'
 import { getRitaActivity, type RitaActivity } from '../../services/ritaService'
 import { useRitaUsage } from '../../lib/useRitaUsage'
+import { deleteMyAccount } from '../../services/accountService'
 
 type SettingId = 'profile' | 'background' | 'notifications' | 'ai' | 'data' | null
 
 export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = () => undefined, onSignOut }: { demoMode?: boolean; isAdmin?: boolean; onResetDemo?: () => void; onSignOut: () => Promise<void> }) {
   const store = useKingdomStore()
   const [setting, setSetting] = useState<SettingId>(null)
+  const [deletingAccount, setDeletingAccount] = useState(false)
   const [name, setName] = useState(() => readAccountStorage('rumen-princess-name') || '루멘왕국의 공주')
   const [intro, setIntro] = useState(() => readAccountStorage('rumen-princess-intro') || '차분하게 왕국의 하루를 가꾸어 가는 중입니다.')
   const [draftName, setDraftName] = useState(name)
@@ -58,6 +60,15 @@ export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = ()
     const data = JSON.stringify({ format: 'rumen-kingdom-backup', version: 1, exportedAt: new Date().toISOString(), data: { projects: store.projects, quests: store.quests, memos: store.memos, relationships: store.relationships, diaries: store.diaries, events: store.events } }, null, 2)
     const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }))
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = `rumen-kingdom-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url)
+  }
+  const deleteAccount = async () => {
+    const confirmation = prompt('계정과 모든 기록을 영구 삭제합니다. 계속하려면 DELETE를 입력해 주세요.')
+    if (confirmation !== 'DELETE') return
+    if (!confirm('첨부파일과 구매 연결 기록까지 삭제됩니다. 이 작업은 되돌릴 수 없습니다. 정말 탈퇴할까요?')) return
+    setDeletingAccount(true)
+    try { await deleteMyAccount(); await onSignOut() }
+    catch (error) { alert(error instanceof Error ? error.message : '계정을 삭제하지 못했습니다.') }
+    finally { setDeletingAccount(false) }
   }
   const importData = async (file?: File) => {
     if (!file) return
@@ -133,7 +144,7 @@ export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = ()
         {setting === 'background' && <BackgroundSettings/>}
         {setting === 'notifications' && <label className="setting-toggle"><span><b>앱 내부 알림</b><small>일정과 확인할 기록을 헤더에서 안내합니다.</small></span><input type="checkbox" checked={notifications} onChange={(event) => { const value = event.target.checked; setNotifications(value); writeAccountStorage('rumen-in-app-notifications', value ? 'on' : 'off'); window.dispatchEvent(new CustomEvent('rumen-notification-setting', { detail: value })); void persistPreferences({ notifications: value }) }}/></label>}
         {setting === 'ai' && <label className="setting-select">리타의 답변 방식<select value={aiStyle} onChange={(event) => { const value = event.target.value as UserPreferences['aiStyle']; setAiStyle(value); writeAccountStorage('rumen-rita-style', value); void persistPreferences({ aiStyle: value }) }}><option value="concise">간결하게</option><option value="warm">다정하게</option><option value="detailed">자세하게</option></select><small>계정에 저장되어 다른 기기에서도 같은 답변 방식을 사용합니다.</small></label>}
-        {setting === 'data' && <div className="setting-note"><Database size={20}/><div><b>{demoMode ? '데모 왕국 관리' : '내 왕국 기록 보관'}</b><p>{demoMode ? '수정한 데모 기록을 처음 예시 상태로 되돌릴 수 있습니다.' : '현재 계정의 프로젝트, 퀘스트, 일정, 기록을 버전이 포함된 JSON으로 보관하고 다시 불러올 수 있습니다.'}</p>{demoMode ? <button onClick={() => { if (confirm('데모 왕국을 처음 예시 데이터로 되돌릴까요?')) { onResetDemo(); setSetting(null) } }}>데모 데이터 초기화</button> : <div className="data-actions"><button onClick={exportData}>왕국 기록 내보내기</button><label>백업 기록 가져오기<input type="file" accept="application/json,.json" onChange={(event) => void importData(event.target.files?.[0])}/></label></div>}</div></div>}
+        {setting === 'data' && <div className="setting-note"><Database size={20}/><div><b>{demoMode ? '데모 왕국 관리' : '내 왕국 기록 보관'}</b><p>{demoMode ? '수정한 데모 기록을 처음 예시 상태로 되돌릴 수 있습니다.' : '현재 계정의 프로젝트, 퀘스트, 일정, 기록을 버전이 포함된 JSON으로 보관하고 다시 불러올 수 있습니다.'}</p>{demoMode ? <button onClick={() => { if (confirm('데모 왕국을 처음 예시 데이터로 되돌릴까요?')) { onResetDemo(); setSetting(null) } }}>데모 데이터 초기화</button> : <><div className="data-actions"><button onClick={exportData}>왕국 기록 내보내기</button><label>백업 기록 가져오기<input type="file" accept="application/json,.json" onChange={(event) => void importData(event.target.files?.[0])}/></label></div><button className="danger account-delete" disabled={deletingAccount} onClick={() => void deleteAccount()}>{deletingAccount ? '계정 삭제 중…' : '계정과 모든 데이터 삭제'}</button></>}</div></div>}
       </SettingPanel>}
     </section>
 

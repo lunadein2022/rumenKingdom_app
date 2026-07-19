@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { Quest } from '../types'
+import { applySyncMutation, rememberSyncRevision } from '../lib/syncEngine'
 
 // Quests map to the canonical `quests` table created by the data-model migration.
 // status/priority are enums that match the app types. Inline tags remain during
@@ -23,10 +24,11 @@ type QuestRow = {
   completed_at: string | null
   created_at: string
   updated_at: string
+  revision: number
 }
 
 const COLUMNS =
-  'id,main_quest_id,parent_quest_id,kind,title,description,memo,tags,status,priority,scheduled_on,due_on,due_at,recurrence_rule,favorite,completed_at,created_at,updated_at'
+  'id,main_quest_id,parent_quest_id,kind,title,description,memo,tags,status,priority,scheduled_on,due_on,due_at,recurrence_rule,favorite,completed_at,created_at,updated_at,revision'
 
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -38,10 +40,12 @@ async function getUserId(): Promise<string | null> {
 }
 
 const fromRow = (row: QuestRow): Quest => {
+  rememberSyncRevision('quest', row.id, row.revision)
   const scheduledDate = row.scheduled_on ?? row.due_on ?? undefined
   const scheduledTime = row.due_at ? String(row.due_at).slice(0, 5) : undefined
   return {
     id: row.id,
+    revision: row.revision,
     title: row.title,
     description: row.description ?? '',
     memo: row.memo ?? '',
@@ -76,9 +80,7 @@ export async function createQuest(quest: Quest): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(quest.id)) return false
   const completed = quest.status === 'completed'
-  const { error } = await supabase.from('quests').insert({
-    id: quest.id,
-    user_id: userId,
+  await applySyncMutation({ entityType: 'quest', operation: 'create', recordId: quest.id, payload: {
     // Composite FKs require the referenced row to belong to the same user; skip non-uuid/local ids.
     main_quest_id: quest.projectId && isUuid(quest.projectId) ? quest.projectId : null,
     parent_quest_id: quest.parentQuestId && isUuid(quest.parentQuestId) ? quest.parentQuestId : null,
@@ -95,17 +97,14 @@ export async function createQuest(quest: Quest): Promise<boolean> {
     recurrence_rule: quest.recurrenceRule || null,
     favorite: quest.favorite ?? false,
     completed_at: completed ? quest.completedAt ?? new Date().toISOString() : null,
-    created_at: quest.createdAt,
-    updated_at: quest.updatedAt,
-  })
-  if (error) throw error
+  } })
   return true
 }
 
 export async function updateQuest(id: string, patch: Partial<Quest>): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(id)) return false
-  const row: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  const row: Record<string, unknown> = {}
   if (patch.title !== undefined) row.title = patch.title
   if (patch.description !== undefined) row.description = patch.description ?? ''
   if (patch.memo !== undefined) row.memo = patch.memo ?? ''
@@ -127,15 +126,13 @@ export async function updateQuest(id: string, patch: Partial<Quest>): Promise<bo
   } else if ('completedAt' in patch) {
     row.completed_at = patch.completedAt ?? null
   }
-  const { error } = await supabase.from('quests').update(row).eq('id', id)
-  if (error) throw error
+  await applySyncMutation({ entityType: 'quest', operation: 'update', recordId: id, payload: row, expectedRevision: patch.revision })
   return true
 }
 
 export async function removeQuest(id: string): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(id)) return false
-  const { error } = await supabase.from('quests').delete().eq('id', id)
-  if (error) throw error
+  await applySyncMutation({ entityType: 'quest', operation: 'delete', recordId: id })
   return true
 }

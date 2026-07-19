@@ -28,9 +28,9 @@ test('account activity is exposed only through an authenticated own-user RPC', (
 
 test('header and throne expose point balance, usage and gifts', () => {
   assert.match(header, /className="header-points"/)
-  assert.match(header, /loadAccountNotifications/)
-  assert.match(throne, /리타 포인트와 이용 기록/)
-  assert.match(throne, /받은 선물/)
+  assert.match(header, /useNotificationCenter/)
+  assert.match(throne, /RITA POINTS & HISTORY/)
+  assert.match(throne, /activity\.gifts/)
 })
 
 test('account activity verification covers RPC, grants, trigger and RLS policies', () => {

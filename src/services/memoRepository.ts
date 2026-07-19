@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase'
 import type { Memo } from '../types'
-import { listAttachmentMap } from './attachmentRepository'
+import { listAttachmentMap, saveAttachment } from './attachmentRepository'
+import { applySyncMutation, rememberSyncRevision } from '../lib/syncEngine'
 
 // Memos map to the canonical `memos` table; original file metadata is joined
 // from the owner-scoped attachments table.
@@ -17,10 +18,11 @@ type MemoRow = {
   tags: string[] | null
   created_at: string
   updated_at: string
+  revision: number
 }
 
 const COLUMNS =
-  'id,main_quest_id,title,content,transcript,status,source,important,favorite,tags,created_at,updated_at'
+  'id,main_quest_id,title,content,transcript,status,source,important,favorite,tags,created_at,updated_at,revision'
 
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -31,8 +33,11 @@ async function getUserId(): Promise<string | null> {
   return data.session?.user?.id ?? null
 }
 
-const fromRow = (row: MemoRow): Memo => ({
+const fromRow = (row: MemoRow): Memo => {
+  rememberSyncRevision('memo', row.id, row.revision)
+  return ({
   id: row.id,
+  revision: row.revision,
   title: row.title,
   content: row.content ?? '',
   tags: row.tags ?? [],
@@ -44,7 +49,8 @@ const fromRow = (row: MemoRow): Memo => ({
   transcript: row.transcript ?? undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
-})
+  })
+}
 
 export async function listMemos(): Promise<Memo[] | null> {
   const userId = await getUserId()
@@ -58,15 +64,7 @@ export async function listMemos(): Promise<Memo[] | null> {
 export async function createMemo(memo: Memo): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(memo.id)) return false
-  const attachment = memo.sourceAttachment?.storagePath ? {
-    storage_path: memo.sourceAttachment.storagePath,
-    file_name: memo.sourceAttachment.name,
-    mime_type: memo.sourceAttachment.mimeType,
-    size_bytes: memo.sourceAttachment.size,
-  } : null
-  const { error } = await supabase.rpc('create_memo_with_attachment', {
-    p_memo: {
-      id: memo.id,
+  await applySyncMutation({ entityType: 'memo', operation: 'create', recordId: memo.id, payload: {
       main_quest_id: memo.projectId && isUuid(memo.projectId) ? memo.projectId : null,
       title: memo.title,
       content: memo.content ?? '',
@@ -76,19 +74,15 @@ export async function createMemo(memo: Memo): Promise<boolean> {
       important: memo.important ?? false,
       favorite: memo.favorite ?? false,
       tags: memo.tags ?? [],
-      created_at: memo.createdAt,
-      updated_at: memo.updatedAt,
-    },
-    p_attachment: attachment,
-  })
-  if (error) throw error
+  } })
+  if (memo.sourceAttachment?.storagePath) await saveAttachment('memo', memo.id, memo.sourceAttachment)
   return true
 }
 
 export async function updateMemo(id: string, patch: Partial<Memo>): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(id)) return false
-  const row: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  const row: Record<string, unknown> = {}
   if (patch.title !== undefined) row.title = patch.title
   if (patch.content !== undefined) row.content = patch.content ?? ''
   if (patch.transcript !== undefined) row.transcript = patch.transcript ?? null
@@ -98,15 +92,13 @@ export async function updateMemo(id: string, patch: Partial<Memo>): Promise<bool
   if (patch.favorite !== undefined) row.favorite = patch.favorite
   if (patch.tags !== undefined) row.tags = patch.tags
   if ('projectId' in patch) row.main_quest_id = patch.projectId && isUuid(patch.projectId) ? patch.projectId : null
-  const { error } = await supabase.from('memos').update(row).eq('id', id)
-  if (error) throw error
+  await applySyncMutation({ entityType: 'memo', operation: 'update', recordId: id, payload: row, expectedRevision: patch.revision })
   return true
 }
 
 export async function removeMemo(id: string): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(id)) return false
-  const { error } = await supabase.from('memos').delete().eq('id', id)
-  if (error) throw error
+  await applySyncMutation({ entityType: 'memo', operation: 'delete', recordId: id })
   return true
 }

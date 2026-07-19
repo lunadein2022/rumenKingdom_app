@@ -4,6 +4,7 @@ export type CalendarKind = 'royal' | 'personal' | 'work' | 'project' | 'annivers
 
 export interface CalendarEvent {
   id: string
+  revision?: number
   title: string
   description?: string
   date: string
@@ -29,6 +30,7 @@ export type QuestStatus = 'planned' | 'active' | 'completed' | 'archived'
 
 export interface Quest {
   id: string
+  revision?: number
   title: string
   description?: string
   memo?: string
@@ -62,6 +64,7 @@ export type ProjectStatus = 'planned' | 'active' | 'completed' | 'archived'
 
 export interface Project {
   id: string
+  revision?: number
   title: string
   goal?: string
   description: string
@@ -91,6 +94,7 @@ export interface SourceAttachment {
 
 export interface Memo {
   id: string
+  revision?: number
   title: string
   content: string
   tags: string[]
@@ -107,6 +111,7 @@ export interface Memo {
 
 export interface Relationship {
   id: string
+  revision?: number
   name: string
   organization: string
   position: string
@@ -131,6 +136,7 @@ export interface Relationship {
 
 export interface RelationshipGroup {
   id: string
+  revision?: number
   name: string
   color: string
   sortOrder: number
@@ -140,6 +146,7 @@ export interface RelationshipGroup {
 
 export interface DiaryEntry {
   id: string
+  revision?: number
   date: string
   title: string
   content: string

@@ -3,15 +3,23 @@ import type { Session } from '@supabase/supabase-js'
 import { BrowserRouter } from 'react-router-dom'
 import { AppRouter } from './app/AppRouter'
 import { LoginScreen } from './components/LoginScreen'
-import { supabase } from './lib/supabase'
+import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { activateKingdomAccount, deactivateKingdomAccount, useKingdomStore } from './store'
 import { clearDemoSessionStorage, createDemoSessionId, currentDemoSessionId, DEMO_MODE_KEY, writeAccountStorage } from './lib/accountScope'
 import { loadPreferences } from './services/settingsRepository'
 import { storeSelectedPrincessId } from './lib/princesses'
 import { configureServiceTime, resetServiceTime } from './lib/serviceTime'
 import { WebAppStatus } from './components/WebAppStatus'
+import { startSyncEngine } from './lib/syncEngine'
+import { Capacitor } from '@capacitor/core'
+import { MobileServiceSetup } from './components/MobileServiceSetup'
 
 function App() {
+  if (Capacitor.isNativePlatform() && !isSupabaseConfigured) return <MobileServiceSetup />
+  return <ConfiguredApp />
+}
+
+function ConfiguredApp() {
   const hydrateEvents = useKingdomStore((state) => state.hydrateEvents)
   const hydrateProjects = useKingdomStore((state) => state.hydrateProjects)
   const hydrateQuests = useKingdomStore((state) => state.hydrateQuests)
@@ -110,6 +118,19 @@ function App() {
     void prepare()
     return () => { active = false }
   }, [demoSessionId, guestMode, hydrateEvents, hydrateProjects, hydrateQuests, hydrateMemos, hydrateRelationshipGroups, hydrateRelationships, hydrateDiaries, session])
+  useEffect(() => {
+    if (!session || !dataReady) return
+    const refresh = () => {
+      void Promise.all([
+        hydrateEvents(), hydrateProjects(), hydrateMemos(), hydrateRelationshipGroups(),
+        hydrateRelationships(), hydrateDiaries(),
+      ]).then(() => hydrateQuests())
+    }
+    const stop = startSyncEngine(refresh)
+    const conflict = () => refresh()
+    window.addEventListener('rumen-sync-conflict', conflict)
+    return () => { stop(); window.removeEventListener('rumen-sync-conflict', conflict) }
+  }, [dataReady, hydrateDiaries, hydrateEvents, hydrateMemos, hydrateProjects, hydrateQuests, hydrateRelationshipGroups, hydrateRelationships, session])
 
   const enterGuest = () => { setDataReady(false); setDemoSessionId(createDemoSessionId()) }
   const signOut = async () => {

@@ -6,6 +6,9 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[functions."storage-cleanup"]
+  schedule = "@hourly"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
