@@ -26,6 +26,7 @@ const DiaryPage = lazy(() => import('../features/diary/DiaryPage').then((module)
 const GardenPage = lazy(() => import('../features/garden/GardenPage').then((module) => ({ default: module.GardenPage })))
 const RitaPage = lazy(() => import('../features/rita/RitaPage').then((module) => ({ default: module.RitaPage })))
 const ThronePage = lazy(() => import('../features/throne/ThronePage').then((module) => ({ default: module.ThronePage })))
+const AdminPage = lazy(() => import('../features/admin/AdminPage').then((module) => ({ default: module.AdminPage })))
 
 export function AppRouter({ demoMode, onResetDemo, onSignOut }: { demoMode: boolean; onResetDemo: () => void; onSignOut: () => Promise<void> }) {
   return <Routes><Route element={<AppLayout demoMode={demoMode} onSignOut={onSignOut}/>}>
@@ -45,6 +46,7 @@ export function AppRouter({ demoMode, onResetDemo, onSignOut }: { demoMode: bool
     <Route path="garden" element={<GardenPage/>}/>
     <Route path="rita" element={<RitaPage demoMode={demoMode}/>}/>
     <Route path="throne" element={<ThronePage demoMode={demoMode} onResetDemo={onResetDemo} onSignOut={onSignOut}/>}/>
+    <Route path="admin" element={<AdminPage/>}/>
     <Route path="*" element={<NotFoundPage/>}/>
   </Route></Routes>
 }
