@@ -5,7 +5,7 @@ import { RitaFace, type RitaExpression } from '../../components/RitaFace'
 import { analyzeRitaAttachment, interpretRitaRequest, type AttachmentIntent, type RitaAttachmentAnalysis, type RitaRequestAnalysis } from '../../services/ritaService'
 import { calendarKinds, useKingdomStore } from '../../store'
 import type { CalendarKind, Project, QuestPriority, QuestType } from '../../types'
-import { accountStorageKey } from '../../lib/accountScope'
+import { accountStorage, accountStorageKey } from '../../lib/accountScope'
 import { PrincessPortrait } from '../../components/PrincessPortrait'
 import { useSelectedPrincess } from '../../lib/princesses'
 
@@ -31,6 +31,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
   const messagesRef = useRef<HTMLDivElement>(null)
   const { projects, addProject, addQuest, addEvent } = useKingdomStore()
   const conversationStorageKey = accountStorageKey('rumen-rita-conversation')
+  const conversationStorage = accountStorage()
   const prompt = (location.state as { prompt?: string } | null)?.prompt
   const [input, setInput] = useState(prompt ?? '')
   const [loading, setLoading] = useState(false)
@@ -40,11 +41,11 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem(conversationStorageKey) ?? 'null') as ChatMessage[] || [welcomeMessage]
+      return JSON.parse(conversationStorage.getItem(conversationStorageKey) ?? 'null') as ChatMessage[] || [welcomeMessage]
     } catch { return [welcomeMessage] }
   })
 
-  useEffect(() => { localStorage.setItem(conversationStorageKey, JSON.stringify(messages.slice(-40))) }, [conversationStorageKey, messages])
+  useEffect(() => { conversationStorage.setItem(conversationStorageKey, JSON.stringify(messages.slice(-40))) }, [conversationStorage, conversationStorageKey, messages])
   useEffect(() => { const el = messagesRef.current; if (el) el.scrollTop = el.scrollHeight }, [messages, draft, loading, savedAction])
   useEffect(() => { if (prompt) navigate('/rita', { replace: true, state: null }) }, [navigate, prompt])
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])

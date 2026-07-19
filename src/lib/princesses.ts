@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { accountStorageKey } from './accountScope'
+import { readAccountStorage, writeAccountStorage } from './accountScope'
 
 export const PRINCESS_STORAGE_NAME = 'rumen-selected-princess'
 export const PRINCESS_CHANGED_EVENT = 'rumen-princess-changed'
@@ -43,12 +43,12 @@ export function getPrincess(value?: string | null) {
 }
 
 export function readSelectedPrincessId() {
-  return normalizePrincessId(localStorage.getItem(accountStorageKey(PRINCESS_STORAGE_NAME)))
+  return normalizePrincessId(readAccountStorage(PRINCESS_STORAGE_NAME))
 }
 
 export function storeSelectedPrincessId(value: PrincessId) {
   const id = normalizePrincessId(value)
-  localStorage.setItem(accountStorageKey(PRINCESS_STORAGE_NAME), id)
+  writeAccountStorage(PRINCESS_STORAGE_NAME, id)
   window.dispatchEvent(new CustomEvent<PrincessId>(PRINCESS_CHANGED_EVENT, { detail: id }))
   return id
 }

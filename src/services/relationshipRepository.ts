@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { Relationship } from '../types'
-import { listAttachmentMap, saveAttachment } from './attachmentRepository'
+import { listAttachmentMap } from './attachmentRepository'
 
 // Relationships map to the expanded `relationships` table; private business
 // card metadata is joined from the owner-scoped attachments table.
@@ -59,21 +59,6 @@ const fromRow = (row: RelationshipRow, groupIds: string[] = []): Relationship =>
   updatedAt: row.updated_at,
 })
 
-async function syncRelationshipGroups(userId: string, relationshipId: string, groupIds: string[]) {
-  if (!supabase) return
-  const { error: deleteError } = await supabase
-    .from('relationship_group_members')
-    .delete()
-    .eq('relationship_id', relationshipId)
-  if (deleteError) throw deleteError
-  const uniqueIds = Array.from(new Set(groupIds.filter(isUuid)))
-  if (!uniqueIds.length) return
-  const { error } = await supabase.from('relationship_group_members').insert(
-    uniqueIds.map((groupId) => ({ user_id: userId, relationship_id: relationshipId, group_id: groupId })),
-  )
-  if (error) throw error
-}
-
 const toRow = (value: Partial<Relationship>): Record<string, unknown> => {
   const row: Record<string, unknown> = {}
   if (value.name !== undefined) row.name = value.name
@@ -92,6 +77,33 @@ const toRow = (value: Partial<Relationship>): Record<string, unknown> => {
   if (value.businessCardOcrText !== undefined) row.business_card_ocr_text = value.businessCardOcrText ?? null
   if (value.source !== undefined) row.source = value.source
   return row
+}
+
+async function saveRelationshipAtomically(relationship: Relationship) {
+  if (!supabase) return false
+  const attachment = relationship.sourceAttachment?.storagePath ? {
+    storage_path: relationship.sourceAttachment.storagePath,
+    file_name: relationship.sourceAttachment.name,
+    mime_type: relationship.sourceAttachment.mimeType,
+    size_bytes: relationship.sourceAttachment.size,
+  } : null
+  const { error } = await supabase.rpc('save_relationship_with_groups', {
+    p_relationship: {
+      id: relationship.id,
+      ...toRow(relationship),
+      created_at: relationship.createdAt,
+      updated_at: relationship.updatedAt,
+    },
+    p_group_ids: Array.from(new Set(relationship.groupIds.filter(isUuid))),
+    p_attachment: attachment,
+  })
+  if (error) {
+    if (error.code === 'PGRST202' || /save_relationship_with_groups/i.test(error.message ?? '')) {
+      throw new Error('인연록 원자 저장 함수가 없습니다. Supabase에 202607190004_atomic_relationship_save.sql을 적용해 주세요.')
+    }
+    throw error
+  }
+  return true
 }
 
 export async function listRelationships(): Promise<Relationship[] | null> {
@@ -119,29 +131,13 @@ export async function listRelationships(): Promise<Relationship[] | null> {
 export async function createRelationship(relationship: Relationship): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(relationship.id)) return false
-  const { error } = await supabase.from('relationships').insert({
-    id: relationship.id,
-    user_id: userId,
-    ...toRow(relationship),
-    created_at: relationship.createdAt,
-    updated_at: relationship.updatedAt,
-  })
-  if (error) throw error
-  await syncRelationshipGroups(userId, relationship.id, relationship.groupIds)
-  await saveAttachment('relationship', relationship.id, relationship.sourceAttachment)
-  return true
+  return saveRelationshipAtomically(relationship)
 }
 
 export async function updateRelationship(id: string, patch: Partial<Relationship>): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(id)) return false
-  const { error } = await supabase
-    .from('relationships')
-    .update({ ...toRow(patch), updated_at: new Date().toISOString() })
-    .eq('id', id)
-  if (error) throw error
-  if (patch.groupIds !== undefined) await syncRelationshipGroups(userId, id, patch.groupIds)
-  return true
+  return saveRelationshipAtomically(patch as Relationship)
 }
 
 export async function removeRelationship(id: string): Promise<boolean> {

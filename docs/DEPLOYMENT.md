@@ -7,7 +7,10 @@
 1. `supabase/schema.sql`
 2. `supabase/migrations/202607120001_canonical_data_model.sql`
 3. `supabase/migrations/202607130002_quest_completion_logs.sql`
-4. `supabase/verify_canonical_schema.sql` 실행 후 모든 필수 항목 확인
+4. `supabase/migrations/202607130003_relationship_groups.sql`
+5. `supabase/migrations/202607190004_atomic_relationship_save.sql`
+6. `supabase/migrations/202607190005_atomic_record_saves.sql`
+7. `supabase/verify_canonical_schema.sql` 실행 후 모든 필수 항목 확인
 
 브라우저 환경변수:
 

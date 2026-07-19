@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase'
 import type { Memo } from '../types'
-import { listAttachmentMap, saveAttachment } from './attachmentRepository'
+import { listAttachmentMap } from './attachmentRepository'
 
 // Memos map to the canonical `memos` table; original file metadata is joined
 // from the owner-scoped attachments table.
@@ -58,23 +58,30 @@ export async function listMemos(): Promise<Memo[] | null> {
 export async function createMemo(memo: Memo): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(memo.id)) return false
-  const { error } = await supabase.from('memos').insert({
-    id: memo.id,
-    user_id: userId,
-    main_quest_id: memo.projectId && isUuid(memo.projectId) ? memo.projectId : null,
-    title: memo.title,
-    content: memo.content ?? '',
-    transcript: memo.transcript ?? null,
-    status: memo.status,
-    source: memo.source,
-    important: memo.important ?? false,
-    favorite: memo.favorite ?? false,
-    tags: memo.tags ?? [],
-    created_at: memo.createdAt,
-    updated_at: memo.updatedAt,
+  const attachment = memo.sourceAttachment?.storagePath ? {
+    storage_path: memo.sourceAttachment.storagePath,
+    file_name: memo.sourceAttachment.name,
+    mime_type: memo.sourceAttachment.mimeType,
+    size_bytes: memo.sourceAttachment.size,
+  } : null
+  const { error } = await supabase.rpc('create_memo_with_attachment', {
+    p_memo: {
+      id: memo.id,
+      main_quest_id: memo.projectId && isUuid(memo.projectId) ? memo.projectId : null,
+      title: memo.title,
+      content: memo.content ?? '',
+      transcript: memo.transcript ?? null,
+      status: memo.status,
+      source: memo.source,
+      important: memo.important ?? false,
+      favorite: memo.favorite ?? false,
+      tags: memo.tags ?? [],
+      created_at: memo.createdAt,
+      updated_at: memo.updatedAt,
+    },
+    p_attachment: attachment,
   })
   if (error) throw error
-  await saveAttachment('memo', memo.id, memo.sourceAttachment)
   return true
 }
 

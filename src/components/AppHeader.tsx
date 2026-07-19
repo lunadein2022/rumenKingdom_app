@@ -5,7 +5,7 @@ import { navigation } from '../app/navigation'
 import { useKingdomStore } from '../store'
 import type { PageId } from '../types'
 import { useServiceDate } from '../lib/useServiceDate'
-import { accountStorageKey } from '../lib/accountScope'
+import { accountStorage, accountStorageKey, readAccountStorage } from '../lib/accountScope'
 import { BodyAreaOverlay } from './BodyAreaOverlay'
 import { PrincessPortrait } from './PrincessPortrait'
 import { useSelectedPrincess } from '../lib/princesses'
@@ -18,15 +18,16 @@ export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boo
   const [query, setQuery] = useState('')
   const serviceToday = useServiceDate()
   const princess = useSelectedPrincess()
+  const scopedStorage = accountStorage()
   const notificationReadKey = accountStorageKey('rumen-read-notifications')
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem(accountStorageKey('rumen-in-app-notifications')) !== 'off')
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => readAccountStorage('rumen-in-app-notifications') !== 'off')
   useEffect(() => {
     const listener = (event: Event) => setNotificationsEnabled((event as CustomEvent<boolean>).detail)
     window.addEventListener('rumen-notification-setting', listener)
     return () => window.removeEventListener('rumen-notification-setting', listener)
   }, [])
   const [readNotifications, setReadNotifications] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(notificationReadKey) ?? '[]') as string[] } catch { return [] }
+    try { return JSON.parse(scopedStorage.getItem(notificationReadKey) ?? '[]') as string[] } catch { return [] }
   })
   const notificationItems = useMemo(() => [
     ...events.filter((event) => event.date <= serviceToday && (event.endDate ?? event.date) >= serviceToday).map((event) => ({ id: `event:${event.id}:${serviceToday}`, title: event.title, meta: event.allDay ? '오늘 · 종일 일정' : `오늘 ${event.start || '시간 미정'}`, path: `/calendar/event/${event.id}` })),
@@ -36,7 +37,7 @@ export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boo
   const unreadCount = notificationsEnabled ? notificationItems.filter((item) => !readNotifications.includes(item.id)).length : 0
   const openNotification = (item: typeof notificationItems[number]) => {
     const next = Array.from(new Set([...readNotifications, item.id]))
-    setReadNotifications(next); localStorage.setItem(notificationReadKey, JSON.stringify(next)); setNotificationOpen(false); navigate(item.path)
+    setReadNotifications(next); scopedStorage.setItem(notificationReadKey, JSON.stringify(next)); setNotificationOpen(false); navigate(item.path)
   }
   const normalized = query.trim().toLocaleLowerCase('ko')
   const results = useMemo(() => [
@@ -68,7 +69,7 @@ export function AppHeader({ demoMode, page, onMenu, onSignOut }: { demoMode: boo
         <button className="header-shortcut logout-shortcut" aria-label={demoMode ? '로그인하기' : '로그아웃'} onClick={() => void onSignOut()}><LogOut size={17}/><span>{demoMode ? '로그인' : '로그아웃'}</span></button>
         <button className="menu-button" aria-label="메뉴" onClick={onMenu}><Menu size={20}/></button>
       </div>
-      {notificationOpen && <aside className="notification-popover glass-panel"><div><b>왕실 알림 · {unreadCount}</b><button onClick={() => setNotificationOpen(false)} aria-label="알림 닫기"><X size={14}/></button></div>{!notificationsEnabled ? <p>왕좌의 방에서 앱 내부 알림이 꺼져 있습니다.</p> : notificationItems.length ? <div className="notification-items">{notificationItems.map((item) => <button key={item.id} className={readNotifications.includes(item.id) ? 'read' : ''} onClick={() => openNotification(item)}><b>{item.title}</b><small>{item.meta}</small></button>)}</div> : <p>새로운 알림이 없습니다.</p>}{unreadCount > 0 && <button className="notification-read-all" onClick={() => { const next = notificationItems.map((item) => item.id); setReadNotifications(next); localStorage.setItem(notificationReadKey, JSON.stringify(next)) }}>모두 읽음</button>}</aside>}
+      {notificationOpen && <aside className="notification-popover glass-panel"><div><b>왕실 알림 · {unreadCount}</b><button onClick={() => setNotificationOpen(false)} aria-label="알림 닫기"><X size={14}/></button></div>{!notificationsEnabled ? <p>왕좌의 방에서 앱 내부 알림이 꺼져 있습니다.</p> : notificationItems.length ? <div className="notification-items">{notificationItems.map((item) => <button key={item.id} className={readNotifications.includes(item.id) ? 'read' : ''} onClick={() => openNotification(item)}><b>{item.title}</b><small>{item.meta}</small></button>)}</div> : <p>새로운 알림이 없습니다.</p>}{unreadCount > 0 && <button className="notification-read-all" onClick={() => { const next = notificationItems.map((item) => item.id); setReadNotifications(next); scopedStorage.setItem(notificationReadKey, JSON.stringify(next)) }}>모두 읽음</button>}</aside>}
     </header>
     {searchOpen && <BodyAreaOverlay className="search-overlay" onClose={() => setSearchOpen(false)}><section className="global-search glass-panel" role="dialog" aria-modal="true" aria-labelledby="global-search-title" onMouseDown={(event) => event.stopPropagation()}><div className="global-search-input"><Search size={20}/><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="일정, 퀘스트, 인연, 메모 검색" aria-label="전체 검색"/><button onClick={() => setSearchOpen(false)} aria-label="검색 닫기"><X size={18}/></button></div><h2 id="global-search-title" className="sr-only">전체 검색</h2><div className="global-results">{normalized ? results.length ? results.map((result) => <button key={`${result.path}-${result.id}`} onClick={() => selectResult(result)}><b>{result.title}</b><small>{result.meta}</small></button>) : <p>검색 결과가 없습니다.</p> : <p>찾고 싶은 기록의 제목이나 내용을 입력하세요.</p>}</div></section></BodyAreaOverlay>}
   </>

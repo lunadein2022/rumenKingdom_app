@@ -12,6 +12,12 @@ const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp
 const TEXT_TYPES = new Set(['text/plain', 'text/markdown', 'text/csv'])
 const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
+const responseStylePrompt = (value) => value === 'warm'
+  ? '답변은 다정하고 공감하는 어조로 작성하되 핵심은 분명하게 전달하세요.'
+  : value === 'detailed'
+    ? '답변은 필요한 배경과 다음 행동을 포함해 자세히 작성하세요.'
+    : '답변은 핵심만 간결하게 작성하세요.'
+
 const json = (statusCode, body) => ({
   statusCode,
   headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
@@ -94,7 +100,7 @@ async function interpretRequest(input, apiKey, model) {
 {"kind":"chat","reply":"일반 답변"}`
 
   const result = await callClaude(apiKey, model, {
-    system: `${SYSTEM_PROMPT}\n\n${instruction}`,
+    system: `${SYSTEM_PROMPT}\n${responseStylePrompt(input.responseStyle)}\n\n${instruction}`,
     max_tokens: 1200,
     messages,
   })
@@ -158,7 +164,7 @@ async function chat(input, apiKey, model) {
       .map((message) => ({ role: message.role, content: String(message.content).slice(0, 8000) }))
     : []
   if (!messages.length) return json(400, { error: '대화 내용이 필요합니다.' })
-  const result = await callClaude(apiKey, model, { system: SYSTEM_PROMPT, messages, max_tokens: 900 })
+  const result = await callClaude(apiKey, model, { system: `${SYSTEM_PROMPT}\n${responseStylePrompt(input.responseStyle)}`, messages, max_tokens: input.responseStyle === 'detailed' ? 1400 : 900 })
   const reply = textFromClaude(result)
   return reply ? json(200, { reply }) : json(502, { error: '리타의 응답이 비어 있습니다.' })
 }

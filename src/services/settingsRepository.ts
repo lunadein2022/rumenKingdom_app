@@ -14,9 +14,8 @@ export type UserPreferences = {
 
 export type RoomBackground = { room: PageId; storagePath: string; position: string; url: string }
 
-let roomBackgroundCache: RoomBackground[] | null = null
-let roomBackgroundCacheUserId: string | null = null
-let roomBackgroundRequest: Promise<RoomBackground[]> | null = null
+const roomBackgroundCache = new Map<string, RoomBackground[]>()
+const roomBackgroundRequests = new Map<string, Promise<RoomBackground[]>>()
 
 export const defaultPreferences: UserPreferences = {
   profileName: '루멘왕국의 공주',
@@ -53,24 +52,24 @@ export async function savePreferences(preferences: UserPreferences) {
 export async function loadRoomBackgrounds(force = false): Promise<RoomBackground[]> {
   const userId = await getUserId()
   if (!supabase || !userId) return []
-  if (roomBackgroundCacheUserId !== userId) {
-    roomBackgroundCacheUserId = userId
-    roomBackgroundCache = null
-    roomBackgroundRequest = null
-  }
-  if (!force && roomBackgroundCache) return roomBackgroundCache
-  if (!force && roomBackgroundRequest) return roomBackgroundRequest
-  roomBackgroundRequest = (async () => {
+  const cached = roomBackgroundCache.get(userId)
+  if (!force && cached) return cached
+  const pending = roomBackgroundRequests.get(userId)
+  if (!force && pending) return pending
+  const request = (async () => {
     const { data, error } = await supabase.from('room_backgrounds').select('room_key,storage_path,position')
     if (error) throw error
     const items = await Promise.all((data ?? []).map(async (row) => {
       const { data: signed } = await supabase!.storage.from('room-backgrounds').createSignedUrl(row.storage_path, 3600)
       return { room: row.room_key as PageId, storagePath: row.storage_path, position: row.position, url: signed?.signedUrl ?? '' }
     }))
-    roomBackgroundCache = items
+    roomBackgroundCache.set(userId, items)
     return items
   })()
-  try { return await roomBackgroundRequest } finally { roomBackgroundRequest = null }
+  roomBackgroundRequests.set(userId, request)
+  try { return await request } finally {
+    if (roomBackgroundRequests.get(userId) === request) roomBackgroundRequests.delete(userId)
+  }
 }
 
 export async function uploadRoomBackground(room: PageId, file: File): Promise<RoomBackground> {
@@ -87,8 +86,7 @@ export async function uploadRoomBackground(room: PageId, file: File): Promise<Ro
   if (previous?.storage_path) await supabase.storage.from('room-backgrounds').remove([previous.storage_path])
   const { data: signed } = await supabase.storage.from('room-backgrounds').createSignedUrl(path, 3600)
   const item = { room, storagePath: path, position: 'center', url: signed?.signedUrl ?? '' }
-  roomBackgroundCacheUserId = userId
-  roomBackgroundCache = [...(roomBackgroundCache ?? []).filter((entry) => entry.room !== room), item]
+  roomBackgroundCache.set(userId, [...(roomBackgroundCache.get(userId) ?? []).filter((entry) => entry.room !== room), item])
   return item
 }
 
@@ -99,6 +97,6 @@ export async function removeRoomBackground(room: PageId) {
   const { error } = await supabase.from('room_backgrounds').delete().eq('user_id', userId).eq('room_key', room)
   if (error) throw error
   if (data?.storage_path) await supabase.storage.from('room-backgrounds').remove([data.storage_path])
-  roomBackgroundCache = (roomBackgroundCache ?? []).filter((item) => item.room !== room)
+  roomBackgroundCache.set(userId, (roomBackgroundCache.get(userId) ?? []).filter((item) => item.room !== room))
   return true
 }

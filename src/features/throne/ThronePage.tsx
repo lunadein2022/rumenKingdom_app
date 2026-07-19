@@ -1,28 +1,25 @@
 import { Bell, ChevronRight, Cloud, Crown, Database, Image, LogOut, Pencil, Save, Sparkles, UserRound, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { isSupabaseConfigured } from '../../lib/supabase'
-import { accountStorageKey } from '../../lib/accountScope'
+import { readAccountStorage, writeAccountStorage } from '../../lib/accountScope'
 import { useKingdomStore } from '../../store'
 import { defaultPreferences, loadPreferences, removeRoomBackground, savePreferences, uploadRoomBackground, type UserPreferences } from '../../services/settingsRepository'
 import type { PageId } from '../../types'
 import { PrincessPortrait } from '../../components/PrincessPortrait'
 import { getPrincess, princessOptions, readSelectedPrincessId, storeSelectedPrincessId, type PrincessId } from '../../lib/princesses'
+import { configureServiceTime } from '../../lib/serviceTime'
 
 type SettingId = 'profile' | 'background' | 'notifications' | 'ai' | 'data' | null
 
 export function ThronePage({ demoMode = false, onResetDemo = () => undefined, onSignOut }: { demoMode?: boolean; onResetDemo?: () => void; onSignOut: () => Promise<void> }) {
   const store = useKingdomStore()
-  const profileNameKey = accountStorageKey('rumen-princess-name')
-  const profileIntroKey = accountStorageKey('rumen-princess-intro')
-  const notificationsKey = accountStorageKey('rumen-in-app-notifications')
-  const ritaStyleKey = accountStorageKey('rumen-rita-style')
   const [setting, setSetting] = useState<SettingId>(null)
-  const [name, setName] = useState(() => localStorage.getItem(profileNameKey) || '루멘왕국의 공주')
-  const [intro, setIntro] = useState(() => localStorage.getItem(profileIntroKey) || '차분하게 왕국의 하루를 가꾸어 가는 중입니다.')
+  const [name, setName] = useState(() => readAccountStorage('rumen-princess-name') || '루멘왕국의 공주')
+  const [intro, setIntro] = useState(() => readAccountStorage('rumen-princess-intro') || '차분하게 왕국의 하루를 가꾸어 가는 중입니다.')
   const [draftName, setDraftName] = useState(name)
   const [draftIntro, setDraftIntro] = useState(intro)
-  const [notifications, setNotifications] = useState(() => localStorage.getItem(notificationsKey) !== 'off')
-  const [aiStyle, setAiStyle] = useState(() => localStorage.getItem(ritaStyleKey) || 'concise')
+  const [notifications, setNotifications] = useState(() => readAccountStorage('rumen-in-app-notifications') !== 'off')
+  const [aiStyle, setAiStyle] = useState(() => readAccountStorage('rumen-rita-style') || 'concise')
   const [timezone, setTimezone] = useState('Asia/Seoul')
   const [serviceDayStartsAt, setServiceDayStartsAt] = useState('06:00')
   const [princessId, setPrincessId] = useState<PrincessId>(() => readSelectedPrincessId())
@@ -37,9 +34,10 @@ export function ThronePage({ demoMode = false, onResetDemo = () => undefined, on
     const nextName = draftName.trim() || '루멘왕국의 공주'
     const nextIntro = draftIntro.trim()
     setName(nextName); setIntro(nextIntro); setPrincessId(draftPrincessId)
-    localStorage.setItem(profileNameKey, nextName)
-    localStorage.setItem(profileIntroKey, nextIntro)
+    writeAccountStorage('rumen-princess-name', nextName)
+    writeAccountStorage('rumen-princess-intro', nextIntro)
     storeSelectedPrincessId(draftPrincessId)
+    configureServiceTime(timezone, serviceDayStartsAt)
     await persistPreferences({ profileName: nextName, profileIntro: nextIntro, timezone, serviceDayStartsAt, selectedPrincessId: draftPrincessId }).catch(() => undefined)
     setSetting(null)
   }
@@ -102,8 +100,8 @@ export function ThronePage({ demoMode = false, onResetDemo = () => undefined, on
           <button className="primary" onClick={() => void saveProfile()}><Save size={14}/> 저장</button>
         </div>}
         {setting === 'background' && <BackgroundSettings/>}
-        {setting === 'notifications' && <label className="setting-toggle"><span><b>앱 내부 알림</b><small>일정과 확인할 기록을 헤더에서 안내합니다.</small></span><input type="checkbox" checked={notifications} onChange={(event) => { const value = event.target.checked; setNotifications(value); localStorage.setItem(notificationsKey, value ? 'on' : 'off'); window.dispatchEvent(new CustomEvent('rumen-notification-setting', { detail: value })); void persistPreferences({ notifications: value }) }}/></label>}
-        {setting === 'ai' && <label className="setting-select">리타의 답변 방식<select value={aiStyle} onChange={(event) => { const value = event.target.value as UserPreferences['aiStyle']; setAiStyle(value); localStorage.setItem(ritaStyleKey, value); void persistPreferences({ aiStyle: value }) }}><option value="concise">간결하게</option><option value="warm">다정하게</option><option value="detailed">자세하게</option></select><small>계정에 저장되어 다른 기기에서도 같은 답변 방식을 사용합니다.</small></label>}
+        {setting === 'notifications' && <label className="setting-toggle"><span><b>앱 내부 알림</b><small>일정과 확인할 기록을 헤더에서 안내합니다.</small></span><input type="checkbox" checked={notifications} onChange={(event) => { const value = event.target.checked; setNotifications(value); writeAccountStorage('rumen-in-app-notifications', value ? 'on' : 'off'); window.dispatchEvent(new CustomEvent('rumen-notification-setting', { detail: value })); void persistPreferences({ notifications: value }) }}/></label>}
+        {setting === 'ai' && <label className="setting-select">리타의 답변 방식<select value={aiStyle} onChange={(event) => { const value = event.target.value as UserPreferences['aiStyle']; setAiStyle(value); writeAccountStorage('rumen-rita-style', value); void persistPreferences({ aiStyle: value }) }}><option value="concise">간결하게</option><option value="warm">다정하게</option><option value="detailed">자세하게</option></select><small>계정에 저장되어 다른 기기에서도 같은 답변 방식을 사용합니다.</small></label>}
         {setting === 'data' && <div className="setting-note"><Database size={20}/><div><b>{demoMode ? '데모 왕국 관리' : '내 왕국 기록 보관'}</b><p>{demoMode ? '수정한 데모 기록을 처음 예시 상태로 되돌릴 수 있습니다.' : '현재 계정의 프로젝트, 퀘스트, 일정, 기록을 버전이 포함된 JSON으로 보관하고 다시 불러올 수 있습니다.'}</p>{demoMode ? <button onClick={() => { if (confirm('데모 왕국을 처음 예시 데이터로 되돌릴까요?')) { onResetDemo(); setSetting(null) } }}>데모 데이터 초기화</button> : <div className="data-actions"><button onClick={exportData}>왕국 기록 내보내기</button><label>백업 기록 가져오기<input type="file" accept="application/json,.json" onChange={(event) => void importData(event.target.files?.[0])}/></label></div>}</div></div>}
       </SettingPanel>}
     </section>

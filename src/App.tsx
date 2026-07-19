@@ -5,9 +5,10 @@ import { AppRouter } from './app/AppRouter'
 import { LoginScreen } from './components/LoginScreen'
 import { supabase } from './lib/supabase'
 import { activateKingdomAccount, deactivateKingdomAccount, useKingdomStore } from './store'
-import { accountStorageKey } from './lib/accountScope'
+import { clearDemoSessionStorage, createDemoSessionId, currentDemoSessionId, DEMO_MODE_KEY, writeAccountStorage } from './lib/accountScope'
 import { loadPreferences } from './services/settingsRepository'
 import { storeSelectedPrincessId } from './lib/princesses'
+import { configureServiceTime, resetServiceTime } from './lib/serviceTime'
 
 function App() {
   const hydrateEvents = useKingdomStore((state) => state.hydrateEvents)
@@ -20,7 +21,11 @@ function App() {
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(!supabase)
   const [authNotice, setAuthNotice] = useState('')
-  const [guestMode, setGuestMode] = useState(() => sessionStorage.getItem('rumen-guest-mode') === 'true')
+  const [demoSessionId, setDemoSessionId] = useState<string | null>(() => {
+    if (sessionStorage.getItem(DEMO_MODE_KEY) !== 'true') return null
+    return currentDemoSessionId() ?? createDemoSessionId()
+  })
+  const guestMode = Boolean(demoSessionId)
   const [dataReady, setDataReady] = useState(false)
   const activeUserIdRef = useRef<string | null>(null)
 
@@ -75,34 +80,55 @@ function App() {
     let active = true
     const prepare = async () => {
       if (session) {
-        await activateKingdomAccount(`user:${session.user.id}`)
         const preferences = await loadPreferences().catch(() => null)
         if (preferences) {
-          localStorage.setItem(accountStorageKey('rumen-princess-name'), preferences.profileName)
-          localStorage.setItem(accountStorageKey('rumen-princess-intro'), preferences.profileIntro)
-          localStorage.setItem(accountStorageKey('rumen-in-app-notifications'), preferences.notifications ? 'on' : 'off')
-          localStorage.setItem(accountStorageKey('rumen-rita-style'), preferences.aiStyle)
+          configureServiceTime(preferences.timezone, preferences.serviceDayStartsAt)
+        } else resetServiceTime()
+        await activateKingdomAccount(`user:${session.user.id}`)
+        if (preferences) {
+          writeAccountStorage('rumen-princess-name', preferences.profileName)
+          writeAccountStorage('rumen-princess-intro', preferences.profileIntro)
+          writeAccountStorage('rumen-in-app-notifications', preferences.notifications ? 'on' : 'off')
+          writeAccountStorage('rumen-rita-style', preferences.aiStyle)
           storeSelectedPrincessId(preferences.selectedPrincessId)
         }
         await Promise.all([hydrateEvents(), hydrateProjects(), hydrateMemos(), hydrateRelationshipGroups(), hydrateRelationships(), hydrateDiaries()])
         await hydrateQuests()
         if (active) setDataReady(true)
       } else if (guestMode) {
-        await activateKingdomAccount('guest', true)
+        resetServiceTime()
+        await activateKingdomAccount(`demo:${demoSessionId}`, true)
         await Promise.all([hydrateEvents(), hydrateProjects(), hydrateMemos(), hydrateRelationshipGroups(), hydrateRelationships(), hydrateDiaries()])
         await hydrateQuests()
         if (active) setDataReady(true)
       } else {
+        resetServiceTime()
         deactivateKingdomAccount()
       }
     }
     void prepare()
     return () => { active = false }
-  }, [guestMode, hydrateEvents, hydrateProjects, hydrateQuests, hydrateMemos, hydrateRelationshipGroups, hydrateRelationships, hydrateDiaries, session])
+  }, [demoSessionId, guestMode, hydrateEvents, hydrateProjects, hydrateQuests, hydrateMemos, hydrateRelationshipGroups, hydrateRelationships, hydrateDiaries, session])
 
-  const enterGuest = () => { setDataReady(false); sessionStorage.setItem('rumen-guest-mode', 'true'); setGuestMode(true) }
-  const signOut = async () => { setDataReady(false); activeUserIdRef.current = null; deactivateKingdomAccount(); if (session) await supabase?.auth.signOut(); sessionStorage.removeItem('rumen-guest-mode'); setGuestMode(false); setSession(null) }
-  const resetDemo = () => useKingdomStore.getState().resetForAccount(true)
+  const enterGuest = () => { setDataReady(false); setDemoSessionId(createDemoSessionId()) }
+  const signOut = async () => {
+    setDataReady(false)
+    activeUserIdRef.current = null
+    if (demoSessionId) clearDemoSessionStorage(`demo:${demoSessionId}`)
+    deactivateKingdomAccount()
+    resetServiceTime()
+    if (session) await supabase?.auth.signOut()
+    setDemoSessionId(null)
+    setSession(null)
+  }
+  const resetDemo = () => {
+    if (!demoSessionId) return
+    setDataReady(false)
+    clearDemoSessionStorage(`demo:${demoSessionId}`)
+    deactivateKingdomAccount()
+    resetServiceTime()
+    setDemoSessionId(createDemoSessionId())
+  }
   return <BrowserRouter>
     {!authReady
       ? <div className="auth-loading"><img src="/assets/brand/main-logo.webp" alt="루멘왕국, 공주의 하루"/><span>왕실 문을 준비하고 있어요...</span></div>

@@ -98,6 +98,15 @@ missing_buckets as (
   from (values ('rita-attachments'), ('room-backgrounds')) expected(id)
   left join storage.buckets bucket on bucket.id = expected.id
   where bucket.id is null or bucket.public
+),
+missing_functions as (
+  select expected.signature
+  from (values
+    ('public.save_relationship_with_groups(jsonb,uuid[],jsonb)'),
+    ('public.save_diary_with_snapshots(jsonb,jsonb)'),
+    ('public.create_memo_with_attachment(jsonb,jsonb)')
+  ) expected(signature)
+  where to_regprocedure(expected.signature) is null
 )
 select check_name, status, details
 from (
@@ -142,5 +151,11 @@ from (
     case when count(*) = 0 then 'PASS' else 'FAIL' end,
     case when count(*) = 0 then 'rita-attachments, room-backgrounds 정상' else string_agg(id, ', ') end
   from missing_buckets
+
+  union all
+  select 8, '원자 저장 함수',
+    case when count(*) = 0 then 'PASS' else 'FAIL' end,
+    case when count(*) = 0 then '필수 RPC 함수 정상' else string_agg(signature, ', ') end
+  from missing_functions
 ) checks
 order by sort_order;

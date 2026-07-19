@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase'
 import type { SourceAttachment } from '../types'
 import type { CalendarKind, QuestPriority, QuestType } from '../types'
+import { readAccountStorage } from '../lib/accountScope'
+import { currentServiceTimePreferences } from '../lib/serviceTime'
 
 export interface RitaMessage {
   role: 'user' | 'assistant'
@@ -50,6 +52,11 @@ export interface RitaProjectContext {
   status: string
 }
 
+function responseStyle() {
+  const value = readAccountStorage('rumen-rita-style')
+  return value === 'warm' || value === 'detailed' ? value : 'concise'
+}
+
 /** 응답을 JSON으로 파싱한다. 서버가 HTML(예: SPA fallback)을 돌려주면 원인을 알려주는 오류를 던진다. */
 async function readJson<T>(response: Response): Promise<T> {
   const text = await response.text()
@@ -71,7 +78,7 @@ export async function askRita(messages: RitaMessage[]): Promise<string> {
   const response = await fetch('/.netlify/functions/claude', {
     method: 'POST',
     headers: await authHeaders(),
-    body: JSON.stringify({ action: 'chat', messages }),
+    body: JSON.stringify({ action: 'chat', messages, responseStyle: responseStyle() }),
   })
 
   const payload = await readJson<{ reply?: string; error?: string }>(response)
@@ -80,6 +87,7 @@ export async function askRita(messages: RitaMessage[]): Promise<string> {
 }
 
 export async function interpretRitaRequest(messages: RitaMessage[], projects: RitaProjectContext[]): Promise<RitaRequestAnalysis> {
+  const { timeZone } = currentServiceTimePreferences()
   const response = await fetch('/.netlify/functions/claude', {
     method: 'POST',
     headers: await authHeaders(),
@@ -88,7 +96,8 @@ export async function interpretRitaRequest(messages: RitaMessage[], projects: Ri
       messages,
       projects,
       now: new Date().toISOString(),
-      timeZone: 'Asia/Seoul',
+      timeZone,
+      responseStyle: responseStyle(),
     }),
   })
 

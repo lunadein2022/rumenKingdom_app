@@ -64,55 +64,32 @@ export async function listDiaries(): Promise<DiaryEntry[] | null> {
   return (data as DiaryRow[]).map((row) => ({ ...fromRow(row), questSnapshots: byDiary.get(row.id) ?? [] }))
 }
 
-async function syncQuestSnapshots(diaryId: string, snapshots: DiaryQuestSnapshot[] = []) {
-  const userId = await getUserId()
-  if (!supabase || !userId) return
-  const { data: current, error: readError } = await supabase.from('diary_quest_links').select('source_quest_id').eq('diary_id', diaryId)
-  if (readError) throw readError
-  const wanted = new Set(snapshots.map((item) => item.sourceQuestId))
-  const remove = (current ?? []).filter((item) => !wanted.has(item.source_quest_id)).map((item) => item.source_quest_id)
-  if (remove.length) {
-    const { error } = await supabase.from('diary_quest_links').delete().eq('diary_id', diaryId).in('source_quest_id', remove)
-    if (error) throw error
-  }
-  if (snapshots.length) {
-    const { error } = await supabase.from('diary_quest_links').upsert(snapshots.map((item) => ({
-      user_id: userId,
-      diary_id: diaryId,
-      quest_id: isUuid(item.sourceQuestId) ? item.sourceQuestId : null,
+async function saveDiaryAtomically(entry: Partial<DiaryEntry> & Pick<DiaryEntry, 'id'>) {
+  if (!supabase) return false
+  const row = toRow(entry)
+  const { error } = await supabase.rpc('save_diary_with_snapshots', {
+    p_entry: { id: entry.id, ...row, created_at: entry.createdAt, updated_at: entry.updatedAt ?? new Date().toISOString() },
+    p_snapshots: (entry.questSnapshots ?? []).filter((item) => isUuid(item.sourceQuestId)).map((item) => ({
       source_quest_id: item.sourceQuestId,
-      snapshot_title: item.title,
-      snapshot_note: item.note ?? '',
-    })), { onConflict: 'user_id,diary_id,source_quest_id' })
-    if (error) throw error
-  }
+      title: item.title,
+      note: item.note ?? '',
+      imported_at: item.importedAt,
+    })),
+  })
+  if (error) throw error
+  return true
 }
 
 export async function createDiary(entry: DiaryEntry): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(entry.id)) return false
-  const { error } = await supabase.from('diary_entries').insert({
-    id: entry.id,
-    user_id: userId,
-    ...toRow(entry),
-    created_at: entry.createdAt,
-    updated_at: entry.updatedAt,
-  })
-  if (error) throw error
-  await syncQuestSnapshots(entry.id, entry.questSnapshots)
-  return true
+  return saveDiaryAtomically(entry)
 }
 
 export async function updateDiary(id: string, patch: Partial<DiaryEntry>): Promise<boolean> {
   const userId = await getUserId()
   if (!supabase || !userId || !isUuid(id)) return false
-  const { error } = await supabase
-    .from('diary_entries')
-    .update({ ...toRow(patch), updated_at: new Date().toISOString() })
-    .eq('id', id)
-  if (error) throw error
-  if (patch.questSnapshots !== undefined) await syncQuestSnapshots(id, patch.questSnapshots)
-  return true
+  return saveDiaryAtomically({ id, ...patch })
 }
 
 export async function removeDiary(id: string): Promise<boolean> {

@@ -252,3 +252,4 @@ body.body-overlay-open,body:has(.modal-backdrop),body:has(.search-overlay){overf
 .relationship-notes p{min-height:70px;margin:0;padding:13px;border-radius:8px;background:rgba(255,255,255,.36);font-family:'Cormorant Garamond','Noto Sans KR';font-size:15px;line-height:1.8;white-space:pre-wrap}
 @media(max-width:720px){.relationship-body .relationship-contact-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.relationship-body .relationship-extra-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.relationship-body .relationship-contact-grid,.relationship-body .relationship-extra-grid{grid-template-columns:1fr}}
+.form-error{margin:0;color:#9b4050;font-size:10px}

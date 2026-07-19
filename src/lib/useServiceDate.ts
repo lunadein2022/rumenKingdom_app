@@ -7,13 +7,16 @@ export function useServiceDate() {
   useEffect(() => {
     let timer = 0
     const schedule = () => {
+      window.clearTimeout(timer)
+      setDate(serviceDate())
       timer = window.setTimeout(() => {
         setDate(serviceDate())
         schedule()
       }, millisecondsUntilNextServiceDay())
     }
     schedule()
-    return () => window.clearTimeout(timer)
+    window.addEventListener('rumen-service-time-updated', schedule)
+    return () => { window.clearTimeout(timer); window.removeEventListener('rumen-service-time-updated', schedule) }
   }, [])
 
   return date

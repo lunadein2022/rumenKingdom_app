@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import { addDays, differenceInCalendarDays, format, parseISO, setDate } from 'date-fns'
 import { createCalendarEvent, listCalendarEvents, removeCalendarEvent, updateCalendarEvent, updateCalendarEventDate } from './services/calendarRepository'
 import { createProject as createProjectRow, listProjects, removeProject as removeProjectRow, updateProject as updateProjectRow } from './services/projectRepository'
@@ -133,7 +133,7 @@ export const calendarKinds: { id: CalendarKind; label: string }[] = [
 ]
 
 const accountData = (demo: boolean) => ({
-  selectedDate: today,
+  selectedDate: serviceDate(),
   events: demo ? [...initialEvents] : [],
   quests: demo ? [...initialQuests] : [],
   questCompletions: [],
@@ -170,6 +170,10 @@ type PersistedState = {
   diaries?: DiaryEntry[]
   questOrder?: Record<string, number>
 }
+
+type PersistedKingdomSlice = Pick<KingdomState,
+  'selectedDate' | 'events' | 'quests' | 'questCompletions' | 'projects' | 'memos' |
+  'relationships' | 'relationshipGroups' | 'diaries' | 'questOrder'>
 
 export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
   selectedDate: today,
@@ -229,12 +233,13 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     })
     void updateCalendarEventDate(id, date, nextEndDate).then(() => set({ calendarSync: { status: 'saved', message: '일정 날짜를 변경했어요.' } })).catch(() => set((state) => ({ events: previous ? state.events.map((event) => event.id === id ? previous as CalendarEvent : event) : state.events, calendarSync: { status: 'error', message: '날짜를 변경하지 못해 이전 위치로 되돌렸어요.' } })))
   },
-  hydrateEvents: async () => { try { const savedEvents = await listCalendarEvents(); if (savedEvents) set({ events: savedEvents }) } catch { set({ calendarSync: { status: 'error', message: '왕국 일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' } }) } },
-  hydrateProjects: async () => { try { const savedProjects = await listProjects(); if (savedProjects) set({ projects: savedProjects }) } catch { set({ recordSync: { status: 'error', message: '메인퀘스트를 불러오지 못했어요.' } }) } },
+  hydrateEvents: async () => { const scope = getActiveAccountScope(); try { const savedEvents = await listCalendarEvents(); if (scope === getActiveAccountScope() && savedEvents) set({ events: savedEvents }) } catch { if (scope === getActiveAccountScope()) set({ calendarSync: { status: 'error', message: '왕국 일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' } }) } },
+  hydrateProjects: async () => { const scope = getActiveAccountScope(); try { const savedProjects = await listProjects(); if (scope === getActiveAccountScope() && savedProjects) set({ projects: savedProjects }) } catch { if (scope === getActiveAccountScope()) set({ recordSync: { status: 'error', message: '메인퀘스트를 불러오지 못했어요.' } }) } },
   hydrateQuests: async () => {
+    const scope = getActiveAccountScope()
     try {
       const [savedQuests, savedCompletions] = await Promise.all([listQuests(), listQuestCompletions()])
-      if (savedQuests) set((state) => ({
+      if (scope === getActiveAccountScope() && savedQuests) set((state) => ({
         questCompletions: savedCompletions ?? [],
         quests: savedQuests.map((quest) => ({
           ...quest,
@@ -249,12 +254,12 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
           })() : {}),
         })),
       }))
-    } catch { set({ recordSync: { status: 'error', message: '퀘스트를 불러오지 못했어요.' } }) }
+    } catch { if (scope === getActiveAccountScope()) set({ recordSync: { status: 'error', message: '퀘스트를 불러오지 못했어요.' } }) }
   },
-  hydrateMemos: async () => { try { const saved = await listMemos(); if (saved) set({ memos: saved }) } catch { set({ recordSync: { status: 'error', message: '비망록을 불러오지 못했어요.' } }) } },
-  hydrateRelationships: async () => { try { const saved = await listRelationships(); if (saved) set({ relationships: saved }) } catch { set({ recordSync: { status: 'error', message: '인연록을 불러오지 못했어요.' } }) } },
-  hydrateRelationshipGroups: async () => { try { const saved = await listRelationshipGroups(); if (saved) set({ relationshipGroups: saved }) } catch { set({ recordSync: { status: 'error', message: '인연록 그룹을 불러오지 못했어요.' } }) } },
-  hydrateDiaries: async () => { try { const saved = await listDiaries(); if (saved) set({ diaries: saved }) } catch { set({ recordSync: { status: 'error', message: '다이어리를 불러오지 못했어요.' } }) } },
+  hydrateMemos: async () => { const scope = getActiveAccountScope(); try { const saved = await listMemos(); if (scope === getActiveAccountScope() && saved) set({ memos: saved }) } catch { if (scope === getActiveAccountScope()) set({ recordSync: { status: 'error', message: '비망록을 불러오지 못했어요.' } }) } },
+  hydrateRelationships: async () => { const scope = getActiveAccountScope(); try { const saved = await listRelationships(); if (scope === getActiveAccountScope() && saved) set({ relationships: saved }) } catch { if (scope === getActiveAccountScope()) set({ recordSync: { status: 'error', message: '인연록을 불러오지 못했어요.' } }) } },
+  hydrateRelationshipGroups: async () => { const scope = getActiveAccountScope(); try { const saved = await listRelationshipGroups(); if (scope === getActiveAccountScope() && saved) set({ relationshipGroups: saved }) } catch { if (scope === getActiveAccountScope()) set({ recordSync: { status: 'error', message: '인연록 그룹을 불러오지 못했어요.' } }) } },
+  hydrateDiaries: async () => { const scope = getActiveAccountScope(); try { const saved = await listDiaries(); if (scope === getActiveAccountScope() && saved) set({ diaries: saved }) } catch { if (scope === getActiveAccountScope()) set({ recordSync: { status: 'error', message: '다이어리를 불러오지 못했어요.' } }) } },
   clearCalendarSync: () => set({ calendarSync: { status: 'idle', message: '' } }),
   clearRecordSync: () => set({ recordSync: { status: 'idle', message: '' } }),
   resetForAccount: (demo) => set(accountData(demo)),
@@ -525,9 +530,10 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
   updateRelationship: async (id, relationship) => {
     const previous = get().relationships.find((item) => item.id === id)
     if (!previous) return false
-    set((state) => ({ relationships: state.relationships.map((item) => item.id === id ? { ...item, ...relationship, updatedAt: timestamp() } : item), recordSync: { status: 'saving', message: '인연록을 저장하고 있어요.' } }))
+    const next: Relationship = { ...previous, ...relationship, updatedAt: timestamp() }
+    set((state) => ({ relationships: state.relationships.map((item) => item.id === id ? next : item), recordSync: { status: 'saving', message: '인연록을 저장하고 있어요.' } }))
     try {
-      assertStoredWhenRequired(await updateRelationshipRow(id, relationship))
+      assertStoredWhenRequired(await updateRelationshipRow(id, next))
       set({ recordSync: { status: 'saved', message: '인연록을 저장했어요.' } })
       return true
     } catch {
@@ -695,9 +701,11 @@ export async function activateKingdomAccount(scope: string, demo = false) {
   const storageKey = `rumen-kingdom:v2:${safeScope}`
   if (activeKingdomStorageKey === storageKey) return
   setActiveAccountScope(safeScope)
-  useKingdomStore.persist.setOptions({ name: storageKey })
+  const storage = createJSONStorage<PersistedKingdomSlice>(() => demo ? sessionStorage : localStorage)
+  useKingdomStore.persist.setOptions({ name: storageKey, storage })
   activeKingdomStorageKey = storageKey
-  if (localStorage.getItem(storageKey)) {
+  const backingStorage = demo ? sessionStorage : localStorage
+  if (backingStorage.getItem(storageKey)) {
     try { await useKingdomStore.persist.rehydrate() }
     catch { useKingdomStore.getState().resetForAccount(demo) }
   } else useKingdomStore.getState().resetForAccount(demo)
@@ -706,7 +714,7 @@ export async function activateKingdomAccount(scope: string, demo = false) {
 export function deactivateKingdomAccount() {
   const storageKey = 'rumen-kingdom:v2:locked'
   setActiveAccountScope('locked')
-  useKingdomStore.persist.setOptions({ name: storageKey })
+  useKingdomStore.persist.setOptions({ name: storageKey, storage: createJSONStorage<PersistedKingdomSlice>(() => localStorage) })
   activeKingdomStorageKey = ''
   useKingdomStore.getState().resetForAccount(false)
   localStorage.removeItem(storageKey)
