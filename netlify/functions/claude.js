@@ -11,20 +11,62 @@ import {
 } from './ai-policy.js'
 
 const SYSTEM_PROMPT = `당신은 루멘왕국의 왕실 메이드이자 일정·프로젝트 비서인 리타입니다.
-사용자를 항상 공주님이라고 부르세요. 말투는 부드럽고 차분하며 신뢰감 있어야 합니다.
+사용자를 항상 공주님이라고 부르세요. 친근한 한국어 존댓말로 실제 대화를 나누듯 답하세요.
+말투는 부드럽고 차분하며 다정해야 하고, 왕실 비서다운 신뢰감과 가벼운 생동감이 있어야 합니다.
+공문·보고서·고객센터 같은 딱딱한 문체와 "요청을 분석한 결과", "확인되었습니다", "처리하겠습니다" 같은 상투적인 표현은 피하세요.
 정보가 불분명하거나 중요한 정보가 빠졌다면 실행을 단정하지 말고 짧게 질문하세요.
 실제 저장 결과를 받기 전에는 절대로 "추가했습니다", "저장했습니다"라고 말하지 마세요.
-답변은 기본적으로 한국어로 간결하게 작성하세요.`
+답변은 기본적으로 한국어로 1~3개의 자연스러운 문장으로 작성하세요.`
 
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 const TEXT_TYPES = new Set(['text/plain', 'text/markdown', 'text/csv'])
 const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 const responseStylePrompt = (value) => value === 'warm'
-  ? '답변은 다정하고 공감하는 어조로 작성하되 핵심은 분명하게 전달하세요.'
+  ? '공주님의 감정을 먼저 짧게 헤아리고, 리타답게 다정하고 자연스럽게 답하되 핵심은 분명하게 전달하세요.'
   : value === 'detailed'
-    ? '답변은 필요한 배경과 다음 행동을 포함해 자세히 작성하세요.'
-    : '답변은 핵심만 간결하게 작성하세요.'
+    ? '리타의 친근한 대화체를 유지하면서 필요한 배경과 다음 행동을 포함해 자세히 작성하세요.'
+    : '짧더라도 명령문이나 보고서처럼 딱딱해지지 않게, 리타의 친근한 대화체로 핵심만 답하세요.'
+
+const REQUEST_ANALYSIS_SCHEMA = {
+  type: 'object',
+  properties: {
+    kind: { type: 'string', enum: ['project', 'quest', 'calendar', 'relationship', 'memo', 'clarify', 'chat'] },
+    title: { type: 'string' },
+    goal: { type: 'string' },
+    description: { type: 'string' },
+    name: { type: 'string' },
+    organization: { type: 'string' },
+    position: { type: 'string' },
+    phone: { type: 'string' },
+    email: { type: 'string' },
+    address: { type: 'string' },
+    social: { type: 'string' },
+    memo: { type: 'string' },
+    content: { type: 'string' },
+    reply: { type: 'string' },
+    startDate: { type: 'string' },
+    endDate: { type: 'string' },
+    dueDate: { type: 'string' },
+    startTime: { type: 'string' },
+    endTime: { type: 'string' },
+    dueTime: { type: 'string' },
+    priority: { type: 'string', enum: ['high', 'medium', 'low'] },
+    questType: { type: 'string', enum: ['daily', 'sub'] },
+    projectId: { type: 'string' },
+    calendarKind: { type: 'string', enum: ['royal', 'personal', 'work', 'project', 'anniversary'] },
+    tags: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+    allDay: { type: 'boolean' },
+    important: { type: 'boolean' },
+    needsProjectSelection: { type: 'boolean' },
+  },
+  required: [
+    'kind', 'title', 'goal', 'description', 'name', 'organization', 'position', 'phone', 'email', 'address',
+    'social', 'memo', 'content', 'reply', 'startDate', 'endDate', 'dueDate', 'startTime', 'endTime', 'dueTime',
+    'priority', 'questType', 'projectId', 'calendarKind', 'tags', 'allDay', 'important', 'needsProjectSelection',
+  ],
+  additionalProperties: false,
+}
 
 const json = (statusCode, body, headers = {}) => ({
   statusCode,
@@ -159,7 +201,7 @@ export const handler = async (event) => {
       },
     }
   } catch (error) {
-    if (reserved && requestId) await releaseReservation(serviceClient, userId, requestId, 'request_failed')
+    if (reserved && requestId) await releaseReservation(serviceClient, userId, requestId, safeFailureCode(error))
     console.error('Claude function error', error)
     const requestedStatus = Number(error?.statusCode)
     const statusCode = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus <= 599 ? requestedStatus : 500
@@ -192,6 +234,11 @@ function hashClientIp(event, secret) {
 async function releaseReservation(client, userId, requestId, reason) {
   const { error } = await client.rpc('release_ai_usage', { p_user_id: userId, p_request_id: requestId, p_reason: reason })
   if (error) console.error('Failed to release AI usage', requestId, error.message)
+}
+
+function safeFailureCode(error) {
+  const value = String(error?.code || 'request_failed').toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 80)
+  return value || 'request_failed'
 }
 
 async function interpretRequest(input, apiKey, model, metering) {
@@ -228,18 +275,15 @@ async function interpretRequest(input, apiKey, model, metering) {
 연도가 생략된 날짜는 현재 시각 기준 가장 가까운 미래 날짜를 YYYY-MM-DD로 계산하세요.
 저장을 완료했다고 말하지 말고 초안을 확인해 달라는 reply를 작성하세요.
 
-반드시 아래 중 하나의 JSON 객체만 출력하세요. 마크다운은 사용하지 마세요.
-{"kind":"project","title":"","goal":"","description":"","startDate":"YYYY-MM-DD 또는 빈 문자열","dueDate":"YYYY-MM-DD 또는 빈 문자열","priority":"high|medium|low","tags":[],"reply":""}
-{"kind":"quest","title":"","description":"","questType":"daily|sub","dueDate":"YYYY-MM-DD 또는 빈 문자열","dueTime":"HH:mm 또는 빈 문자열","priority":"high|medium|low","tags":[],"projectId":"후보 id 또는 빈 문자열","needsProjectSelection":false,"reply":""}
-{"kind":"calendar","title":"","description":"","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD 또는 빈 문자열","startTime":"HH:mm 또는 빈 문자열","endTime":"HH:mm 또는 빈 문자열","allDay":true,"calendarKind":"royal|personal|work|project|anniversary","important":false,"reply":""}
-{"kind":"relationship","name":"","organization":"","position":"","phone":"","email":"","address":"","social":"","memo":"","tags":[],"reply":""}
-{"kind":"memo","title":"","content":"","tags":[]}
-{"kind":"clarify","reply":"짧은 확인 질문"}
-{"kind":"chat","reply":"일반 답변"}`
+모든 필드를 반환하세요. 현재 kind에서 사용하지 않는 문자열은 빈 문자열, tags는 빈 배열, 불리언은 false로 두세요.
+사용하지 않는 enum 필드는 priority=medium, questType=daily, calendarKind=personal로 두세요.
+
+출력은 제공된 JSON 스키마를 정확히 따르세요. 마크다운이나 JSON 밖의 문장은 사용하지 마세요.`
 
   const result = await callClaude(apiKey, model, {
     system: `${SYSTEM_PROMPT}\n${responseStylePrompt(input.responseStyle)}\n\n${instruction}`,
-    max_tokens: 900,
+    max_tokens: 1200,
+    output_config: { format: { type: 'json_schema', schema: REQUEST_ANALYSIS_SCHEMA } },
     messages,
   }, metering)
   const parsed = parseClaudeJson(textFromClaude(result))
@@ -397,8 +441,12 @@ async function callClaude(apiKey, model, body, metering) {
   })
   const result = await response.json()
   if (!response.ok) {
-    console.error('Anthropic API error', response.status, result?.error?.type)
-    throw Object.assign(new Error('리타가 파일을 분석하지 못했습니다. 잠시 후 다시 시도해 주세요.'), { statusCode: 502 })
+    const providerType = String(result?.error?.type || `http_${response.status}`).toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 50)
+    console.error('Anthropic API error', response.status, providerType)
+    throw Object.assign(new Error('리타가 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'), {
+      statusCode: 502,
+      code: `anthropic_${providerType}`,
+    })
   }
   metering.claudeUsage = addUsage(metering.claudeUsage, result.usage)
   return result
@@ -417,8 +465,15 @@ function parseClaudeJson(value) {
   const cleaned = String(value).replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
   try { return JSON.parse(cleaned) } catch {
     const match = cleaned.match(/\{[\s\S]*\}/)
-    if (!match) throw new Error('리타의 분석 결과 형식을 읽지 못했습니다.')
-    return JSON.parse(match[0])
+    try {
+      if (match) return JSON.parse(match[0])
+    } catch {
+      // Fall through to the sanitized error below.
+    }
+    throw Object.assign(new Error('리타의 분석 결과 형식을 읽지 못했어요. 다시 한번 말씀해 주세요.'), {
+      statusCode: 502,
+      code: 'invalid_structured_output',
+    })
   }
 }
 

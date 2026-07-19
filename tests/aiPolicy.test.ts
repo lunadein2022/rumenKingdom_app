@@ -21,6 +21,8 @@ test('model routing keeps basic work on Haiku and detailed work on Sonnet', () =
   const models = { haiku: 'claude-haiku', sonnet: 'claude-sonnet' }
   assert.equal(modelForRequest({ action: 'chat', responseStyle: 'concise' }, models), models.haiku)
   assert.equal(modelForRequest({ action: 'chat', responseStyle: 'detailed' }, models), models.sonnet)
+  assert.equal(modelForRequest({ action: 'interpret-request', responseStyle: 'concise' }, models), models.haiku)
+  assert.equal(modelForRequest({ action: 'interpret-request', responseStyle: 'detailed' }, models), models.sonnet)
   assert.equal(modelForRequest({ action: 'analyze-attachment' }, models), models.sonnet)
 })
 

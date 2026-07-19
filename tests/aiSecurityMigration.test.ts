@@ -28,3 +28,14 @@ test('AI handler enforces body and attachment validation before provider calls',
   assert.match(handler, /validateAiInput\(parsed\)/)
   assert.match(handler, /MAX_ATTACHMENT_BYTES/)
 })
+
+test('AI handler requires schema-valid request interpretation and records safe failure codes', () => {
+  assert.match(handler, /output_config: \{ format: \{ type: 'json_schema', schema: REQUEST_ANALYSIS_SCHEMA \} \}/)
+  assert.match(handler, /safeFailureCode\(error\)/)
+  assert.match(handler, /code: 'invalid_structured_output'/)
+})
+
+test('Rita persona explicitly avoids formal report language', () => {
+  assert.match(handler, /공문·보고서·고객센터 같은 딱딱한 문체/)
+  assert.match(handler, /리타의 친근한 대화체/)
+})
