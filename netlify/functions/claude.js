@@ -1,6 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
+import { createHmac, randomUUID } from 'node:crypto'
 import mammoth from 'mammoth'
-import { estimateClaudeCostUsd, modelForRequest, pointsForRequest } from './ai-policy.js'
+import {
+  estimateClaudeCostUsd,
+  MAX_AI_REQUEST_BYTES,
+  MAX_ATTACHMENT_BYTES,
+  modelForRequest,
+  pointsForRequest,
+  validateAiInput,
+} from './ai-policy.js'
 
 const SYSTEM_PROMPT = `당신은 루멘왕국의 왕실 메이드이자 일정·프로젝트 비서인 리타입니다.
 사용자를 항상 공주님이라고 부르세요. 말투는 부드럽고 차분하며 신뢰감 있어야 합니다.
@@ -8,7 +16,6 @@ const SYSTEM_PROMPT = `당신은 루멘왕국의 왕실 메이드이자 일정·
 실제 저장 결과를 받기 전에는 절대로 "추가했습니다", "저장했습니다"라고 말하지 마세요.
 답변은 기본적으로 한국어로 간결하게 작성하세요.`
 
-const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 const TEXT_TYPES = new Set(['text/plain', 'text/markdown', 'text/csv'])
 const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -25,8 +32,24 @@ const json = (statusCode, body, headers = {}) => ({
   body: JSON.stringify(body),
 })
 
+// Netlify applies this before invoking the function, so unauthenticated floods
+// are limited without consuming a Supabase authentication request.
+export const config = {
+  path: '/.netlify/functions/claude',
+  rateLimit: { windowLimit: 60, windowSize: 60, aggregateBy: ['ip'] },
+}
+
 export const handler = async (event) => {
   if (event.httpMethod !== 'POST') return json(405, { error: 'Method not allowed' })
+
+  const contentType = String(event.headers['content-type'] ?? event.headers['Content-Type'] ?? '').toLowerCase()
+  if (!contentType.includes('application/json')) return json(415, { error: 'Content-Type은 application/json이어야 합니다.' })
+  const rawBody = event.isBase64Encoded
+    ? Buffer.from(String(event.body ?? ''), 'base64').toString('utf8')
+    : String(event.body ?? '')
+  if (Buffer.byteLength(rawBody, 'utf8') > MAX_AI_REQUEST_BYTES) {
+    return json(413, { error: 'AI 요청 본문이 허용 크기를 초과했습니다.' })
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   const fallbackModel = process.env.CLAUDE_MODEL
@@ -36,9 +59,14 @@ export const handler = async (event) => {
   }
   const supabaseUrl = process.env.SUPABASE_URL
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const rateLimitSecret = process.env.AI_RATE_LIMIT_HMAC_SECRET
   if (!apiKey) return json(503, { error: 'ANTHROPIC_API_KEY가 설정되지 않았습니다.' })
   if (!models.haiku || !models.sonnet) return json(503, { error: 'Claude 모델 환경 변수가 설정되지 않았습니다.' })
   if (!supabaseUrl || !supabaseAnonKey) return json(503, { error: 'Supabase 인증 환경 변수가 설정되지 않았습니다.' })
+  if (!supabaseServiceRoleKey || !rateLimitSecret || Buffer.byteLength(rateLimitSecret, 'utf8') < 32) {
+    return json(503, { error: 'AI 서버 보안 환경 변수가 설정되지 않았습니다.' })
+  }
 
   const authorization = event.headers.authorization ?? event.headers.Authorization
   const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null
@@ -51,22 +79,41 @@ export const handler = async (event) => {
   const { data: authData, error: authError } = await authClient.auth.getUser(token)
   if (authError || !authData.user) return json(401, { error: '로그인 세션이 유효하지 않습니다.' })
 
+  const serviceClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+  const userId = authData.user.id
+  const ipHash = hashClientIp(event, rateLimitSecret)
+  const { error: rateLimitError } = await serviceClient.rpc('check_ai_rate_limit', {
+    p_user_id: userId,
+    p_ip_hash: ipHash,
+  })
+  if (rateLimitError) {
+    const error = aiControlError(rateLimitError)
+    return json(error.statusCode, { error: error.message })
+  }
+
   let requestId
   let reserved = false
   try {
-    const input = JSON.parse(event.body ?? '{}')
-    requestId = crypto.randomUUID()
+    let parsed
+    try { parsed = JSON.parse(rawBody) } catch {
+      throw Object.assign(new Error('올바른 JSON 요청이 필요합니다.'), { statusCode: 400 })
+    }
+    const input = validateAiInput(parsed)
+    requestId = randomUUID()
     const model = modelForRequest(input, models)
     const points = pointsForRequest(input)
     const requestType = input.action === 'analyze-attachment'
       ? `attachment:${String(input.intent || 'document')}`
       : String(input.action || 'chat')
-    const { data: allowance, error: reserveError } = await authClient.rpc('reserve_ai_usage', {
+    const { data: allowance, error: reserveError } = await serviceClient.rpc('reserve_ai_usage', {
+      p_user_id: userId,
       p_request_id: requestId,
       p_request_type: requestType,
       p_points: points,
     })
-    if (reserveError) throw allowanceError(reserveError)
+    if (reserveError) throw aiControlError(reserveError)
     reserved = true
 
     const metering = { claudeUsage: null, openAiUsage: null }
@@ -76,14 +123,15 @@ export const handler = async (event) => {
     else response = await chat(input, apiKey, model, metering)
 
     if (response.statusCode >= 400) {
-      await releaseReservation(authClient, requestId, `http_${response.statusCode}`)
+      await releaseReservation(serviceClient, userId, requestId, `http_${response.statusCode}`)
       reserved = false
       return response
     }
 
     const usage = metering.claudeUsage ?? {}
     const estimatedCostUsd = estimateClaudeCostUsd(model, usage)
-    const { error: finalizeError } = await authClient.rpc('finalize_ai_usage', {
+    const { error: finalizeError } = await serviceClient.rpc('finalize_ai_usage', {
+      p_user_id: userId,
       p_request_id: requestId,
       p_model: model,
       p_input_tokens: usage.input_tokens ?? 0,
@@ -111,7 +159,7 @@ export const handler = async (event) => {
       },
     }
   } catch (error) {
-    if (reserved && requestId) await releaseReservation(authClient, requestId, 'request_failed')
+    if (reserved && requestId) await releaseReservation(serviceClient, userId, requestId, 'request_failed')
     console.error('Claude function error', error)
     const requestedStatus = Number(error?.statusCode)
     const statusCode = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus <= 599 ? requestedStatus : 500
@@ -119,8 +167,11 @@ export const handler = async (event) => {
   }
 }
 
-function allowanceError(error) {
+function aiControlError(error) {
   const message = String(error?.message ?? '')
+  if (message.includes('AI_RATE_')) {
+    return Object.assign(new Error('리타 AI 요청이 너무 많아요. 잠시 후 다시 이용해 주세요.'), { statusCode: 429 })
+  }
   if (message.includes('AI_DAILY_REQUEST_LIMIT_REACHED')) {
     return Object.assign(new Error('오늘의 리타 AI 요청 한도에 도달했어요. 내일 다시 이용해 주세요.'), { statusCode: 429 })
   }
@@ -131,8 +182,15 @@ function allowanceError(error) {
   return Object.assign(new Error('AI 사용량을 확인할 수 없어 요청을 안전하게 중단했어요.'), { statusCode: 503 })
 }
 
-async function releaseReservation(client, requestId, reason) {
-  const { error } = await client.rpc('release_ai_usage', { p_request_id: requestId, p_reason: reason })
+function hashClientIp(event, secret) {
+  const headers = event.headers ?? {}
+  const forwarded = String(headers['x-forwarded-for'] ?? headers['X-Forwarded-For'] ?? '').split(',')[0]
+  const ip = String(headers['x-nf-client-connection-ip'] ?? headers['X-Nf-Client-Connection-Ip'] ?? forwarded ?? 'unknown').trim() || 'unknown'
+  return createHmac('sha256', secret).update(ip).digest('hex')
+}
+
+async function releaseReservation(client, userId, requestId, reason) {
+  const { error } = await client.rpc('release_ai_usage', { p_user_id: userId, p_request_id: requestId, p_reason: reason })
   if (error) console.error('Failed to release AI usage', requestId, error.message)
 }
 

@@ -41,7 +41,9 @@ expected_columns(table_name, column_name) as (
     ('room_backgrounds', 'room_key'), ('room_backgrounds', 'storage_path'),
     ('ai_usage_accounts', 'tier'), ('ai_usage_accounts', 'signup_bonus_remaining'),
     ('ai_usage_ledger', 'request_id'), ('ai_usage_ledger', 'points'),
-    ('ai_usage_ledger', 'status'), ('ai_usage_ledger', 'estimated_cost_usd')
+    ('ai_usage_ledger', 'status'), ('ai_usage_ledger', 'estimated_cost_usd'),
+    ('ai_rate_limit_events', 'user_id'), ('ai_rate_limit_events', 'ip_hash'),
+    ('ai_rate_limit_events', 'occurred_at')
 ),
 missing_columns as (
   select expected.table_name, expected.column_name
@@ -73,7 +75,7 @@ expected_tables(table_name) as (
     ('diary_quest_links'), ('memos'), ('relationships'), ('attachments'),
     ('notifications'), ('reminders'), ('user_settings'), ('room_backgrounds'),
     ('quest_completion_logs'), ('relationship_groups'), ('relationship_group_members'),
-    ('ai_usage_accounts'), ('ai_usage_ledger')
+    ('ai_usage_accounts'), ('ai_usage_ledger'), ('ai_rate_limit_events')
 ),
 disabled_rls as (
   select expected.table_name
@@ -109,12 +111,33 @@ missing_functions as (
     ('public.save_relationship_with_groups(jsonb,uuid[],jsonb)'),
     ('public.save_diary_with_snapshots(jsonb,jsonb)'),
     ('public.create_memo_with_attachment(jsonb,jsonb)'),
-    ('public.reserve_ai_usage(uuid,text,integer)'),
-    ('public.finalize_ai_usage(uuid,text,integer,integer,integer,integer,numeric,jsonb)'),
-    ('public.release_ai_usage(uuid,text)'),
+    ('public.check_ai_rate_limit(uuid,text)'),
+    ('public.reserve_ai_usage(uuid,uuid,text,integer)'),
+    ('public.finalize_ai_usage(uuid,uuid,text,integer,integer,integer,integer,numeric,jsonb)'),
+    ('public.release_ai_usage(uuid,uuid,text)'),
     ('public.get_my_ai_usage()')
   ) expected(signature)
   where to_regprocedure(expected.signature) is null
+),
+insecure_ai_overloads as (
+  select signature
+  from (values
+    ('public.reserve_ai_usage(uuid,text,integer)'),
+    ('public.finalize_ai_usage(uuid,text,integer,integer,integer,integer,numeric,jsonb)'),
+    ('public.release_ai_usage(uuid,text)')
+  ) legacy(signature)
+  where to_regprocedure(legacy.signature) is not null
+),
+invalid_ai_privileges as (
+  select signature
+  from (values
+    ('public.check_ai_rate_limit(uuid,text)'),
+    ('public.reserve_ai_usage(uuid,uuid,text,integer)'),
+    ('public.finalize_ai_usage(uuid,uuid,text,integer,integer,integer,integer,numeric,jsonb)'),
+    ('public.release_ai_usage(uuid,uuid,text)')
+  ) protected(signature)
+  where has_function_privilege('authenticated', to_regprocedure(protected.signature), 'EXECUTE')
+     or not has_function_privilege('service_role', to_regprocedure(protected.signature), 'EXECUTE')
 )
 select check_name, status, details
 from (
@@ -165,5 +188,12 @@ from (
     case when count(*) = 0 then 'PASS' else 'FAIL' end,
     case when count(*) = 0 then '필수 RPC 함수 정상' else string_agg(signature, ', ') end
   from missing_functions
+
+  union all
+  select 9, 'AI 서버 전용 권한',
+    case when (select count(*) from insecure_ai_overloads) = 0 and count(*) = 0 then 'PASS' else 'FAIL' end,
+    case when (select count(*) from insecure_ai_overloads) = 0 and count(*) = 0 then '변경 RPC는 service_role 전용'
+      else concat('legacy=', (select count(*) from insecure_ai_overloads), ', invalid grants=', count(*)) end
+  from invalid_ai_privileges
 ) checks
 order by sort_order;
