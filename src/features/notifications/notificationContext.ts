@@ -8,6 +8,9 @@ export type KingdomNotification = {
   read: boolean
   createdAt: string
   remoteId?: string
+  severity?: 'info' | 'warning' | 'critical'
+  actionLabel?: string
+  actionUrl?: string
 }
 
 export type NotificationCenterValue = {

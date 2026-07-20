@@ -8,11 +8,13 @@ import {
   markAccountNotificationsRead,
   type AccountNotification,
 } from '../../services/notificationService'
+import { useRuntimeConfig } from '../runtime/RuntimeConfig'
 import { NotificationCenterContext, type KingdomNotification } from './notificationContext'
 
 export function NotificationCenterProvider({ demoMode, children }: { demoMode: boolean; children: ReactNode }) {
   const { events, quests, memos } = useKingdomStore()
   const serviceToday = useServiceDate()
+  const { announcements } = useRuntimeConfig()
   const storage = accountStorage()
   const readKey = accountStorageKey('rumen-read-notifications')
   const [remoteNotifications, setRemoteNotifications] = useState<AccountNotification[]>([])
@@ -46,6 +48,20 @@ export function NotificationCenterProvider({ demoMode, children }: { demoMode: b
   }, [demoMode])
 
   const notifications = useMemo<KingdomNotification[]>(() => [
+    ...announcements.map((item) => {
+      const id = `announcement:${item.id}`
+      return {
+        id,
+        title: item.title,
+        summary: item.message,
+        path: '/',
+        read: readLocalIds.includes(id),
+        createdAt: item.updatedAt || item.startsAt,
+        severity: item.severity,
+        actionLabel: item.actionLabel,
+        actionUrl: item.actionUrl,
+      }
+    }),
     ...remoteNotifications.map((item) => ({
       id: `server:${item.id}`,
       remoteId: item.id,
@@ -91,7 +107,7 @@ export function NotificationCenterProvider({ demoMode, children }: { demoMode: b
         createdAt: memo.createdAt,
       }
     }),
-  ].sort((a, b) => Number(a.read) - Number(b.read) || b.createdAt.localeCompare(a.createdAt)), [events, memos, quests, readLocalIds, remoteNotifications, serviceToday])
+  ].sort((a, b) => Number(a.read) - Number(b.read) || b.createdAt.localeCompare(a.createdAt)), [announcements, events, memos, quests, readLocalIds, remoteNotifications, serviceToday])
 
   const unreadCount = notificationsEnabled ? notifications.filter((item) => !item.read).length : 0
 
