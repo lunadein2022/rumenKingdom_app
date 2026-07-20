@@ -120,7 +120,7 @@ export async function getRitaUsage(): Promise<RitaUsage> {
 
 export async function getRitaActivity(): Promise<RitaActivity> {
   if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
-  const { data, error } = await supabase.rpc('get_my_ai_activity', { p_limit: 30 })
+  const { data, error } = await supabase.rpc('get_my_ai_activity', { p_limit: 100 })
   if (error) throw new Error('리타 AI 이용 기록을 불러오지 못했습니다.')
   return data as RitaActivity
 }

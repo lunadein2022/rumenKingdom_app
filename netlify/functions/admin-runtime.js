@@ -78,9 +78,9 @@ export async function handler(event) {
 async function readRuntime(client, role) {
   const [{ data: runtime, error }, { data: announcements }, { data: catalog }, { data: releases }] = await Promise.all([
     client.from('app_runtime_config').select('*').eq('environment', 'production').single(),
-    client.from('app_announcements').select('*').order('created_at', { ascending: false }).limit(50),
+    client.from('app_announcements').select('*').order('created_at', { ascending: false }).limit(100),
     client.from('app_catalog_items').select('*').order('sort_order').limit(100),
-    client.from('app_releases').select('*').order('published_at', { ascending: false }).limit(50),
+    client.from('app_releases').select('*').order('published_at', { ascending: false }).limit(100),
   ])
   if (error) throw error
   return { role, runtime, announcements: announcements ?? [], catalog: catalog ?? [], releases: releases ?? [] }

@@ -9,6 +9,7 @@ import { PrincessPortrait } from './PrincessPortrait'
 import { useSelectedPrincess } from '../lib/princesses'
 import { useRitaUsage } from '../lib/useRitaUsage'
 import { useNotificationCenter, type KingdomNotification } from '../features/notifications/notificationContext'
+import { Pagination, usePaginatedList } from './Pagination'
 
 export function AppHeader({ demoMode, isAdmin, page, onMenu, onSignOut }: { demoMode: boolean; isAdmin: boolean; page: PageId; onMenu: () => void; onSignOut: () => Promise<void> }) {
   const navigate = useNavigate()
@@ -31,7 +32,8 @@ export function AppHeader({ demoMode, isAdmin, page, onMenu, onSignOut }: { demo
     ...memos.map((item) => ({ id: item.id, title: item.title, meta: '비망록', path: `/library/memos/${item.id}` })),
     ...relationships.map((item) => ({ id: item.id, title: item.name, meta: `${item.organization || '소속 미지정'} · 인연록`, path: `/library/relationships/${item.id}` })),
     ...diaries.map((item) => ({ id: item.id, title: item.title || item.date, meta: `${item.date} · 다이어리`, path: `/diary/${item.date}` })),
-  ].filter((item) => !normalized || `${item.title} ${item.meta}`.toLocaleLowerCase('ko').includes(normalized)).slice(0, 12), [diaries, events, memos, normalized, projects, quests, relationships])
+  ].filter((item) => !normalized || `${item.title} ${item.meta}`.toLocaleLowerCase('ko').includes(normalized)), [diaries, events, memos, normalized, projects, quests, relationships])
+  const searchPage = usePaginatedList(results, normalized)
 
   const selectResult = (result: { path: string; date?: string }) => {
     if (result.date) setSelectedDate(result.date)
@@ -70,6 +72,6 @@ export function AppHeader({ demoMode, isAdmin, page, onMenu, onSignOut }: { demo
         <div className="notification-popover-actions">{unreadCount > 0 && <button className="notification-read-all" onClick={markAllRead}>모두 읽음</button>}<button className="notification-view-all" onClick={() => { setNotificationOpen(false); navigate('/notifications') }}>전체 알림 보기</button></div>
       </aside>}
     </header>
-    {searchOpen && <BodyAreaOverlay className="search-overlay" onClose={() => setSearchOpen(false)}><section className="global-search glass-panel" role="dialog" aria-modal="true" aria-labelledby="global-search-title" onMouseDown={(event) => event.stopPropagation()}><div className="global-search-input"><Search size={20}/><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="일정, 퀘스트, 인연, 메모 검색" aria-label="전체 검색"/><button onClick={() => setSearchOpen(false)} aria-label="검색 닫기"><X size={18}/></button></div><h2 id="global-search-title" className="sr-only">전체 검색</h2><div className="global-results">{normalized ? results.length ? results.map((result) => <button key={`${result.path}-${result.id}`} onClick={() => selectResult(result)}><b>{result.title}</b><small>{result.meta}</small></button>) : <p>검색 결과가 없습니다.</p> : <p>찾고 싶은 기록의 제목이나 내용을 입력하세요.</p>}</div></section></BodyAreaOverlay>}
+    {searchOpen && <BodyAreaOverlay className="search-overlay" onClose={() => setSearchOpen(false)}><section className="global-search glass-panel" role="dialog" aria-modal="true" aria-labelledby="global-search-title" onMouseDown={(event) => event.stopPropagation()}><div className="global-search-input"><Search size={20}/><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="일정, 퀘스트, 인연, 메모 검색" aria-label="전체 검색"/><button onClick={() => setSearchOpen(false)} aria-label="검색 닫기"><X size={18}/></button></div><h2 id="global-search-title" className="sr-only">전체 검색</h2><div className="global-results">{normalized ? results.length ? searchPage.visibleItems.map((result) => <button key={`${result.path}-${result.id}`} onClick={() => selectResult(result)}><b>{result.title}</b><small>{result.meta}</small></button>) : <p>검색 결과가 없습니다.</p> : <p>찾고 싶은 기록의 제목이나 내용을 입력하세요.</p>}</div>{normalized && <Pagination page={searchPage.page} totalItems={searchPage.totalItems} onPageChange={searchPage.setPage} label="통합검색 결과"/>}</section></BodyAreaOverlay>}
   </>
 }

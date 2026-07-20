@@ -1,8 +1,9 @@
-import { BookOpen, ChevronLeft, ChevronRight, Pencil, Plus, Search, Star, Trash2, Users } from 'lucide-react'
+import { BookOpen, ChevronRight, Pencil, Plus, Search, Star, Trash2, Users } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { BackButton } from '../../components/BackButton'
 import { EmptyState, SectionTitle } from '../../components/Common'
+import { PAGE_SIZE, Pagination, usePaginatedList } from '../../components/Pagination'
 import { projectProgress, useKingdomStore } from '../../store'
 import type { LibraryCategory, LibraryRecord, ProjectStatus, QuestPriority, QuestStatus } from '../../types'
 import { buildLibraryRecords, libraryCategories, recordMatchesCategory, recordPath } from './libraryData'
@@ -44,7 +45,7 @@ export function LibraryCategoryPage() {
   const tag = params.get('tag') ?? ''
   const sort = params.get('sort') ?? 'updated'
   const favoritesOnly = params.get('favorite') === '1'
-  const pageSize = Math.max(5, Math.min(50, Number(params.get('size')) || 12))
+  const pageSize = PAGE_SIZE
   const requestedPage = Math.max(1, Number(params.get('page')) || 1)
   const scoped = records.filter((record) => recordMatchesCategory(record, selectedCategory))
   const tags = Array.from(new Set(scoped.flatMap((record) => record.tags))).filter(Boolean)
@@ -71,9 +72,9 @@ export function LibraryCategoryPage() {
     <BackButton fallback="/library" label="도서관으로"/>
     <section className="library-category-head panel glass-panel"><img src={config.image} alt=""/><div><span className="eyebrow">ROYAL ARCHIVE</span><h2>{config.title}</h2><p>{config.description} · {scoped.length}개의 기록</p></div></section>
     {selectedCategory === 'relationships' && <RelationshipGroupShelf selected={relationshipGroup} onSelect={(value) => updateParam('group', value)}/>}
-    <section className="library-tools panel glass-panel"><label><Search size={17}/><input value={query} onChange={(event) => updateParam('q', event.target.value)} placeholder="제목, 상세 내용, 메모, 태그 검색" aria-label="기록 검색"/></label><select value={tag} onChange={(event) => updateParam('tag', event.target.value)} aria-label="태그 필터"><option value="">모든 태그</option>{tags.map((item) => <option key={item} value={item}>{item}</option>)}</select><select value={sort} onChange={(event) => updateParam('sort', event.target.value)} aria-label="정렬"><option value="updated">최근 수정순</option><option value="newest">최신순</option><option value="oldest">오래된순</option><option value="name">이름순</option></select><select value={pageSize} onChange={(event) => updateParam('size', event.target.value)} aria-label="페이지당 기록 수"><option value="10">10개씩</option><option value="12">12개씩</option><option value="20">20개씩</option><option value="50">50개씩</option></select>{selectedCategory !== 'favorites' && <button className={favoritesOnly ? 'active' : ''} onClick={() => updateParam('favorite', favoritesOnly ? '' : '1')}><Star size={15}/> 즐겨찾기</button>}{selectedCategory === 'relationships' && <button className="primary" onClick={() => navigate('/library/relationships/new')}>새 인연</button>}{selectedCategory === 'memos' && <button className="primary" onClick={() => navigate('/library/memos/new')}>새 메모</button>}</section>
+    <section className="library-tools panel glass-panel"><label><Search size={17}/><input value={query} onChange={(event) => updateParam('q', event.target.value)} placeholder="제목, 상세 내용, 메모, 태그 검색" aria-label="기록 검색"/></label><select value={tag} onChange={(event) => updateParam('tag', event.target.value)} aria-label="태그 필터"><option value="">모든 태그</option>{tags.map((item) => <option key={item} value={item}>{item}</option>)}</select><select value={sort} onChange={(event) => updateParam('sort', event.target.value)} aria-label="정렬"><option value="updated">최근 수정순</option><option value="newest">최신순</option><option value="oldest">오래된순</option><option value="name">이름순</option></select><span className="library-page-size">20개씩 표시</span>{selectedCategory !== 'favorites' && <button className={favoritesOnly ? 'active' : ''} onClick={() => updateParam('favorite', favoritesOnly ? '' : '1')}><Star size={15}/> 즐겨찾기</button>}{selectedCategory === 'relationships' && <button className="primary" onClick={() => navigate('/library/relationships/new')}>새 인연</button>}{selectedCategory === 'memos' && <button className="primary" onClick={() => navigate('/library/memos/new')}>새 메모</button>}</section>
     <section className="library-record-list panel glass-panel">{visible.length ? visible.map((record) => <article key={record.id}><button className="record-main" onClick={() => navigate(recordPath(record))}><span className="record-type">{typeLabel[record.type]}</span><span><b>{record.title}</b><small>{record.summary}</small><em>{record.tags.join(' · ') || '태그 없음'}</em></span><ChevronRight size={17}/></button><button className={record.favorite ? 'favorite active' : 'favorite'} aria-label={`${record.title} 즐겨찾기`} onClick={() => store.toggleLibraryFavorite(record.type, record.sourceId)}><Star size={16} fill={record.favorite ? 'currentColor' : 'none'}/></button><button aria-label={`${record.title} 열기`} onClick={() => navigate(recordPath(record))}><Pencil size={16}/></button><button className="danger-icon" aria-label={`${record.title} 삭제`} onClick={() => remove(record)}><Trash2 size={16}/></button></article>) : <EmptyState title="조건에 맞는 기록이 없어요" description="검색어나 필터를 바꿔 보세요."/>}</section>
-    {filtered.length > pageSize && <nav className="library-pagination panel glass-panel" aria-label="기록 페이지"><button disabled={page <= 1} onClick={() => updateParam('page', String(page - 1))}><ChevronLeft size={15}/> 이전</button><span>{page} / {totalPages} 페이지 · 총 {filtered.length}개</span><button disabled={page >= totalPages} onClick={() => updateParam('page', String(page + 1))}>다음 <ChevronRight size={15}/></button></nav>}
+    <Pagination page={page} totalItems={filtered.length} onPageChange={(next) => updateParam('page', String(next))} label={config.title}/>
   </div>
 }
 
@@ -155,6 +156,7 @@ function sortRecords(a: LibraryRecord, b: LibraryRecord, sort: string) { if (sor
 function RelationshipGroupShelf({ selected, onSelect }: { selected: string; onSelect: (value: string) => void }) {
   const { relationships, relationshipGroups, addRelationshipGroup, updateRelationshipGroup, deleteRelationshipGroup } = useKingdomStore()
   const [name, setName] = useState('')
+  const groupPage = usePaginatedList(relationshipGroups, 'library-relationship-groups')
   const create = async () => {
     const id = await addRelationshipGroup(name)
     if (id) { setName(''); onSelect(id) }
@@ -169,6 +171,7 @@ function RelationshipGroupShelf({ selected, onSelect }: { selected: string; onSe
   }
   return <section className="relationship-groups panel glass-panel">
     <header><span><Users size={18}/><b>나의 인연 그룹</b><small>한 사람을 여러 그룹에 보관할 수 있어요.</small></span><div><input value={name} onChange={(event) => setName(event.target.value)} placeholder="새 그룹 이름" onKeyDown={(event) => { if (event.key === 'Enter') void create() }}/><button className="primary" onClick={() => void create()} disabled={!name.trim()}><Plus size={14}/> 만들기</button></div></header>
-    <div className="relationship-group-list"><button className={!selected ? 'active' : ''} onClick={() => onSelect('')}>전체 <em>{relationships.length}</em></button><button className={selected === 'ungrouped' ? 'active' : ''} onClick={() => onSelect('ungrouped')}>미분류 <em>{relationships.filter((item) => !item.groupIds.length).length}</em></button>{relationshipGroups.map((group) => <span key={group.id} className={selected === group.id ? 'active' : ''}><button onClick={() => onSelect(group.id)}><i style={{ background: group.color }}/>{group.name}<em>{relationships.filter((item) => item.groupIds.includes(group.id)).length}</em></button><button aria-label={`${group.name} 이름 변경`} onClick={() => void rename(group.id, group.name)}><Pencil size={12}/></button><button aria-label={`${group.name} 삭제`} onClick={() => void remove(group.id, group.name)}><Trash2 size={12}/></button></span>)}</div>
+    <div className="relationship-group-list"><button className={!selected ? 'active' : ''} onClick={() => onSelect('')}>전체 <em>{relationships.length}</em></button><button className={selected === 'ungrouped' ? 'active' : ''} onClick={() => onSelect('ungrouped')}>미분류 <em>{relationships.filter((item) => !item.groupIds.length).length}</em></button>{groupPage.visibleItems.map((group) => <span key={group.id} className={selected === group.id ? 'active' : ''}><button onClick={() => onSelect(group.id)}><i style={{ background: group.color }}/>{group.name}<em>{relationships.filter((item) => item.groupIds.includes(group.id)).length}</em></button><button aria-label={`${group.name} 이름 변경`} onClick={() => void rename(group.id, group.name)}><Pencil size={12}/></button><button aria-label={`${group.name} 삭제`} onClick={() => void remove(group.id, group.name)}><Trash2 size={12}/></button></span>)}</div>
+    <Pagination page={groupPage.page} totalItems={groupPage.totalItems} onPageChange={groupPage.setPage} label="인연록 그룹"/>
   </section>
 }

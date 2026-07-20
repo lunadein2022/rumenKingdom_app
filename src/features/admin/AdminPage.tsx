@@ -10,6 +10,7 @@ import {
   type BenefitType,
 } from '../../services/adminService'
 import { AdminRuntimePanel } from './AdminRuntimePanel'
+import { Pagination, usePaginatedList } from '../../components/Pagination'
 
 const benefitLabels: Record<BenefitType, string> = {
   ai_points: '리타 AI 포인트',
@@ -32,6 +33,7 @@ export function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const visibleGrants = historyFilter === 'all' ? grants : grants.filter((grant) => grant.benefitType === historyFilter)
+  const grantPage = usePaginatedList(visibleGrants, historyFilter)
   const pointGrantTotal = grants.filter((grant) => grant.benefitType === 'ai_points').reduce((sum, grant) => sum + grant.amount, 0)
   const entitlementGrantCount = grants.filter((grant) => grant.benefitType !== 'ai_points').length
 
@@ -96,7 +98,8 @@ export function AdminPage() {
     {message && <p className="admin-message" role="status">{message}</p>}
     <article className="panel glass-panel admin-history">
       <div className="admin-history-head"><div><h3>관리자 지급 이력</h3><p>최근 {grants.length}건 · 포인트 총 {pointGrantTotal.toLocaleString()}P · 이용권 {entitlementGrantCount}건</p></div><div className="admin-history-filters"><button className={historyFilter === 'all' ? 'active' : ''} onClick={() => setHistoryFilter('all')}>전체</button><button className={historyFilter === 'ai_points' ? 'active' : ''} onClick={() => setHistoryFilter('ai_points')}>포인트</button><button className={historyFilter === 'cosmetic' ? 'active' : ''} onClick={() => setHistoryFilter('cosmetic')}>꾸미기</button><button className={historyFilter === 'all_access' ? 'active' : ''} onClick={() => setHistoryFilter('all_access')}>전체 이용권</button></div></div>
-      {visibleGrants.length ? <div className="admin-history-list">{visibleGrants.map((grant) => <div key={grant.id ?? `${grant.recipientEmail}-${grant.createdAt}`}><span><b>{grant.recipientEmail}</b><small>{grant.benefitType === 'ai_points' ? '포인트 지급' : benefitLabels[grant.benefitType]} · {grant.benefitKey}</small></span><strong className={grant.benefitType}>{grant.benefitType === 'ai_points' ? `+${grant.amount.toLocaleString()}P` : '이용권'}</strong><time>{grant.createdAt ? new Date(grant.createdAt).toLocaleString('ko-KR') : ''}</time><em>{grant.reason || '사유 미기재'}</em></div>)}</div> : <p>선택한 유형의 지급 이력이 없습니다.</p>}
+      {visibleGrants.length ? <div className="admin-history-list">{grantPage.visibleItems.map((grant) => <div key={grant.id ?? `${grant.recipientEmail}-${grant.createdAt}`}><span><b>{grant.recipientEmail}</b><small>{grant.benefitType === 'ai_points' ? '포인트 지급' : benefitLabels[grant.benefitType]} · {grant.benefitKey}</small></span><strong className={grant.benefitType}>{grant.benefitType === 'ai_points' ? `+${grant.amount.toLocaleString()}P` : '이용권'}</strong><time>{grant.createdAt ? new Date(grant.createdAt).toLocaleString('ko-KR') : ''}</time><em>{grant.reason || '사유 미기재'}</em></div>)}</div> : <p>선택한 유형의 지급 이력이 없습니다.</p>}
+      <Pagination page={grantPage.page} totalItems={grantPage.totalItems} onPageChange={grantPage.setPage} label="관리자 지급 이력"/>
     </article>
     <AdminRuntimePanel/>
   </section>

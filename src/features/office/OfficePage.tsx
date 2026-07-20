@@ -3,6 +3,7 @@ import { ArchiveRestore, Check, CheckCircle2, ChevronRight, Clock3, GripVertical
 import { useNavigate, useParams } from 'react-router-dom'
 import { BackButton } from '../../components/BackButton'
 import { EmptyState, Metric, SectionTitle } from '../../components/Common'
+import { Pagination, usePaginatedList } from '../../components/Pagination'
 import { projectProgress, useKingdomStore } from '../../store'
 import type { Project, ProjectStatus, Quest, QuestPriority, QuestType } from '../../types'
 import { serviceDate } from '../../lib/serviceTime'
@@ -51,6 +52,8 @@ export function OfficePage() {
     if (ob != null) return 1
     return (a.scheduledDate ?? '9999').localeCompare(b.scheduledDate ?? '9999')
   }), [filter, projects, query, quests, questOrder])
+  const projectPage = usePaginatedList(activeProjects, 'office-projects')
+  const questPage = usePaginatedList(visibleQuests, `${filter}:${query}`)
 
   const saveProject = async (input: ProjectInput) => {
     const saved = editingProject ? await updateProject(editingProject.id, input) : Boolean(await addProject(input))
@@ -151,7 +154,7 @@ export function OfficePage() {
         <SectionTitle title="메인퀘스트" action="새 메인퀘스트" onAction={() => setEditingProject(null)}/>
         <p className="office-pane-intro">목표와 기간을 관리해요. 퀘스트 연결은 선택사항입니다.</p>
         <div className="office-project-list">
-          {activeProjects.map((project) => {
+          {projectPage.visibleItems.map((project) => {
             const linked = quests.filter((quest) => quest.projectId === project.id)
             const progress = projectProgress(project, quests)
             return <article data-project-id={project.id} className={`office-project-item royal-card ${dropProjectId === project.id ? 'drop-ready' : ''}`} key={project.id}>
@@ -165,6 +168,7 @@ export function OfficePage() {
             </article>
           })}
         </div>
+        <Pagination page={projectPage.page} totalItems={projectPage.totalItems} onPageChange={projectPage.setPage} label="메인퀘스트"/>
         {!activeProjects.length && <EmptyState title="진행 중인 메인퀘스트가 없어요" action="새 메인퀘스트 만들기" onAction={() => setEditingProject(null)}/>} 
         <button className="completed-link" onClick={() => navigate('/office/completed')}><CheckCircle2 size={16}/> 완료 기록 {completedProjects.length}건 보기</button>
       </section>
@@ -177,8 +181,9 @@ export function OfficePage() {
           <div className="quest-filters">{filterOptions.map((option) => <button key={option.id} className={filter === option.id ? 'active' : ''} onClick={() => setFilter(option.id)}>{option.label}</button>)}</div>
         </div>
         <div className="office-quest-list">
-          {visibleQuests.map((quest) => <OfficeQuestItem key={quest.id} quest={quest} project={projects.find((project) => project.id === quest.projectId)} dragging={draggedQuestId === quest.id} reorderTarget={dropQuestId === quest.id} onEdit={() => setEditingQuest(quest)} onDelete={() => { if (confirm(`“${quest.title}” 퀘스트를 삭제할까요?`)) deleteQuest(quest.id) }} onPointerDragStart={startPointerDrag}/>) }
+          {questPage.visibleItems.map((quest) => <OfficeQuestItem key={quest.id} quest={quest} project={projects.find((project) => project.id === quest.projectId)} dragging={draggedQuestId === quest.id} reorderTarget={dropQuestId === quest.id} onEdit={() => setEditingQuest(quest)} onDelete={() => { if (confirm(`“${quest.title}” 퀘스트를 삭제할까요?`)) deleteQuest(quest.id) }} onPointerDragStart={startPointerDrag}/>) }
         </div>
+        <Pagination page={questPage.page} totalItems={questPage.totalItems} onPageChange={questPage.setPage} label={`${filterOptions.find((item) => item.id === filter)?.label ?? '전체'} 퀘스트`}/>
         {!visibleQuests.length && <EmptyState title="조건에 맞는 퀘스트가 없어요" action="새 퀘스트 만들기" onAction={() => setEditingQuest(null)}/>} 
       </section>
     </div>
@@ -247,18 +252,21 @@ export function ProjectDetailPage() {
 }
 
 function LinkedQuestSection({ title, quests, projects, onEdit, onDelete }: { title: string; quests: Quest[]; projects: Project[]; onEdit: (quest: Quest) => void; onDelete: (id: string) => void }) {
-  return <section><SectionTitle title={title}/>{quests.length ? quests.map((quest) => <OfficeQuestItem key={quest.id} quest={quest} project={projects.find((project) => project.id === quest.projectId)} onEdit={() => onEdit(quest)} onDelete={() => { if (confirm(`“${quest.title}” 퀘스트를 삭제할까요?`)) onDelete(quest.id) }}/>) : <EmptyState title={`연결된 ${title}가 없어요`}/>}</section>
+  const pagination = usePaginatedList(quests, title)
+  return <section><SectionTitle title={title}/>{quests.length ? pagination.visibleItems.map((quest) => <OfficeQuestItem key={quest.id} quest={quest} project={projects.find((project) => project.id === quest.projectId)} onEdit={() => onEdit(quest)} onDelete={() => { if (confirm(`“${quest.title}” 퀘스트를 삭제할까요?`)) onDelete(quest.id) }}/>) : <EmptyState title={`연결된 ${title}가 없어요`}/>}<Pagination page={pagination.page} totalItems={pagination.totalItems} onPageChange={pagination.setPage} label={title}/></section>
 }
 
 function IndependentQuestPicker({ quests, project, onClose, onConnect }: { quests: Quest[]; project: Project; onClose: () => void; onConnect: (quest: Quest) => void }) {
-  return <div className="modal-backdrop" onMouseDown={onClose}><section className="modal glass-panel quest-picker" role="dialog" aria-modal="true" aria-labelledby="picker-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">CONNECT QUEST</span><h2 id="picker-title">독립 퀘스트 연결</h2></div><button onClick={onClose} aria-label="닫기"><X size={18}/></button></div><p>선택한 퀘스트를 <b>{project.title}</b>에 연결합니다.</p><div className="independent-picker-list">{quests.map((quest) => <article key={quest.id}><span><b>{quest.title}</b><small>{quest.type === 'daily' ? '일일퀘스트' : '서브퀘스트'} · {questDueLabel(quest)}</small></span><button onClick={() => onConnect(quest)}><Link2 size={14}/> 연결</button></article>)}</div>{!quests.length && <EmptyState title="연결할 독립 퀘스트가 없어요"/>}<div className="modal-actions"><button className="ghost" onClick={onClose}>닫기</button></div></section></div>
+  const pagination = usePaginatedList(quests, project.id)
+  return <div className="modal-backdrop" onMouseDown={onClose}><section className="modal glass-panel quest-picker" role="dialog" aria-modal="true" aria-labelledby="picker-title" onMouseDown={(event) => event.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">CONNECT QUEST</span><h2 id="picker-title">독립 퀘스트 연결</h2></div><button onClick={onClose} aria-label="닫기"><X size={18}/></button></div><p>선택한 퀘스트를 <b>{project.title}</b>에 연결합니다.</p><div className="independent-picker-list">{pagination.visibleItems.map((quest) => <article key={quest.id}><span><b>{quest.title}</b><small>{quest.type === 'daily' ? '일일퀘스트' : '서브퀘스트'} · {questDueLabel(quest)}</small></span><button onClick={() => onConnect(quest)}><Link2 size={14}/> 연결</button></article>)}</div>{!quests.length && <EmptyState title="연결할 독립 퀘스트가 없어요"/>}<Pagination page={pagination.page} totalItems={pagination.totalItems} onPageChange={pagination.setPage} label="독립 퀘스트"/><div className="modal-actions"><button className="ghost" onClick={onClose}>닫기</button></div></section></div>
 }
 
 export function CompletedProjectsPage() {
   const navigate = useNavigate()
   const { projects, setProjectStatus } = useKingdomStore()
   const completed = projects.filter((project) => project.status === 'completed').sort((a, b) => (b.completedAt ?? '').localeCompare(a.completedAt ?? ''))
-  return <div><BackButton fallback="/office" label="집무실로"/><section className="panel glass-panel completed-projects"><SectionTitle title="완료된 메인퀘스트"/>{completed.length ? completed.map((project) => <article key={project.id}><button className="completed-project-main" onClick={() => navigate(`/office/projects/${project.id}`)}><CheckCircle2 size={18}/><span><b>{project.title}</b><small>{project.completedAt ? new Date(project.completedAt).toLocaleDateString('ko-KR') : '완료일 미상'} · {project.tag}</small></span><ChevronRight size={16}/></button><button onClick={() => setProjectStatus(project.id, 'active')}><ArchiveRestore size={15}/> 복원</button></article>) : <EmptyState title="완료된 메인퀘스트가 없어요" description="메인퀘스트를 완료하면 이곳에 기록됩니다."/>}</section></div>
+  const pagination = usePaginatedList(completed, 'completed-projects')
+  return <div><BackButton fallback="/office" label="집무실로"/><section className="panel glass-panel completed-projects"><SectionTitle title="완료된 메인퀘스트"/>{completed.length ? pagination.visibleItems.map((project) => <article key={project.id}><button className="completed-project-main" onClick={() => navigate(`/office/projects/${project.id}`)}><CheckCircle2 size={18}/><span><b>{project.title}</b><small>{project.completedAt ? new Date(project.completedAt).toLocaleDateString('ko-KR') : '완료일 미상'} · {project.tag}</small></span><ChevronRight size={16}/></button><button onClick={() => setProjectStatus(project.id, 'active')}><ArchiveRestore size={15}/> 복원</button></article>) : <EmptyState title="완료된 메인퀘스트가 없어요" description="메인퀘스트를 완료하면 이곳에 기록됩니다."/>}<Pagination page={pagination.page} totalItems={pagination.totalItems} onPageChange={pagination.setPage} label="완료된 메인퀘스트"/></section></div>
 }
 
 function ProjectModal({ project, onClose, onSave }: { project: Project | null; onClose: () => void; onSave: (project: ProjectInput) => void | Promise<void> }) {

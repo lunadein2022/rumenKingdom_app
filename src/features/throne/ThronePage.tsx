@@ -7,6 +7,7 @@ import { useKingdomStore } from '../../store'
 import { defaultPreferences, loadPreferences, removeRoomBackground, savePreferences, uploadRoomBackground, type UserPreferences } from '../../services/settingsRepository'
 import type { PageId } from '../../types'
 import { PrincessPortrait } from '../../components/PrincessPortrait'
+import { Pagination, usePaginatedList } from '../../components/Pagination'
 import { getPrincess, princessOptions, readSelectedPrincessId, storeSelectedPrincessId, type PrincessId } from '../../lib/princesses'
 import { configureServiceTime } from '../../lib/serviceTime'
 import { getRitaActivity, type RitaActivity } from '../../services/ritaService'
@@ -36,6 +37,8 @@ export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = ()
   const { usage } = useRitaUsage(!demoMode)
   const [activity, setActivity] = useState<RitaActivity>({ usage: [], gifts: [] })
   const [activityError, setActivityError] = useState('')
+  const usagePage = usePaginatedList(activity.usage, 'rita-usage')
+  const giftPage = usePaginatedList(activity.gifts, 'rita-gifts')
 
   useEffect(() => { void loadPreferences().then((saved) => { if (!saved) return; const savedPrincessId = storeSelectedPrincessId(saved.selectedPrincessId); setName(saved.profileName); setDraftName(saved.profileName); setIntro(saved.profileIntro); setDraftIntro(saved.profileIntro); setNotifications(saved.notifications); setAiStyle(saved.aiStyle); setTimezone(saved.timezone); setServiceDayStartsAt(saved.serviceDayStartsAt); setPrincessId(savedPrincessId); setDraftPrincessId(savedPrincessId) }).catch(() => undefined) }, [])
   useEffect(() => {
@@ -109,8 +112,8 @@ export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = ()
         </div>
         {activityError && <p className="account-activity-error">{activityError}</p>}
         <div className="activity-columns">
-          <section><h3><History size={16}/>AI 이용 기록</h3>{activity.usage.length ? <div className="activity-list">{activity.usage.map((item) => <article key={item.id}><span><b>{requestTypeLabel(item.requestType)}</b><small>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.model || '처리 전'}</small></span><strong className={item.status}>{item.status === 'released' ? '환불' : item.status === 'reserved' ? '처리 중' : `-${item.points}P`}</strong></article>)}</div> : <p className="account-activity-empty">아직 리타 AI 이용 기록이 없습니다.</p>}</section>
-          <section><h3><Gift size={16}/>받은 선물</h3>{activity.gifts.length ? <div className="activity-list">{activity.gifts.map((item) => <article key={item.id}><span><b>{giftLabel(item)}</b><small>{new Date(item.createdAt).toLocaleString('ko-KR')}{item.reason ? ` · ${item.reason}` : ''}</small></span><strong className="gift">{item.benefitType === 'ai_points' ? `+${item.amount}P` : '선물'}</strong></article>)}</div> : <p className="account-activity-empty">아직 받은 선물이 없습니다.</p>}</section>
+          <section><h3><History size={16}/>AI 이용 기록</h3>{activity.usage.length ? <div className="activity-list">{usagePage.visibleItems.map((item) => <article key={item.id}><span><b>{requestTypeLabel(item.requestType)}</b><small>{new Date(item.createdAt).toLocaleString('ko-KR')} · {item.model || '처리 전'}</small></span><strong className={item.status}>{item.status === 'released' ? '환불' : item.status === 'reserved' ? '처리 중' : `-${item.points}P`}</strong></article>)}</div> : <p className="account-activity-empty">아직 리타 AI 이용 기록이 없습니다.</p>}<Pagination page={usagePage.page} totalItems={usagePage.totalItems} onPageChange={usagePage.setPage} label="AI 이용 기록"/></section>
+          <section><h3><Gift size={16}/>받은 선물</h3>{activity.gifts.length ? <div className="activity-list">{giftPage.visibleItems.map((item) => <article key={item.id}><span><b>{giftLabel(item)}</b><small>{new Date(item.createdAt).toLocaleString('ko-KR')}{item.reason ? ` · ${item.reason}` : ''}</small></span><strong className="gift">{item.benefitType === 'ai_points' ? `+${item.amount}P` : '선물'}</strong></article>)}</div> : <p className="account-activity-empty">아직 받은 선물이 없습니다.</p>}<Pagination page={giftPage.page} totalItems={giftPage.totalItems} onPageChange={giftPage.setPage} label="받은 선물"/></section>
         </div>
         <NavLink className="plans-link" to="/plans"><Crown size={15}/>요금제와 {config.planCatalog.trialDays}일 무료 체험 비교<ChevronRight size={15}/></NavLink>
       </>}

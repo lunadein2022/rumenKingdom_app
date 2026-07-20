@@ -18,7 +18,8 @@
 12. `supabase/migrations/202607190011_shared_app_releases.sql`
 13. `supabase/migrations/202607190012_cross_platform_sync.sql`
 14. `supabase/migrations/202607190013_common_update_system.sql`
-15. `supabase/verify_canonical_schema.sql`, `supabase/verify_admin_benefits.sql`, `supabase/verify_shared_backend.sql`, `supabase/verify_cross_platform_sync.sql`, `supabase/verify_common_update_system.sql` 실행 후 모든 필수 항목 확인
+15. `supabase/migrations/202607200014_pagination_limits.sql`
+16. `supabase/verify_canonical_schema.sql`, `supabase/verify_admin_benefits.sql`, `supabase/verify_shared_backend.sql`, `supabase/verify_cross_platform_sync.sql`, `supabase/verify_common_update_system.sql` 실행 후 모든 필수 항목 확인
 
 브라우저 환경변수:
 

@@ -10,6 +10,7 @@ import {
   Flower2, LoaderCircle, Pencil, Plus, Search, Settings2, Star, Trash2, X,
 } from 'lucide-react'
 import { RitaFace } from '../../components/RitaFace'
+import { Pagination, usePaginatedList } from '../../components/Pagination'
 import { calendarKinds, useKingdomStore } from '../../store'
 import type { CalendarEvent, CalendarKind } from '../../types'
 import { buildRecurrenceRule, eventOccurrenceOn, expandEventsBetween, parseRecurrenceRule } from '../../lib/recurrence'
@@ -43,6 +44,7 @@ export function CalendarPage() {
     .filter((event) => filters.includes(event.kind) && (!importantOnly || event.important) && event.title.toLocaleLowerCase('ko').includes(query.toLocaleLowerCase('ko')))
     .sort((a, b) => `${a.date}${a.start}`.localeCompare(`${b.date}${b.start}`)), [events, filters, importantOnly, query])
   const selectedEvents = visibleEvents.map((event) => eventOccurrenceOn(event, selectedDate)).filter((event): event is CalendarEvent => Boolean(event))
+  const selectedEventPage = usePaginatedList(selectedEvents, selectedDate)
   const selectedDateLabel = format(parseISO(selectedDate), 'yyyy년 M월 d일 (EEE)', { locale: ko })
   const today = dateKey(new Date())
   const importantEvents = visibleEvents.filter((event) => event.important).slice(0, 3)
@@ -82,7 +84,8 @@ export function CalendarPage() {
 
     <aside className="day-panel">
       <div className="day-title"><div><span>{selectedDateLabel}</span><small>{selectedDate === today ? '오늘의 일정' : '선택한 날의 일정'}</small></div>{selectedDate === today && <em>오늘</em>}</div>
-      <div className="agenda-list">{selectedEvents.length ? selectedEvents.map((event) => <div className="agenda-item" key={event.id}><i className={kindClass[event.kind]} /><div><span>{event.allDay ? '하루 종일' : event.start || '시간 미정'}{event.end ? ` — ${event.end}` : ''}</span><b>{event.title}</b><small>{calendarKinds.find((kind) => kind.id === event.kind)?.label}{event.endDate && event.endDate !== event.date ? ` · ${event.date} ~ ${event.endDate}` : ''}</small></div><button onClick={() => openEdit(event)} aria-label={`${event.title} 편집`}><Pencil size={14} /></button><button onClick={() => deleteEvent(event.id)} aria-label={`${event.title} 삭제`}><Trash2 size={14} /></button></div>) : <EmptyMini onCreate={openCreate} />}</div>
+      <div className="agenda-list">{selectedEvents.length ? selectedEventPage.visibleItems.map((event) => <div className="agenda-item" key={event.id}><i className={kindClass[event.kind]} /><div><span>{event.allDay ? '하루 종일' : event.start || '시간 미정'}{event.end ? ` — ${event.end}` : ''}</span><b>{event.title}</b><small>{calendarKinds.find((kind) => kind.id === event.kind)?.label}{event.endDate && event.endDate !== event.date ? ` · ${event.date} ~ ${event.endDate}` : ''}</small></div><button onClick={() => openEdit(event)} aria-label={`${event.title} 편집`}><Pencil size={14} /></button><button onClick={() => deleteEvent(event.id)} aria-label={`${event.title} 삭제`}><Trash2 size={14} /></button></div>) : <EmptyMini onCreate={openCreate} />}</div>
+      <Pagination page={selectedEventPage.page} totalItems={selectedEventPage.totalItems} onPageChange={selectedEventPage.setPage} label="선택한 날의 일정"/>
       <div className="important-head"><span>중요 일정</span><button onClick={() => setView('목록')}>더보기 <ChevronRight size={12} /></button></div>
       <div className="important-list">{importantEvents.length ? importantEvents.map((event) => <button key={event.id} onClick={() => selectDate(event.date)}><small>{format(parseISO(event.date), 'M월 d일 (EEE)', { locale: ko })}</small><span>{event.title}</span>{event.kind === 'anniversary' ? <Crown size={15} /> : event.kind === 'project' ? <Archive size={15} /> : <Flower2 size={15} />}</button>) : <p className="important-empty">표시할 중요 일정이 없습니다.</p>}</div>
       <div className="rita-note"><RitaFace expression="notification" /><p><b>리타의 한마디</b>{selectedEvents.length ? `공주님, 선택한 날에는 일정이 ${selectedEvents.length}건 있어요.` : '공주님, 선택한 날은 아직 여유로워요.'}</p></div>
@@ -117,7 +120,8 @@ function AlternativeCalendarView({ mode, events, selected, onSelect }: { mode: E
   const filtered = mode === '일간' ? events.map((event) => eventOccurrenceOn(event, selected)).filter((event): event is CalendarEvent => Boolean(event))
     : mode === '주간' ? expandEventsBetween(events, format(rangeStart, 'yyyy-MM-dd'), format(rangeEnd, 'yyyy-MM-dd'))
       : expandEventsBetween(events, format(startOfMonth(selectedValue), 'yyyy-MM-dd'), format(endOfMonth(addMonths(selectedValue, 2)), 'yyyy-MM-dd'))
-  return <div className="alternative-view"><div className="alternative-title"><CalendarDays size={21} /><span>{mode} 보기</span></div>{filtered.length ? filtered.map((event) => <button key={event.id} onClick={() => onSelect(event.date)}><i className={kindClass[event.kind]} /><time>{format(parseISO(event.date), 'M월 d일 (EEE)', { locale: ko })}{event.endDate && event.endDate !== event.date ? ` ~ ${format(parseISO(event.endDate), 'M월 d일 (EEE)', { locale: ko })}` : ''} · {event.allDay ? '하루 종일' : event.start || '시간 미정'}</time><b>{event.title}</b><ChevronRight size={15} /></button>) : <div className="calendar-empty"><CalendarDays size={28}/><b>표시할 일정이 없습니다.</b><span>다른 날짜나 필터를 선택해 보세요.</span></div>}</div>
+  const pagination = usePaginatedList(filtered, `${mode}:${selected}`)
+  return <div className="alternative-view"><div className="alternative-title"><CalendarDays size={21} /><span>{mode} 보기</span></div>{filtered.length ? pagination.visibleItems.map((event) => <button key={`${event.id}:${event.date}`} onClick={() => onSelect(event.date)}><i className={kindClass[event.kind]} /><time>{format(parseISO(event.date), 'M월 d일 (EEE)', { locale: ko })}{event.endDate && event.endDate !== event.date ? ` ~ ${format(parseISO(event.endDate), 'M월 d일 (EEE)', { locale: ko })}` : ''} · {event.allDay ? '하루 종일' : event.start || '시간 미정'}</time><b>{event.title}</b><ChevronRight size={15} /></button>) : <div className="calendar-empty"><CalendarDays size={28}/><b>표시할 일정이 없습니다.</b><span>다른 날짜나 필터를 선택해 보세요.</span></div>}<Pagination page={pagination.page} totalItems={pagination.totalItems} onPageChange={pagination.setPage} label={`${mode} 일정`}/></div>
 }
 
 function EventModal({ date, initial, onClose, onSave }: { date: string; initial?: CalendarEvent; onClose: () => void; onSave: (event: Omit<CalendarEvent, 'id'>) => void }) {

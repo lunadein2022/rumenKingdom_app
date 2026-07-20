@@ -155,7 +155,7 @@ begin
         from public.app_releases
         where is_published and published_at <= now()
           and platforms @> array[platform_name]
-        order by published_at desc limit 20
+        order by published_at desc limit 100
       ) item
     ), '[]'::jsonb),
     'serverTime', now()
