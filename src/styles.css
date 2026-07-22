@@ -333,24 +333,31 @@ body.body-overlay-open,body:has(.modal-backdrop),body:has(.search-overlay){overf
 .mobile-service-setup{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:28px;text-align:center;background:linear-gradient(160deg,#f4eef7,#fffaf4);color:#66546f}.mobile-service-setup>img{width:min(260px,72vw);height:auto}.mobile-service-setup>svg{color:#8a6ca6}.mobile-service-setup h1{margin:4px 0;font-size:24px}.mobile-service-setup p{max-width:480px;margin:0 0 8px;font-size:13px;line-height:1.7;color:#837688}.mobile-service-setup label{width:min(480px,100%);display:grid;gap:7px;text-align:left;font-size:12px;font-weight:600}.mobile-service-setup input{height:46px;border:1px solid rgba(105,91,111,.2);border-radius:10px;background:white;padding:0 12px;font-size:14px}.mobile-service-setup small{color:#a34f5c}.mobile-service-setup button{height:44px;border:0;border-radius:10px;background:#75619f;color:white;padding:0 18px;display:flex;align-items:center;gap:7px;font-weight:600}
 
 
+/* Pastel Secret Garden Player */
 .garden-player {
-  background: rgba(255, 255, 255, 0.32);
-  border-color: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(8px);
-  color: #fff;
+  background: linear-gradient(
+    100deg,
+    rgba(190, 213, 241, 0.9),
+    rgba(239, 204, 220, 0.9)
+  );
+
+  border-color: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 30px rgba(100, 120, 160, 0.18);
 }
 
-.garden-player small {
-  color: #f4d898;
-  text-shadow: 0 1px 4px rgba(50, 35, 20, 0.6);
+/* Volume slider */
+.garden-player input[type="range"] {
+  accent-color: #75a9d6;
 }
 
-.garden-player b {
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(40, 30, 20, 0.65);
+.garden-player input[type="range"]::-webkit-slider-thumb {
+  background: #75a9d6;
 }
 
-.garden-player span {
-  color: rgba(255, 255, 255, 0.85);
-  text-shadow: 0 1px 3px rgba(40, 30, 20, 0.55);
+/* Text readability */
+.garden-player b,
+.garden-player span,
+.garden-player button {
+  text-shadow: 0 1px 4px rgba(80, 90, 120, 0.35);
 }
