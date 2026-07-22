@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm build"
+  command = "pnpm test && pnpm build"
   publish = "dist"
   functions = "netlify/functions"
 
@@ -11,6 +11,12 @@
 
 [functions."push-dispatch"]
   schedule = "* * * * *"
+
+[functions."native-push-dispatch"]
+  schedule = "* * * * *"
+
+[functions."ops-health"]
+  schedule = "*/15 * * * *"
 
 [[redirects]]
   from = "/*"

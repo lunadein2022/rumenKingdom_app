@@ -16,22 +16,33 @@ export async function handler() {
   if (error) return response(500, { error: 'claim_failed' })
   const jobs = Array.isArray(data) ? data : []
   let delivered = 0
-  for (const job of jobs) {
-    try {
-      await webpush.sendNotification({ endpoint: job.endpoint, keys: { p256dh: job.p256dh, auth: job.auth } }, JSON.stringify({
-        title: job.title, body: job.body, path: job.path, tag: `notification:${job.notificationId}`,
-      }), { TTL: 24 * 60 * 60, urgency: 'normal' })
-      await admin.from('push_deliveries').update({ status: 'delivered', delivered_at: new Date().toISOString(), last_error: null })
-        .eq('notification_id', job.notificationId).eq('subscription_id', job.subscriptionId)
-      delivered += 1
-    } catch (reason) {
-      const statusCode = Number(reason?.statusCode)
-      await admin.from('push_deliveries').update({ status: statusCode === 404 || statusCode === 410 ? 'failed' : 'pending', last_error: String(reason?.message ?? 'push_failed').slice(0, 500) })
-        .eq('notification_id', job.notificationId).eq('subscription_id', job.subscriptionId)
-      if (statusCode === 404 || statusCode === 410) await admin.from('push_subscriptions').update({ enabled: false }).eq('id', job.subscriptionId)
-    }
+  for (let offset = 0; offset < jobs.length; offset += 10) {
+    const results = await Promise.all(jobs.slice(offset, offset + 10).map((job) => deliver(admin, job)))
+    delivered += results.filter(Boolean).length
   }
   return response(200, { claimed: jobs.length, delivered })
+}
+
+async function deliver(admin, job) {
+  try {
+    await webpush.sendNotification({ endpoint: job.endpoint, keys: { p256dh: job.p256dh, auth: job.auth } }, JSON.stringify({
+      title: job.title, body: job.body, path: job.path, tag: `notification:${job.notificationId}`,
+    }), { TTL: 24 * 60 * 60, urgency: 'normal' })
+    await admin.from('push_deliveries').update({ status: 'delivered', delivered_at: new Date().toISOString(), last_error: null })
+      .eq('notification_id', job.notificationId).eq('subscription_id', job.subscriptionId)
+    return true
+  } catch (reason) {
+    const statusCode = Number(reason?.statusCode)
+    const terminal = statusCode === 404 || statusCode === 410 || Number(job.attempts) >= 5
+    const message = String(reason?.message ?? 'push_failed').slice(0, 500)
+    await admin.from('push_deliveries').update({ status: terminal ? 'failed' : 'pending', last_error: message })
+      .eq('notification_id', job.notificationId).eq('subscription_id', job.subscriptionId)
+    if (statusCode === 404 || statusCode === 410) await admin.from('push_subscriptions').update({ enabled: false }).eq('id', job.subscriptionId)
+    if (terminal) {
+      try { await admin.from('operational_events').insert({ source: 'push-dispatch', severity: 'warning', code: 'web_push_failed', message, metadata: { statusCode, attempts: job.attempts } }) } catch { /* best-effort telemetry */ }
+    }
+    return false
+  }
 }
 
 function response(statusCode, body) {

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createHmac, randomUUID } from 'node:crypto'
 import mammoth from 'mammoth'
+import JSZip from 'jszip'
 import { HwpxReader, hwpToText } from '@ssabrojs/hwpxjs'
 import {
   estimateClaudeCostUsd,
@@ -388,6 +389,8 @@ async function analyzeAttachment(input, apiKey, model, metering, serviceClient, 
 
   try {
 
+  await validateAttachmentContent(bytes, metadata, input.intent)
+
   if (input.intent === 'business-card') {
     if (!IMAGE_TYPES.has(mimeType)) return json(415, { error: '명함은 JPG, PNG, GIF, WebP 이미지로 첨부해 주세요.' })
     const result = await callClaude(apiKey, model, {
@@ -461,6 +464,65 @@ async function extractDocumentText(bytes, metadata) {
     throw Object.assign(new Error('HWP/HWPX 문서를 읽지 못했어요. HWP 5.x 또는 최신 HWPX 형식인지 확인해 주세요.'), { statusCode: 422 })
   }
   throw Object.assign(new Error('PDF, DOCX, HWP, HWPX, TXT, MD, CSV 문서만 지원합니다.'), { statusCode: 415 })
+}
+
+async function validateAttachmentContent(bytes, metadata, intent) {
+  const mime = metadata.mimeType
+  const extension = metadata.name.split('.').pop()?.toLowerCase()
+  const starts = (...values) => values.every((value, index) => bytes[index] === value)
+  const ascii = bytes.subarray(0, 16).toString('latin1')
+  const zip = starts(0x50, 0x4b)
+  const ole = starts(0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1)
+  const image = starts(0xff, 0xd8, 0xff) || starts(0x89, 0x50, 0x4e, 0x47) || ascii.startsWith('GIF8') || ascii.startsWith('RIFF') && bytes.subarray(8, 12).toString('ascii') === 'WEBP'
+  const audio = ascii.startsWith('ID3') || starts(0xff, 0xfb) || starts(0xff, 0xf3) || starts(0xff, 0xf2)
+    || ascii.startsWith('RIFF') && bytes.subarray(8, 12).toString('ascii') === 'WAVE'
+    || ascii.startsWith('OggS') || bytes.subarray(4, 12).toString('ascii').includes('ftyp') || starts(0x1a, 0x45, 0xdf, 0xa3)
+  if (intent === 'business-card' && (!IMAGE_TYPES.has(mime) || !image)) throw Object.assign(new Error('이미지 형식과 실제 파일 내용이 일치하지 않아요.'), { statusCode: 415 })
+  if (intent === 'audio') {
+    if (!audio) throw Object.assign(new Error('음성 형식과 실제 파일 내용이 일치하지 않아요.'), { statusCode: 415 })
+    const duration = estimateAudioDurationSeconds(bytes)
+    if (duration && duration > 30 * 60 + 5) throw Object.assign(new Error('음성 파일은 30분 이하만 분석할 수 있어요.'), { statusCode: 413 })
+  }
+  if (mime === 'application/pdf' && !ascii.startsWith('%PDF-')) throw Object.assign(new Error('PDF 형식과 실제 파일 내용이 일치하지 않아요.'), { statusCode: 415 })
+  if ((mime === DOCX_TYPE || HWPX_TYPES.has(mime) || extension === 'docx' || extension === 'hwpx') && !zip) throw Object.assign(new Error('압축 문서 형식이 올바르지 않아요.'), { statusCode: 415 })
+  if ((HWP_TYPES.has(mime) || extension === 'hwp') && !ole) throw Object.assign(new Error('HWP 5.x 파일 형식이 아니거나 손상된 문서예요.'), { statusCode: 415 })
+  if (TEXT_TYPES.has(mime)) {
+    const sample = bytes.subarray(0, Math.min(bytes.length, 8192))
+    const nulls = [...sample].filter((value) => value === 0).length
+    if (sample.length && nulls / sample.length > 0.01) throw Object.assign(new Error('텍스트 파일로 확인할 수 없는 바이너리 내용이 들어 있어요.'), { statusCode: 415 })
+  }
+  if (zip) await validateArchiveLimits(bytes)
+}
+
+async function validateArchiveLimits(bytes) {
+  let archive
+  try { archive = await JSZip.loadAsync(bytes, { checkCRC32: false }) }
+  catch { throw Object.assign(new Error('손상되었거나 지원하지 않는 압축 문서예요.'), { statusCode: 422 }) }
+  const entries = Object.values(archive.files)
+  if (entries.length > 2000) throw Object.assign(new Error('문서 내부 파일 수가 너무 많아요.'), { statusCode: 413 })
+  const expanded = entries.reduce((sum, entry) => sum + Number(entry?._data?.uncompressedSize ?? 0), 0)
+  if (expanded > 100 * 1024 * 1024 || expanded > bytes.length * 120) throw Object.assign(new Error('압축을 푼 문서 크기가 안전 한도를 넘어요.'), { statusCode: 413 })
+}
+
+function estimateAudioDurationSeconds(bytes) {
+  if (bytes.subarray(0, 4).toString('ascii') === 'RIFF' && bytes.length >= 32) {
+    const bytesPerSecond = bytes.readUInt32LE(28)
+    return bytesPerSecond ? bytes.length / bytesPerSecond : 0
+  }
+  let offset = 0
+  if (bytes.subarray(0, 3).toString('ascii') === 'ID3' && bytes.length >= 10) offset = 10 + ((bytes[6] & 0x7f) << 21) + ((bytes[7] & 0x7f) << 14) + ((bytes[8] & 0x7f) << 7) + (bytes[9] & 0x7f)
+  for (; offset + 4 < Math.min(bytes.length, 1024 * 1024); offset += 1) {
+    if (bytes[offset] !== 0xff || (bytes[offset + 1] & 0xe0) !== 0xe0) continue
+    const version = (bytes[offset + 1] >> 3) & 0x03
+    const layer = (bytes[offset + 1] >> 1) & 0x03
+    const bitrateIndex = (bytes[offset + 2] >> 4) & 0x0f
+    if (layer !== 1 || bitrateIndex === 0 || bitrateIndex === 15) continue
+    const mpeg1 = [0,32,40,48,56,64,80,96,112,128,160,192,224,256,320]
+    const mpeg2 = [0,8,16,24,32,40,48,56,64,80,96,112,128,144,160]
+    const kbps = (version === 3 ? mpeg1 : mpeg2)[bitrateIndex]
+    return kbps ? bytes.length * 8 / (kbps * 1000) : 0
+  }
+  return 0
 }
 
 async function transcribeAudio(bytes, metadata, openAiKey, metering) {

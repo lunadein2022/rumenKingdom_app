@@ -7,13 +7,14 @@ export type AccountNotification = {
   kind: string
   readAt?: string
   createdAt: string
+  path: string
 }
 
 export async function loadAccountNotifications(limit = 30): Promise<AccountNotification[]> {
   if (!supabase) return []
   const { data, error } = await supabase
     .from('notifications')
-    .select('id,title,body,kind,read_at,created_at')
+    .select('id,title,body,kind,read_at,created_at,related_entity_type,related_entity_id')
     .or(`scheduled_for.is.null,scheduled_for.lte.${new Date().toISOString()}`)
     .order('created_at', { ascending: false })
     .limit(Math.min(Math.max(Math.trunc(limit) || 30, 1), 100))
@@ -25,7 +26,16 @@ export async function loadAccountNotifications(limit = 30): Promise<AccountNotif
     kind: item.kind,
     readAt: item.read_at ?? undefined,
     createdAt: item.created_at,
+    path: notificationPath(item.related_entity_type, item.related_entity_id),
   }))
+}
+
+function notificationPath(entityType: string | null, entityId: string | null) {
+  if (entityType === 'calendar_event' && entityId) return `/calendar/event/${entityId}`
+  if (entityType === 'quest') return '/office'
+  if (entityType === 'memo' && entityId) return `/library/memos/${entityId}`
+  if (entityType === 'relationship' && entityId) return `/library/relationships/${entityId}`
+  return '/notifications'
 }
 
 export async function markAccountNotificationRead(id: string) {

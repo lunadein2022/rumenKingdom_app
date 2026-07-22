@@ -13,7 +13,7 @@ import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, 
 import { getActiveAccountScope, setActiveAccountScope } from './lib/accountScope'
 import { serviceDate } from './lib/serviceTime'
 import { requestWebPushForFirstReminder } from './services/pushService'
-import { scheduleDefaultEventReminder, scheduleDefaultQuestReminder } from './services/reminderService'
+import { cancelReminders, scheduleEventReminders, scheduleQuestReminders } from './services/reminderService'
 
 type ProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 type QuestInput = Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
@@ -215,7 +215,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
         events: saved ? state.events.map((item) => item.id === optimisticId ? saved : item) : state.events,
         calendarSync: { status: 'saved', message: saved ? '왕국 기록에 일정을 저장했어요.' : '이 기기에 일정을 저장했어요.' },
       }))
-      if (saved) void scheduleDefaultEventReminder(saved).catch(() => undefined)
+      if (saved) void scheduleEventReminders(saved).catch(() => undefined)
       void requestWebPushForFirstReminder()
       return { event: saved ?? optimistic, storage: saved ? 'cloud' as const : 'local' as const }
     }).catch((error) => {
@@ -229,30 +229,33 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
       previous = state.events.find((item) => item.id === id)
       return { events: state.events.map((item) => item.id === id ? { ...event, id } : item), calendarSync: { status: 'saving', message: '변경한 일정을 저장하고 있어요.' } }
     })
-    void updateCalendarEvent(id, event).then((saved) => set((state) => ({
-      events: saved ? state.events.map((item) => item.id === id ? saved : item) : state.events,
-      calendarSync: { status: 'saved', message: saved ? '일정 변경사항을 왕국 기록에 저장했어요.' : '일정 변경사항을 이 기기에 저장했어요.' },
-    }))).catch(() => set((state) => ({ events: previous ? state.events.map((item) => item.id === id ? previous as CalendarEvent : item) : state.events, calendarSync: { status: 'error', message: '일정을 수정하지 못해 이전 내용으로 되돌렸어요.' } })))
+    void updateCalendarEvent(id, event).then((saved) => {
+      set((state) => ({
+        events: saved ? state.events.map((item) => item.id === id ? saved : item) : state.events,
+        calendarSync: { status: 'saved', message: saved ? '일정 변경사항을 왕국 기록에 저장했어요.' : '일정 변경사항을 이 기기에 저장했어요.' },
+      }))
+      if (saved) void scheduleEventReminders(saved).catch(() => undefined)
+    }).catch(() => set((state) => ({ events: previous ? state.events.map((item) => item.id === id ? previous as CalendarEvent : item) : state.events, calendarSync: { status: 'error', message: '일정을 수정하지 못해 이전 내용으로 되돌렸어요.' } })))
   },
   updateEventOccurrence: async (id, occurrenceDate, event) => {
     const previous = get().events.find((item) => item.id === id)
     if (!previous) return false
     const replacement = { ...event, seriesDate: undefined, recurrenceExceptions: undefined }
     set((state) => ({ events: state.events.map((item) => item.id === id ? { ...item, recurrenceExceptions: { ...item.recurrenceExceptions, [occurrenceDate]: { replacement } } } : item), calendarSync: { status: 'saving', message: '이 반복 일정만 변경하고 있어요.' } }))
-    try { await saveCalendarOccurrence(id, occurrenceDate, replacement); set({ calendarSync: { status: 'saved', message: '선택한 일정만 변경했어요.' } }); return true }
+    try { await saveCalendarOccurrence(id, occurrenceDate, replacement); const next = get().events.find((item) => item.id === id); if (next) void scheduleEventReminders(next).catch(() => undefined); set({ calendarSync: { status: 'saved', message: '선택한 일정만 변경했어요.' } }); return true }
     catch { set((state) => ({ events: state.events.map((item) => item.id === id ? previous : item), calendarSync: { status: 'error', message: '반복 일정을 변경하지 못했어요.' } })); return false }
   },
   deleteEventOccurrence: async (id, occurrenceDate) => {
     const previous = get().events.find((item) => item.id === id)
     if (!previous) return false
     set((state) => ({ events: state.events.map((item) => item.id === id ? { ...item, recurrenceExceptions: { ...item.recurrenceExceptions, [occurrenceDate]: { cancelled: true } } } : item), calendarSync: { status: 'saving', message: '이 반복 일정만 삭제하고 있어요.' } }))
-    try { await saveCalendarOccurrence(id, occurrenceDate, undefined, true); set({ calendarSync: { status: 'saved', message: '선택한 일정만 삭제했어요.' } }); return true }
+    try { await saveCalendarOccurrence(id, occurrenceDate, undefined, true); const next = get().events.find((item) => item.id === id); if (next) void scheduleEventReminders(next).catch(() => undefined); set({ calendarSync: { status: 'saved', message: '선택한 일정만 삭제했어요.' } }); return true }
     catch { set((state) => ({ events: state.events.map((item) => item.id === id ? previous : item), calendarSync: { status: 'error', message: '반복 일정을 삭제하지 못했어요.' } })); return false }
   },
   deleteEvent: (id) => {
     let removed: CalendarEvent | undefined
     set((state) => { removed = state.events.find((event) => event.id === id); return { events: state.events.filter((event) => event.id !== id), calendarSync: { status: 'saving', message: '일정을 삭제하고 있어요.' } } })
-    void removeCalendarEvent(id).then(() => set({ calendarSync: { status: 'saved', message: '일정을 삭제했어요.' } })).catch(() => set((state) => ({ events: removed ? [...state.events, removed as CalendarEvent] : state.events, calendarSync: { status: 'error', message: '일정을 삭제하지 못해 복원했어요.' } })))
+    void cancelReminders('calendar_event', id).catch(() => undefined).then(() => removeCalendarEvent(id)).then(() => set({ calendarSync: { status: 'saved', message: '일정을 삭제했어요.' } })).catch(() => set((state) => ({ events: removed ? [...state.events, removed as CalendarEvent] : state.events, calendarSync: { status: 'error', message: '일정을 삭제하지 못해 복원했어요.' } })))
   },
   moveEvent: (id, date) => {
     let previous: CalendarEvent | undefined
@@ -265,7 +268,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
       }
       return { events: state.events.map((event) => event.id === id ? { ...event, date, endDate: nextEndDate } : event), calendarSync: { status: 'saving', message: '일정 날짜를 변경하고 있어요.' } }
     })
-    void updateCalendarEventDate(id, date, nextEndDate).then(() => set({ calendarSync: { status: 'saved', message: '일정 날짜를 변경했어요.' } })).catch(() => set((state) => ({ events: previous ? state.events.map((event) => event.id === id ? previous as CalendarEvent : event) : state.events, calendarSync: { status: 'error', message: '날짜를 변경하지 못해 이전 위치로 되돌렸어요.' } })))
+    void updateCalendarEventDate(id, date, nextEndDate).then(() => { const next = get().events.find((event) => event.id === id); if (next) void scheduleEventReminders(next).catch(() => undefined); set({ calendarSync: { status: 'saved', message: '일정 날짜를 변경했어요.' } }) }).catch(() => set((state) => ({ events: previous ? state.events.map((event) => event.id === id ? previous as CalendarEvent : event) : state.events, calendarSync: { status: 'error', message: '날짜를 변경하지 못해 이전 위치로 되돌렸어요.' } })))
   },
   hydrateEvents: async () => { const scope = getActiveAccountScope(); try { const savedEvents = await listCalendarEvents(); if (scope === getActiveAccountScope() && savedEvents) set({ events: savedEvents }) } catch { if (scope === getActiveAccountScope()) set({ calendarSync: { status: 'error', message: '왕국 일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.' } }) } },
   hydrateProjects: async () => { const scope = getActiveAccountScope(); try { const savedProjects = await listProjects(); if (scope === getActiveAccountScope() && savedProjects) set({ projects: savedProjects }) } catch { if (scope === getActiveAccountScope()) set({ recordSync: { status: 'error', message: '메인퀘스트를 불러오지 못했어요.' } }) } },
@@ -319,6 +322,8 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
           ? await saveQuestCompletion(nextCompletion)
           : await removeQuestCompletion(id, occurrenceDate)
         assertStoredWhenRequired(stored)
+        const nextQuest = get().quests.find((quest) => quest.id === id)
+        if (nextQuest) void scheduleQuestReminders(nextQuest, get().questCompletions.filter((item) => item.questId === id).map((item) => item.occurrenceDate)).catch(() => undefined)
         set({ recordSync: { status: 'saved', message: nextDone ? '오늘의 반복 퀘스트를 완료했어요.' : '오늘의 완료 기록을 취소했어요.' } })
         return true
       } catch {
@@ -333,6 +338,8 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     set((state) => ({ quests: state.quests.map((quest) => quest.id === id ? { ...quest, done: nextDone, status: nextStatus, completedAt: nextCompletedAt, updatedAt: timestamp() } : quest), recordSync: { status: 'saving', message: '퀘스트 상태를 저장하고 있어요.' } }))
     try {
       assertStoredWhenRequired(await updateQuestRow(id, { status: nextStatus, completedAt: nextCompletedAt }))
+      const nextQuest = get().quests.find((quest) => quest.id === id)
+      if (nextQuest) void scheduleQuestReminders(nextQuest).catch(() => undefined)
       set({ recordSync: { status: 'saved', message: '퀘스트 상태를 저장했어요.' } })
       return true
     } catch {
@@ -360,7 +367,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     try {
       assertStoredWhenRequired(await createQuestRow(storedQuest))
       if (completion) assertStoredWhenRequired(await saveQuestCompletion(completion))
-      void scheduleDefaultQuestReminder(full).catch(() => undefined)
+      void scheduleQuestReminders(full, completion ? [occurrenceDate] : []).catch(() => undefined)
       void requestWebPushForFirstReminder()
       set({ recordSync: { status: 'saved', message: '퀘스트를 저장했어요.' } })
       return id
@@ -411,13 +418,15 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     }))
     try {
       assertStoredWhenRequired(await updateQuestRow(id, storagePatch))
-      if (nextUsesDatedCompletion) {
+        if (nextUsesDatedCompletion) {
         const stored = nextCompletion
           ? await saveQuestCompletion(nextCompletion)
           : await removeQuestCompletion(id, occurrenceDate)
-        assertStoredWhenRequired(stored)
-      }
-      set({ recordSync: { status: 'saved', message: '퀘스트 변경사항을 저장했어요.' } })
+          assertStoredWhenRequired(stored)
+        }
+        const nextQuest = get().quests.find((item) => item.id === id)
+        if (nextQuest) void scheduleQuestReminders(nextQuest, get().questCompletions.filter((item) => item.questId === id).map((item) => item.occurrenceDate)).catch(() => undefined)
+        set({ recordSync: { status: 'saved', message: '퀘스트 변경사항을 저장했어요.' } })
       return true
     } catch {
       if (cloudAccountActive()) void updateQuestRow(id, previous).catch(() => undefined)
@@ -437,9 +446,10 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
       quests: previous.filter((quest) => quest.id !== id),
       questCompletions: previousCompletions.filter((item) => item.questId !== id),
       recordSync: { status: 'saving', message: '퀘스트를 삭제하고 있어요.' },
-    })
-    try {
-      assertStoredWhenRequired(await removeQuestRow(id))
+      })
+      try {
+        await cancelReminders('quest', id).catch(() => false)
+        assertStoredWhenRequired(await removeQuestRow(id))
       set({ recordSync: { status: 'saved', message: '퀘스트를 삭제했어요.' } })
       return true
     } catch {

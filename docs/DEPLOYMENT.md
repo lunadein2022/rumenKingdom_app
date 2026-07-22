@@ -19,7 +19,12 @@
 13. `supabase/migrations/202607190012_cross_platform_sync.sql`
 14. `supabase/migrations/202607190013_common_update_system.sql`
 15. `supabase/migrations/202607200014_pagination_limits.sql`
-16. `supabase/verify_canonical_schema.sql`, `supabase/verify_admin_benefits.sql`, `supabase/verify_shared_backend.sql`, `supabase/verify_cross_platform_sync.sql`, `supabase/verify_common_update_system.sql` 실행 후 모든 필수 항목 확인
+16. `supabase/migrations/202607200015_fix_public_bootstrap_catalog_sort.sql`
+17. `supabase/migrations/202607220016_pre_billing_reliability.sql`
+18. `supabase/migrations/202607220017_release_hardening.sql`
+19. `supabase/verify_canonical_schema.sql`, `supabase/verify_admin_benefits.sql`, `supabase/verify_shared_backend.sql`, `supabase/verify_cross_platform_sync.sql`, `supabase/verify_common_update_system.sql`, `supabase/verify_release_hardening.sql` 실행 후 모든 필수 항목 확인
+
+> **긴급 수정:** `013`·`014`의 `get_public_app_bootstrap` 함수는 `app_catalog_items`를 조회하는 서브쿼리에 `sort_order` 컬럼을 select하지 않은 채 `order by item.sort_order`를 사용해, 호출할 때마다 `42703 column item.sort_order does not exist` 오류로 실패했다. 이 때문에 공지사항·기능 플래그·요금제·강제 업데이트·서버 패치노트가 배포된 적 없이 계속 클라이언트 기본값으로만 표시됐다. `015`를 반드시 운영 Supabase에 적용해야 한다.
 
 브라우저 환경변수:
 

@@ -1,7 +1,7 @@
 {
   "name": "rumen-kingdom",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,12 +9,15 @@
     "mobile:sync": "pnpm build && cap sync",
     "android:apk": "pnpm mobile:sync && cd android && gradlew.bat assembleDebug",
     "test": "node --test tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "test:ci": "pnpm lint && pnpm test && pnpm build && pnpm test:e2e",
     "preview": "vite preview",
     "lint": "eslint ."
   },
   "dependencies": {
     "@capacitor/android": "8.4.2",
     "@capacitor/core": "8.4.2",
+    "@capacitor/push-notifications": "8.1.2",
     "@ssabrojs/hwpxjs": "^0.4.0",
     "@supabase/supabase-js": "2.57.4",
     "@vitejs/plugin-react": "5.1.1",
@@ -24,14 +27,15 @@
     "mammoth": "1.11.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-router-dom": "7.9.6",
-    "vite": "7.2.4",
+    "react-router-dom": "7.18.1",
+    "vite": "7.3.5",
     "web-push": "^3.6.7",
     "zustand": "5.0.9"
   },
   "devDependencies": {
     "@capacitor/cli": "8.4.2",
     "@eslint/js": "latest",
+    "@playwright/test": "1.61.1",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "eslint": "latest",

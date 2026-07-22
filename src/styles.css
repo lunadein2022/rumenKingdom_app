@@ -204,13 +204,47 @@ body.body-overlay-open,body:has(.modal-backdrop),body:has(.search-overlay){overf
 .modal-backdrop,.search-overlay{inset:0!important;top:0!important;z-index:90!important;overflow-y:auto;overscroll-behavior:contain;padding:calc(var(--body-overlay-top) + 16px) 16px calc(var(--body-overlay-bottom) + 16px);background:rgba(48,39,51,.25)!important;backdrop-filter:blur(5px)!important;-webkit-backdrop-filter:blur(5px)!important}
 .modal-backdrop{place-items:center}
 .modal{max-height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:auto}
-.modal-head{position:sticky;top:-22px;z-index:4;margin:-22px 0 12px;padding:22px 0 10px;background:linear-gradient(180deg,rgba(255,253,253,.99) 76%,rgba(255,253,253,.9))}
+.modal-head{position:static;z-index:auto;margin:0 0 12px;padding:0;background:none}
 .modal-actions,.patchnotes-actions{position:static;bottom:auto;z-index:auto;margin:12px 0 0;padding:12px 0 0;background:none}
 .search-overlay{padding-top:calc(var(--body-overlay-top) + 24px)!important}
-@media(max-width:900px){:root{--body-overlay-top:82px;--body-overlay-bottom:42px}.modal-backdrop,.search-overlay{padding:calc(var(--body-overlay-top) + 10px) 10px calc(var(--body-overlay-bottom) + 10px)}.search-overlay{padding-top:calc(var(--body-overlay-top) + 14px)!important}.modal{border-radius:13px;padding:18px}.modal-head{top:-18px;margin:-18px 0 10px;padding-top:18px}.modal-actions,.patchnotes-actions{bottom:auto;margin-bottom:0;padding-bottom:0}}
+@media(max-width:900px){:root{--body-overlay-top:82px;--body-overlay-bottom:42px}.modal-backdrop,.search-overlay{padding:calc(var(--body-overlay-top) + 10px) 10px calc(var(--body-overlay-bottom) + 10px)}.search-overlay{padding-top:calc(var(--body-overlay-top) + 14px)!important}.modal{border-radius:13px;padding:18px}.modal-head{margin:0 0 10px;padding:0}.modal-actions,.patchnotes-actions{bottom:auto;margin-bottom:0;padding-bottom:0}}
 
 .recurrence-editor{margin:13px 0;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.35)}
 .recurrence-editor legend{padding:0 5px;font-size:12.5px;font-weight:700;color:var(--ink)}
+
+/* Unified detail headings and modal chrome. */
+.modal-head>div:first-child,.detail-hero>div:first-child,.relationship-head>div:first-child,.memo-head>div:first-child{flex:1;min-width:0}
+.modal-head h2,.detail-hero h2,.relationship-head h2,.memo-head h2{line-height:1.2;overflow-wrap:anywhere}
+.modal-head>button{flex:0 0 34px;width:34px;height:34px;padding:0;display:grid;place-items:center;border-radius:50%;background:transparent!important;box-shadow:none!important}
+.memo-detail .record-form{width:100%;margin:0;align-items:stretch}
+
+/* Diary month picker: written dates carry a small royal-ink marker. */
+.diary-calendar{margin:-2px 0 18px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.diary-calendar>header{display:grid;grid-template-columns:30px 1fr 30px;align-items:center;text-align:center;margin-bottom:10px}
+.diary-calendar>header button{border:0;background:transparent;height:30px;display:grid;place-items:center;border-radius:7px}
+.diary-calendar>header button:hover{background:rgba(124,104,173,.08)}
+.diary-calendar>header b{font-size:13px}
+.diary-calendar-week,.diary-calendar-days{display:grid;grid-template-columns:repeat(7,1fr)}
+.diary-calendar-week span{text-align:center;font-size:9px;color:#9e96a1;padding:4px 0}
+.diary-calendar-days button{position:relative;border:0;background:transparent;aspect-ratio:1;border-radius:50%;padding:0;display:grid;place-items:center;font-size:10px;color:#625b66}
+.diary-calendar-days button.outside{color:#c4bec6}
+.diary-calendar-days button:disabled{opacity:.3;cursor:not-allowed}
+.diary-calendar-days button.selected{background:#75619f;color:white;box-shadow:0 4px 10px rgba(94,73,132,.24)}
+.diary-calendar-days button i{position:absolute;left:50%;bottom:2px;translate:-50% 0;width:4px;height:4px;border-radius:50%;background:#b28f51}
+.diary-calendar-days button.selected i{background:#ffe3a5}
+.diary-calendar>p{margin:9px 0 0;display:flex;align-items:center;gap:5px;font-size:9px;color:#968e99}
+.diary-calendar>p i{width:5px;height:5px;border-radius:50%;background:#b28f51}
+
+/* Secret-garden playlist. */
+.garden-player{position:fixed;z-index:8;left:50%;bottom:25px;translate:-50% 0;width:min(700px,calc(100vw - 32px));min-height:72px;border-radius:18px;padding:12px 16px;display:grid;grid-template-columns:minmax(190px,1fr) 36px 42px 36px minmax(100px,150px);align-items:center;gap:7px;background:rgba(34,38,33,.68);border-color:rgba(255,255,255,.18);color:white;box-shadow:0 16px 42px rgba(23,27,22,.28)}
+.garden-player>div{min-width:0}.garden-player small,.garden-player b,.garden-player span{display:block}.garden-player small{font-family:'Cormorant Garamond';letter-spacing:.18em;color:#e7c98a;font-size:9px}.garden-player b{font-size:12px;margin:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.garden-player span{font-size:9px;color:rgba(255,255,255,.68)}
+.garden-player>button{border:0;background:transparent;color:white;width:36px;height:36px;border-radius:50%;display:grid;place-items:center}.garden-player>button:hover{background:rgba(255,255,255,.12)}
+.garden-player .garden-play{background:rgba(255,255,255,.16);width:42px;height:42px}.garden-player>label{display:flex;align-items:center;gap:6px}.garden-player input{min-width:0;width:100%;accent-color:#d6b46e}
+.garden-player .garden-autoplay{position:absolute;left:50%;bottom:calc(100% + 8px);translate:-50% 0;width:auto;height:auto;white-space:nowrap;padding:8px 13px;border-radius:999px;background:#fff4dc;color:#5e5039;font-size:11px;box-shadow:0 8px 22px rgba(20,18,20,.2)}
+
+@media(max-width:820px){.diary-layout aside.diary-controls{display:block;order:2}.diary-layout{display:flex;flex-direction:column}.diary-paper{order:1}.garden-player{bottom:12px;grid-template-columns:1fr 34px 40px 34px;padding:10px 12px}.garden-player>label{display:none}.garden-place-copy{width:min(430px,86%);right:7%;top:30%}}
+@media(max-width:520px){.garden-player{grid-template-columns:1fr 38px 38px}.garden-player>button:first-of-type{display:none}.garden-player>div{grid-column:1}.garden-player>button:nth-of-type(2){grid-column:2}.garden-player>button:nth-of-type(3){grid-column:3}.garden-place-copy h1{font-size:30px}}
+.data-management-unified{width:100%;display:flex;flex-direction:column;gap:14px}.data-export.embedded{padding:0;background:transparent;border:0;box-shadow:none}.data-export.embedded>header{margin-top:0}.backup-restore{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;border-top:1px solid var(--line);padding-top:14px}.backup-restore b,.backup-restore p{display:block;margin:0}.backup-restore p{font-size:11px;color:#8f8791;margin-top:4px}.backup-restore label{border:1px solid var(--line);background:white;border-radius:8px;padding:9px 12px;font-size:11px;cursor:pointer}.backup-restore label input{display:none}.backup-restore .account-delete{grid-column:1/-1;justify-self:start}@media(max-width:620px){.backup-restore{grid-template-columns:1fr}.backup-restore .account-delete{grid-column:auto}.data-export.embedded .export-actions{grid-template-columns:repeat(2,1fr)}}
 .recurrence-editor label{margin:6px 0 0}.recurrence-editor label small{font-weight:400;color:var(--muted)}
 .recurrence-option{display:flex;flex-direction:column;gap:7px;margin-top:12px;font-size:12.5px;font-weight:600}
 .recurrence-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}

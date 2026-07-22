@@ -69,7 +69,7 @@ export function NotificationCenterProvider({ demoMode, children }: { demoMode: b
       remoteId: item.id,
       title: item.title,
       summary: item.body,
-      path: '/throne',
+      path: item.path,
       read: Boolean(item.readAt),
       createdAt: item.createdAt,
     })),

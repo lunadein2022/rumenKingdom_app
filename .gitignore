@@ -6,6 +6,10 @@ vite.config.js
 vite.config.d.ts
 .env
 .env.local
+android/app/google-services.json
+*.p8
 .android-sdk/
 .jdk21/
 mobile-artifacts/
+playwright-report/
+test-results/

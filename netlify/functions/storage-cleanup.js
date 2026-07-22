@@ -22,6 +22,9 @@ export async function handler() {
         attempts: Number(job.attempts) + 1,
         last_error: String(removeError.message || 'storage_remove_failed').slice(0, 500),
       }).eq('id', job.id)
+      if (Number(job.attempts) + 1 >= 3) {
+        try { await admin.from('operational_events').insert({ source: 'storage-cleanup', severity: 'warning', code: 'storage_delete_retry', message: String(removeError.message || 'storage_remove_failed').slice(0, 500), metadata: { bucket: job.bucket_id, attempts: Number(job.attempts) + 1 } }) } catch { /* best-effort telemetry */ }
+      }
       continue
     }
     await admin.from('storage_cleanup_queue').update({
@@ -33,4 +36,3 @@ export async function handler() {
   }
   return { statusCode: 200, body: JSON.stringify({ processed }) }
 }
-

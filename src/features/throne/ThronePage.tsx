@@ -16,6 +16,7 @@ import { useRitaUsage } from '../../lib/useRitaUsage'
 import { deleteMyAccount } from '../../services/accountService'
 import { useRuntimeConfig } from '../runtime/RuntimeConfig'
 import { disableWebPush, enableWebPush } from '../../services/pushService'
+import { scheduleEventReminders, scheduleQuestReminders } from '../../services/reminderService'
 
 type SettingId = 'profile' | 'background' | 'notifications' | 'ai' | 'data' | null
 
@@ -57,8 +58,16 @@ export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = ()
     window.dispatchEvent(new CustomEvent('rumen-notification-setting', { detail: value }))
     await persistPreferences({ notifications: value }).catch(() => undefined)
     if (demoMode) return
-    if (value) await enableWebPush().catch((error) => alert(error instanceof Error ? error.message : '푸시 알림을 설정하지 못했어요.'))
-    else await disableWebPush().catch(() => undefined)
+    if (value) {
+      try { await enableWebPush() }
+      catch (error) {
+        setNotifications(false)
+        writeAccountStorage('rumen-in-app-notifications', 'off')
+        window.dispatchEvent(new CustomEvent('rumen-notification-setting', { detail: false }))
+        await persistPreferences({ notifications: false }).catch(() => undefined)
+        alert(error instanceof Error ? error.message : '푸시 알림을 설정하지 못했어요.')
+      }
+    } else await disableWebPush().catch(() => undefined)
   }
 
   const saveProfile = async () => {
@@ -70,12 +79,11 @@ export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = ()
     storeSelectedPrincessId(draftPrincessId)
     configureServiceTime(timezone, serviceDayStartsAt)
     await persistPreferences({ profileName: nextName, profileIntro: nextIntro, timezone, serviceDayStartsAt, selectedPrincessId: draftPrincessId }).catch(() => undefined)
+    if (!demoMode) await Promise.allSettled([
+      ...store.events.map((event) => scheduleEventReminders(event)),
+      ...store.quests.map((quest) => scheduleQuestReminders(quest, store.questCompletions.filter((item) => item.questId === quest.id).map((item) => item.occurrenceDate))),
+    ])
     setSetting(null)
-  }
-  const exportData = () => {
-    const data = JSON.stringify({ format: 'rumen-kingdom-backup', version: 1, exportedAt: new Date().toISOString(), data: { projects: store.projects, quests: store.quests, memos: store.memos, relationships: store.relationships, diaries: store.diaries, events: store.events } }, null, 2)
-    const url = URL.createObjectURL(new Blob([data], { type: 'application/json' }))
-    const anchor = document.createElement('a'); anchor.href = url; anchor.download = `rumen-kingdom-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url)
   }
   const deleteAccount = async () => {
     const confirmation = prompt('계정과 모든 기록을 영구 삭제합니다. 계속하려면 DELETE를 입력해 주세요.')
@@ -161,11 +169,11 @@ export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = ()
         {setting === 'background' && <BackgroundSettings/>}
         {setting === 'notifications' && <label className="setting-toggle"><span><b>앱 내부 알림</b><small>일정과 확인할 기록을 헤더에서 안내합니다.</small></span><input type="checkbox" checked={notifications} onChange={(event) => void changeNotifications(event.target.checked)}/></label>}
         {setting === 'ai' && <label className="setting-select">리타의 답변 방식<select value={aiStyle} onChange={(event) => { const value = event.target.value as UserPreferences['aiStyle']; setAiStyle(value); writeAccountStorage('rumen-rita-style', value); void persistPreferences({ aiStyle: value }) }}><option value="concise">간결하게</option><option value="warm">다정하게</option><option value="detailed">자세하게</option></select><small>계정에 저장되어 다른 기기에서도 같은 답변 방식을 사용합니다.</small></label>}
-        {setting === 'data' && <div className="setting-note"><Database size={20}/><div><b>{demoMode ? '데모 왕국 관리' : '내 왕국 기록 보관'}</b><p>{demoMode ? '수정한 데모 기록을 처음 예시 상태로 되돌릴 수 있습니다.' : '현재 계정의 프로젝트, 퀘스트, 일정, 기록을 버전이 포함된 JSON으로 보관하고 다시 불러올 수 있습니다.'}</p>{demoMode ? <button onClick={() => { if (confirm('데모 왕국을 처음 예시 데이터로 되돌릴까요?')) { onResetDemo(); setSetting(null) } }}>데모 데이터 초기화</button> : <><div className="data-actions"><button onClick={exportData}>왕국 기록 내보내기</button><label>백업 기록 가져오기<input type="file" accept="application/json,.json" onChange={(event) => void importData(event.target.files?.[0])}/></label></div><button className="danger account-delete" disabled={deletingAccount} onClick={() => void deleteAccount()}>{deletingAccount ? '계정 삭제 중…' : '계정과 모든 데이터 삭제'}</button></>}</div></div>}
+        {setting === 'data' && (demoMode ? <div className="setting-note"><Database size={20}/><div><b>데모 왕국 관리</b><p>수정한 데모 기록을 처음 예시 상태로 되돌릴 수 있습니다.</p><button onClick={() => { if (confirm('데모 왕국을 처음 예시 데이터로 되돌릴까요?')) { onResetDemo(); setSetting(null) } }}>데모 데이터 초기화</button></div></div> : <div className="data-management-unified"><DataExportPanel demoMode={false} embedded/><section className="backup-restore"><div><b>백업 기록 가져오기</b><p>이전에 내려받은 루멘왕국 JSON 백업을 현재 계정에 추가합니다.</p></div><label>JSON 백업 선택<input type="file" accept="application/json,.json" onChange={(event) => void importData(event.target.files?.[0])}/></label><button className="danger account-delete" disabled={deletingAccount} onClick={() => void deleteAccount()}>{deletingAccount ? '계정 삭제 중…' : '계정과 모든 데이터 삭제'}</button></section></div>)}
       </SettingPanel>}
     </section>
 
-    <DataExportPanel demoMode={demoMode}/><section className="kingdom-connections panel glass-panel"><header><span className="eyebrow">CONNECTION</span><h2>연결 상태</h2></header><div className="connection-row"><span><Database size={18}/></span><div><b>계정별 기록 저장소</b><small>각 계정과 게스트 기록을 이 기기에서 분리 보관</small></div><em>분리됨</em></div><div className="connection-row"><span><Sparkles size={18}/></span><div><b>AI 메이드 리타</b><small>계정별 대화, 문서 요약, 명함 정리</small></div><em>로그인 후 확인</em></div><div className="connection-row"><span><Cloud size={18}/></span><div><b>일정 클라우드 동기화</b><small>왕실 일정표를 로그인 계정별로 안전하게 동기화</small></div><em>{isSupabaseConfigured ? '준비됨' : '설정 필요'}</em></div></section>
+    <section className="kingdom-connections panel glass-panel"><header><span className="eyebrow">CONNECTION</span><h2>연결 상태</h2></header><div className="connection-row"><span><Database size={18}/></span><div><b>계정별 기록 저장소</b><small>각 계정과 게스트 기록을 이 기기에서 분리 보관</small></div><em>분리됨</em></div><div className="connection-row"><span><Sparkles size={18}/></span><div><b>AI 메이드 리타</b><small>계정별 대화, 문서 요약, 명함 정리</small></div><em>로그인 후 확인</em></div><div className="connection-row"><span><Cloud size={18}/></span><div><b>일정 클라우드 동기화</b><small>왕실 일정표를 로그인 계정별로 안전하게 동기화</small></div><em>{isSupabaseConfigured ? '준비됨' : '설정 필요'}</em></div></section>
 
     <button className="signout-button kingdom-signout" onClick={() => void onSignOut()}><LogOut size={16}/> {demoMode ? '로그인해서 내 왕국 만들기' : '왕국에서 나가기'}</button>
   </div>

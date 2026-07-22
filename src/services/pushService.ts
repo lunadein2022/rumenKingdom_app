@@ -1,6 +1,10 @@
 import { supabase } from '../lib/supabase'
+import { readAccountStorage } from '../lib/accountScope'
+import { Capacitor } from '@capacitor/core'
+import { disableNativePush, enableNativePush } from './nativePushService'
 
 export async function enableWebPush() {
+  if (Capacitor.isNativePlatform()) return enableNativePush()
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) throw new Error('이 브라우저는 웹 푸시 알림을 지원하지 않아요.')
   const publicKey = import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY as string | undefined
   if (!publicKey) throw new Error('웹 푸시 서버 키가 아직 설정되지 않았어요.')
@@ -17,12 +21,14 @@ export async function enableWebPush() {
     auth_key: json.keys.auth,
     user_agent: navigator.userAgent.slice(0, 500),
     enabled: true,
+    enabled_at: new Date().toISOString(),
   }, { onConflict: 'user_id,endpoint' })
   if (error) throw error
   return true
 }
 
 export async function disableWebPush() {
+  if (Capacitor.isNativePlatform()) { await disableNativePush(); return }
   if (!('serviceWorker' in navigator) || !supabase) return
   const registration = await navigator.serviceWorker.ready
   const subscription = await registration.pushManager.getSubscription()
@@ -32,7 +38,8 @@ export async function disableWebPush() {
 }
 
 export async function requestWebPushForFirstReminder() {
-  if (!import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY || typeof Notification === 'undefined' || Notification.permission === 'denied') return false
+  if (readAccountStorage('rumen-in-app-notifications') === 'off') return false
+  if (!import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY || typeof Notification === 'undefined' || Notification.permission !== 'granted') return false
   return enableWebPush().catch(() => false)
 }
 

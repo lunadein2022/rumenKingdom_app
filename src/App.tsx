@@ -15,6 +15,7 @@ import { Capacitor } from '@capacitor/core'
 import { MobileServiceSetup } from './components/MobileServiceSetup'
 import { RuntimeConfigProvider } from './features/runtime/RuntimeConfig'
 import { PasswordRecoveryScreen } from './components/PasswordRecoveryScreen'
+import { restoreNativePushRegistration } from './services/nativePushService'
 
 function App() {
   if (Capacitor.isNativePlatform() && !isSupabaseConfigured) return <MobileServiceSetup />
@@ -104,6 +105,7 @@ function ConfiguredApp() {
           writeAccountStorage('rumen-in-app-notifications', preferences.notifications ? 'on' : 'off')
           writeAccountStorage('rumen-rita-style', preferences.aiStyle)
           storeSelectedPrincessId(preferences.selectedPrincessId)
+          if (preferences.notifications && Capacitor.isNativePlatform()) void restoreNativePushRegistration().catch(() => undefined)
         }
         await Promise.all([hydrateEvents(), hydrateProjects(), hydrateMemos(), hydrateRelationshipGroups(), hydrateRelationships(), hydrateDiaries()])
         await hydrateQuests()

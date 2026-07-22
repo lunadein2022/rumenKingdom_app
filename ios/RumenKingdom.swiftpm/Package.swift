@@ -25,9 +25,11 @@ let package = Package(
             ]
         )
     ],
+    dependencies: [],
     targets: [
         .executableTarget(
             name: "AppModule",
+            dependencies: [],
             path: "Sources"
         )
     ]
