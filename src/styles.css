@@ -203,11 +203,20 @@ a{color:inherit}.brand,.nav-item,.header-shortcut{text-decoration:none}.page-hea
 body.body-overlay-open,body:has(.modal-backdrop),body:has(.search-overlay){overflow:hidden}
 .modal-backdrop,.search-overlay{inset:0!important;top:0!important;z-index:90!important;overflow-y:auto;overscroll-behavior:contain;padding:calc(var(--body-overlay-top) + 16px) 16px calc(var(--body-overlay-bottom) + 16px);background:rgba(48,39,51,.25)!important;backdrop-filter:blur(5px)!important;-webkit-backdrop-filter:blur(5px)!important}
 .modal-backdrop{place-items:center}
-.modal{max-height:100%;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.modal{max-height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-gutter:auto}
 .modal-head{position:sticky;top:-22px;z-index:4;margin:-22px 0 12px;padding:22px 0 10px;background:linear-gradient(180deg,rgba(255,253,253,.99) 76%,rgba(255,253,253,.9))}
-.modal-actions,.patchnotes-actions{position:sticky;bottom:-22px;z-index:4;margin:12px 0 -22px;padding:12px 0 22px;background:linear-gradient(0deg,rgba(255,253,253,.99) 76%,rgba(255,253,253,.9))}
+.modal-actions,.patchnotes-actions{position:static;bottom:auto;z-index:auto;margin:12px 0 0;padding:12px 0 0;background:none}
 .search-overlay{padding-top:calc(var(--body-overlay-top) + 24px)!important}
-@media(max-width:900px){:root{--body-overlay-top:82px;--body-overlay-bottom:42px}.modal-backdrop,.search-overlay{padding:calc(var(--body-overlay-top) + 10px) 10px calc(var(--body-overlay-bottom) + 10px)}.search-overlay{padding-top:calc(var(--body-overlay-top) + 14px)!important}.modal{border-radius:13px;padding:18px}.modal-head{top:-18px;margin:-18px 0 10px;padding-top:18px}.modal-actions,.patchnotes-actions{bottom:-18px;margin-bottom:-18px;padding-bottom:18px}}
+@media(max-width:900px){:root{--body-overlay-top:82px;--body-overlay-bottom:42px}.modal-backdrop,.search-overlay{padding:calc(var(--body-overlay-top) + 10px) 10px calc(var(--body-overlay-bottom) + 10px)}.search-overlay{padding-top:calc(var(--body-overlay-top) + 14px)!important}.modal{border-radius:13px;padding:18px}.modal-head{top:-18px;margin:-18px 0 10px;padding-top:18px}.modal-actions,.patchnotes-actions{bottom:auto;margin-bottom:0;padding-bottom:0}}
+
+.recurrence-editor{margin:13px 0;padding:12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.35)}
+.recurrence-editor legend{padding:0 5px;font-size:12.5px;font-weight:700;color:var(--ink)}
+.recurrence-editor label{margin:6px 0 0}.recurrence-editor label small{font-weight:400;color:var(--muted)}
+.recurrence-option{display:flex;flex-direction:column;gap:7px;margin-top:12px;font-size:12.5px;font-weight:600}
+.recurrence-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.recurrence-weekdays button{height:34px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.75);color:var(--ink)}
+.recurrence-weekdays button.active{border-color:#806caf;background:#806caf;color:white}
+.recurrence-inline{display:grid;grid-template-columns:1fr 1fr;gap:8px}.recurrence-inline select{width:100%}
 
 /* The garden is a single palace room, not a scrolling document. */
 .page-garden{height:100dvh;min-height:100dvh;display:flex;flex-direction:column;overflow:hidden}

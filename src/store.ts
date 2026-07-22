@@ -74,6 +74,7 @@ interface KingdomState {
 }
 
 const timestamp = () => new Date().toISOString()
+const usesDatedQuestCompletion = (quest: Pick<Quest, 'recurrenceRule'> & Partial<Pick<Quest, 'type'>>) => quest.type !== 'sub' || Boolean(quest.recurrenceRule)
 const currentMonth = new Date()
 const monthDate = (day: number) => format(setDate(currentMonth, day), 'yyyy-MM-dd')
 const today = serviceDate()
@@ -244,7 +245,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
         quests: savedQuests.map((quest) => ({
           ...quest,
           project: quest.projectId ? state.projects.find((project) => project.id === quest.projectId)?.title : undefined,
-          ...(quest.recurrenceRule ? (() => {
+          ...(usesDatedQuestCompletion(quest) ? (() => {
             const completion = (savedCompletions ?? []).find((item) => item.questId === quest.id && item.occurrenceDate === serviceDate())
             return {
               done: Boolean(completion),
@@ -269,7 +270,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     const nextDone = !previous.done
     const nextStatus: Quest['status'] = nextDone ? 'completed' : 'active'
     const nextCompletedAt = nextDone ? timestamp() : undefined
-    if (previous.recurrenceRule) {
+    if (usesDatedQuestCompletion(previous)) {
       const occurrenceDate = serviceDate()
       const previousCompletions = get().questCompletions
       const nextCompletion = nextDone ? { questId: id, occurrenceDate, completedAt: nextCompletedAt as string } : undefined
@@ -311,10 +312,11 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     const now = timestamp()
     const full: Quest = { ...quest, id, completedAt: quest.done ? now : undefined, createdAt: now, updatedAt: now }
     const occurrenceDate = serviceDate()
-    const completion = full.recurrenceRule && full.done
+    const datedCompletion = usesDatedQuestCompletion(full)
+    const completion = datedCompletion && full.done
       ? { questId: id, occurrenceDate, completedAt: full.completedAt as string }
       : undefined
-    const storedQuest = full.recurrenceRule
+    const storedQuest = datedCompletion
       ? { ...full, status: full.status === 'completed' ? 'active' as const : full.status, done: false, completedAt: undefined }
       : full
     set((state) => ({
@@ -342,6 +344,8 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     if (!previous) return false
     const previousCompletions = get().questCompletions
     const nextRecurrenceRule = 'recurrenceRule' in quest ? quest.recurrenceRule : previous.recurrenceRule
+    const nextType = quest.type ?? previous.type
+    const nextUsesDatedCompletion = nextType === 'daily' || Boolean(nextRecurrenceRule)
     const occurrenceDate = serviceDate()
     const requestedDone = quest.done !== undefined
       ? quest.done
@@ -349,21 +353,21 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
         ? quest.status === 'completed'
         : previous.done
     const requestedCompletedAt = requestedDone ? quest.completedAt ?? previous.completedAt ?? timestamp() : undefined
-    const templateStatus: Quest['status'] = nextRecurrenceRule && requestedDone
+    const templateStatus: Quest['status'] = nextUsesDatedCompletion && requestedDone
       ? 'active'
-      : quest.status ?? (nextRecurrenceRule && previous.status === 'completed' ? 'active' : previous.status)
-    const storagePatch: Partial<Quest> = nextRecurrenceRule
+      : quest.status ?? (nextUsesDatedCompletion && previous.status === 'completed' ? 'active' : previous.status)
+    const storagePatch: Partial<Quest> = nextUsesDatedCompletion
       ? { ...quest, status: templateStatus, completedAt: undefined }
       : quest
-    const localPatch: Partial<Quest> = nextRecurrenceRule
+    const localPatch: Partial<Quest> = nextUsesDatedCompletion
       ? { ...quest, done: requestedDone, status: requestedDone ? 'completed' : templateStatus, completedAt: requestedCompletedAt }
       : quest
-    const nextCompletion = nextRecurrenceRule && requestedDone
+    const nextCompletion = nextUsesDatedCompletion && requestedDone
       ? { questId: id, occurrenceDate, completedAt: requestedCompletedAt as string }
       : undefined
     set((state) => ({
       quests: state.quests.map((item) => item.id === id ? { ...item, ...localPatch, updatedAt: timestamp() } : item),
-      questCompletions: nextRecurrenceRule
+      questCompletions: nextUsesDatedCompletion
         ? nextCompletion
           ? [...state.questCompletions.filter((item) => item.questId !== id || item.occurrenceDate !== occurrenceDate), nextCompletion]
           : state.questCompletions.filter((item) => item.questId !== id || item.occurrenceDate !== occurrenceDate)
@@ -372,7 +376,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     }))
     try {
       assertStoredWhenRequired(await updateQuestRow(id, storagePatch))
-      if (nextRecurrenceRule) {
+      if (nextUsesDatedCompletion) {
         const stored = nextCompletion
           ? await saveQuestCompletion(nextCompletion)
           : await removeQuestCompletion(id, occurrenceDate)
@@ -416,7 +420,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
   refreshRecurringQuestState: (today) => {
     set((state) => ({
       quests: state.quests.map((quest) => {
-        if (!quest.recurrenceRule) return quest
+        if (!usesDatedQuestCompletion(quest)) return quest
         const completion = state.questCompletions.find((item) => item.questId === quest.id && item.occurrenceDate === today)
         return {
           ...quest,
@@ -653,7 +657,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     const old = (persisted ?? {}) as PersistedState
     const projectNames = new Map((old.projects ?? initialProjects).map((project) => [project.title, project.id]))
     const migratedCompletions = old.questCompletions ?? (old.quests ?? [])
-      .filter((quest) => quest.recurrenceRule && quest.completedAt)
+      .filter((quest) => usesDatedQuestCompletion(quest) && quest.completedAt)
       .map((quest) => ({
         questId: quest.id,
         occurrenceDate: serviceDate(new Date(quest.completedAt as string)),
@@ -675,11 +679,12 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
         }
       }),
       quests: (old.quests ?? initialQuests).map((quest) => {
-        const recurringDone = Boolean(quest.recurrenceRule && completedToday.has(quest.id))
+        const datedCompletion = usesDatedQuestCompletion(quest)
+        const recurringDone = Boolean(datedCompletion && completedToday.has(quest.id))
         return {
           id: quest.id, title: quest.title, description: quest.description ?? '', memo: quest.memo ?? '', tags: quest.tags ?? [], projectId: quest.projectId ?? (quest.project ? projectNames.get(quest.project) : undefined), project: quest.project,
-          parentQuestId: quest.parentQuestId, type: quest.type ?? 'daily', status: quest.recurrenceRule ? (recurringDone ? 'completed' : 'active') : quest.status ?? (quest.done ? 'completed' : 'active'),
-          due: quest.due ?? '', scheduledDate: quest.scheduledDate, scheduledTime: quest.scheduledTime, recurrenceRule: quest.recurrenceRule, done: quest.recurrenceRule ? recurringDone : quest.done ?? false, priority: quest.priority ?? 'medium', favorite: quest.favorite ?? false, completedAt: quest.recurrenceRule ? migratedCompletions.find((item) => item.questId === quest.id && item.occurrenceDate === serviceDate())?.completedAt : quest.completedAt,
+          parentQuestId: quest.parentQuestId, type: quest.type ?? 'daily', status: datedCompletion ? (recurringDone ? 'completed' : 'active') : quest.status ?? (quest.done ? 'completed' : 'active'),
+          due: quest.due ?? '', scheduledDate: quest.scheduledDate, scheduledTime: quest.scheduledTime, recurrenceRule: quest.recurrenceRule, done: datedCompletion ? recurringDone : quest.done ?? false, priority: quest.priority ?? 'medium', favorite: quest.favorite ?? false, completedAt: datedCompletion ? migratedCompletions.find((item) => item.questId === quest.id && item.occurrenceDate === serviceDate())?.completedAt : quest.completedAt,
           createdAt: quest.createdAt ?? createdAt, updatedAt: quest.updatedAt ?? createdAt,
         }
       }),

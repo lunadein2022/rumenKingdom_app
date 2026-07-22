@@ -10,7 +10,8 @@ import { serviceDate } from '../../lib/serviceTime'
 import { useServiceDate } from '../../lib/useServiceDate'
 import { accountStorageKey } from '../../lib/accountScope'
 import { clearPersistentState, usePersistentState } from '../../lib/usePersistentState'
-import { buildRecurrenceRule, parseRecurrenceRule, questOccursOn } from '../../lib/recurrence'
+import { buildRecurrenceRule, parseRecurrenceRule, recurrenceLabel } from '../../lib/recurrence'
+import { isQuestOnDate, isQuestWithinDays } from '../../lib/questSchedule'
 
 type ProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 type QuestInput = Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
@@ -317,20 +318,13 @@ function isoToday() {
 function dateFromLegacyDue(due?: string) { const match = due?.match(/\d{4}-\d{2}-\d{2}/); return match?.[0] }
 function timeFromDue(due?: string) { const match = due?.match(/\d{2}:\d{2}/); return match?.[0] }
 function isTodayQuest(quest: Quest) {
-  if (quest.recurrenceRule) return questOccursOn(quest, isoToday(), serviceDate(new Date(quest.createdAt)))
-  return quest.scheduledDate === isoToday() || quest.due.startsWith('오늘')
+  return isQuestOnDate(quest, isoToday())
 }
 function isThisWeekQuest(quest: Quest) {
-  if (isTodayQuest(quest) || quest.due.startsWith('내일')) return true
-  if (!quest.scheduledDate) return false
-  const today = new Date(`${isoToday()}T00:00:00`)
-  const date = new Date(`${quest.scheduledDate}T00:00:00`)
-  const days = (date.getTime() - today.getTime()) / 86400000
-  return days >= 0 && days <= 6
+  return isQuestWithinDays(quest, isoToday(), 7)
 }
 function recurrenceShort(rule?: string) {
-  const frequency = parseRecurrenceRule(rule).frequency
-  return frequency === 'DAILY' ? '매일' : frequency === 'WEEKLY' ? '매주' : frequency === 'MONTHLY' ? '매월' : ''
+  return recurrenceLabel(rule)
 }
 function questDueLabel(quest: Quest) {
   if (quest.scheduledDate === isoToday()) return `오늘${quest.scheduledTime ? ` ${quest.scheduledTime}` : ''}`
