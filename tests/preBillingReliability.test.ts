@@ -23,6 +23,9 @@ test('pre-billing database hardening adds RLS push subscriptions and server sear
   assert.match(migration, /search_my_kingdom/)
   assert.match(migration, /least\(20/)
   assert.match(migration, /file_size_limit = 26214400/)
+  assert.match(migration, /claim_push_deliveries/)
+  assert.match(migration, /schedule_my_reminder/)
+  assert.match(read('../netlify/functions/push-dispatch.js'), /sendNotification/)
 })
 
 test('sync conflicts, selective ZIP backup and legal disclosures are reachable', () => {

@@ -9,6 +9,9 @@
 [functions."storage-cleanup"]
   schedule = "@hourly"
 
+[functions."push-dispatch"]
+  schedule = "* * * * *"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -13,6 +13,7 @@ import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, 
 import { getActiveAccountScope, setActiveAccountScope } from './lib/accountScope'
 import { serviceDate } from './lib/serviceTime'
 import { requestWebPushForFirstReminder } from './services/pushService'
+import { scheduleDefaultEventReminder, scheduleDefaultQuestReminder } from './services/reminderService'
 
 type ProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 type QuestInput = Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
@@ -214,6 +215,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
         events: saved ? state.events.map((item) => item.id === optimisticId ? saved : item) : state.events,
         calendarSync: { status: 'saved', message: saved ? '왕국 기록에 일정을 저장했어요.' : '이 기기에 일정을 저장했어요.' },
       }))
+      if (saved) void scheduleDefaultEventReminder(saved).catch(() => undefined)
       void requestWebPushForFirstReminder()
       return { event: saved ?? optimistic, storage: saved ? 'cloud' as const : 'local' as const }
     }).catch((error) => {
@@ -358,6 +360,8 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
     try {
       assertStoredWhenRequired(await createQuestRow(storedQuest))
       if (completion) assertStoredWhenRequired(await saveQuestCompletion(completion))
+      void scheduleDefaultQuestReminder(full).catch(() => undefined)
+      void requestWebPushForFirstReminder()
       set({ recordSync: { status: 'saved', message: '퀘스트를 저장했어요.' } })
       return id
     } catch {
