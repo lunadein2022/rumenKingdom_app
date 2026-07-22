@@ -15,6 +15,9 @@ export interface CalendarEvent {
   kind: CalendarKind
   important?: boolean
   recurrenceRule?: string
+  /** Original series anchor when this object represents a generated occurrence. */
+  seriesDate?: string
+  recurrenceExceptions?: Record<string, { cancelled?: boolean; replacement?: Partial<CalendarEvent> }>
 }
 
 export interface DiaryQuestSnapshot {

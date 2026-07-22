@@ -54,6 +54,13 @@ export function buildRecurrenceRule(
   return parts.join(';')
 }
 
+export function replaceRecurrenceUntil(rule: string | undefined, until?: string) {
+  if (!rule) return undefined
+  const kept = rule.split(';').filter((part) => part && !part.startsWith('UNTIL='))
+  if (until) kept.push(`UNTIL=${until.replaceAll('-', '')}`)
+  return kept.join(';')
+}
+
 function isMonthlyWeekday(candidate: string, byDay: WeekdayCode[], bySetPos?: number) {
   if (!byDay.length || !byDay.includes(weekdayCode(candidate))) return false
   const value = parseISO(candidate)
@@ -79,14 +86,29 @@ function isOccurrenceStart(event: CalendarEvent, candidate: string) {
 }
 
 export function eventOccurrenceOn(event: CalendarEvent, date: string): CalendarEvent | null {
-  if (event.date <= date && (event.endDate ?? event.date) >= date) return event
+  if (event.date <= date && (event.endDate ?? event.date) >= date) {
+    if (!event.recurrenceRule) return event
+    const exception = event.recurrenceExceptions?.[event.date]
+    if (exception?.cancelled) return null
+    const occurrence = { ...event, seriesDate: event.date }
+    return exception?.replacement ? { ...occurrence, ...exception.replacement, id: event.id, seriesDate: event.date } : occurrence
+  }
   if (!event.recurrenceRule || date < event.date) return null
   const duration = Math.max(0, differenceInCalendarDays(parseISO(event.endDate ?? event.date), parseISO(event.date)))
   for (let offset = 0; offset <= duration; offset += 1) {
     const occurrenceStart = format(addDays(parseISO(date), -offset), 'yyyy-MM-dd')
-    if (isOccurrenceStart(event, occurrenceStart)) return { ...event, date: occurrenceStart, endDate: format(addDays(parseISO(occurrenceStart), duration), 'yyyy-MM-dd') }
+    if (isOccurrenceStart(event, occurrenceStart)) {
+      const exception = event.recurrenceExceptions?.[occurrenceStart]
+      if (exception?.cancelled) return null
+      const occurrence = { ...event, date: occurrenceStart, endDate: format(addDays(parseISO(occurrenceStart), duration), 'yyyy-MM-dd'), seriesDate: event.date }
+      return exception?.replacement ? { ...occurrence, ...exception.replacement, id: event.id, seriesDate: event.date } : occurrence
+    }
   }
   return null
+}
+
+export function eventOccurrencesOnDate(events: CalendarEvent[], date: string) {
+  return events.map((event) => eventOccurrenceOn(event, date)).filter((event): event is CalendarEvent => Boolean(event))
 }
 
 /** 일일퀘스트는 생성일부터 마감일까지 매일, 그 외 퀘스트는 저장된 반복 규칙이나 지정일을 따른다. */

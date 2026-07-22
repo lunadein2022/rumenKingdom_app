@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { ArchiveRestore, Check, CheckCircle2, ChevronRight, Clock3, GripVertical, Link2, Pencil, Plus, Repeat, Search, Sparkles, Trash2, Unlink, X } from 'lucide-react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { BackButton } from '../../components/BackButton'
 import { EmptyState, Metric, SectionTitle } from '../../components/Common'
 import { Pagination, usePaginatedList } from '../../components/Pagination'
-import { projectProgress, useKingdomStore } from '../../store'
+import { projectDailyAdherence, projectProgress, useKingdomStore } from '../../store'
 import type { Project, ProjectStatus, Quest, QuestPriority, QuestType } from '../../types'
 import { serviceDate } from '../../lib/serviceTime'
 import { useServiceDate } from '../../lib/useServiceDate'
@@ -19,9 +19,11 @@ type QuestFilter = 'all' | 'linked' | 'independent' | 'today' | 'week'
 
 export function OfficePage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const quickCreate = Boolean((location.state as { quickCreate?: boolean } | null)?.quickCreate)
   const { projects, quests, questOrder, reorderQuests, addProject, updateProject, deleteProject, addQuest, updateQuest, deleteQuest } = useKingdomStore()
   const [editingProject, setEditingProject] = useState<Project | null | undefined>(undefined)
-  const [editingQuest, setEditingQuest] = useState<Quest | null | undefined>(undefined)
+  const [editingQuest, setEditingQuest] = useState<Quest | null | undefined>(quickCreate ? null : undefined)
   const [filter, setFilter] = useState<QuestFilter>('all')
   const [query, setQuery] = useState('')
   const [draggedQuestId, setDraggedQuestId] = useState<string | null>(null)
@@ -60,6 +62,7 @@ export function OfficePage() {
     const saved = editingProject ? await updateProject(editingProject.id, input) : Boolean(await addProject(input))
     if (saved) setEditingProject(undefined)
   }
+  useEffect(() => { if (quickCreate) navigate('/office', { replace: true, state: null }) }, [navigate, quickCreate])
   const saveQuest = async (input: QuestInput) => {
     const saved = editingQuest ? await updateQuest(editingQuest.id, input) : Boolean(await addQuest(input))
     if (saved) setEditingQuest(undefined)
@@ -211,7 +214,7 @@ function OfficeQuestItem({ quest, project, dragging, reorderTarget, onEdit, onDe
 export function ProjectDetailPage() {
   const { projectId } = useParams()
   const navigate = useNavigate()
-  const { projects, quests, updateProject, deleteProject, setProjectStatus, addQuest, updateQuest, deleteQuest } = useKingdomStore()
+  const { projects, quests, questCompletions, updateProject, deleteProject, setProjectStatus, addQuest, updateQuest, deleteQuest } = useKingdomStore()
   const [editingProject, setEditingProject] = useState(false)
   const [editingQuest, setEditingQuest] = useState<Quest | null | undefined>(undefined)
   const [picking, setPicking] = useState(false)
@@ -222,7 +225,8 @@ export function ProjectDetailPage() {
   const daily = linked.filter((quest) => quest.type === 'daily')
   const sub = linked.filter((quest) => quest.type === 'sub')
   const progress = projectProgress(project, quests)
-  const completedCount = linked.filter((quest) => quest.done).length
+  const completedCount = sub.filter((quest) => quest.done).length
+  const dailyAdherence = projectDailyAdherence(project, quests, questCompletions)
   const activeProjects = projects.filter((item) => item.status === 'active' || item.status === 'planned')
   const saveQuest = async (input: QuestInput) => {
     const saved = editingQuest ? await updateQuest(editingQuest.id, input) : Boolean(await addQuest(input))
@@ -234,7 +238,7 @@ export function ProjectDetailPage() {
     <BackButton fallback="/office" label="집무실로"/>
     <section className="project-detail panel glass-panel">
       <div className="detail-hero"><div><span className="eyebrow">MAIN QUEST · {project.tag}</span><h2>{project.title}</h2><p>{project.description}</p></div><div className="detail-actions"><button onClick={() => navigate('/rita', { state: { prompt: `${project.title} 메인퀘스트를 현재 진행률과 연결 퀘스트 기준으로 요약해줘` } })}><Sparkles size={15}/> 리타에게 요약 요청</button><button onClick={() => setEditingProject(true)}><Pencil size={15}/> 편집</button></div></div>
-      <div className="project-detail-grid"><dl><div><dt>기간</dt><dd>{project.startDate} — {project.due}</dd></div><div><dt>상태</dt><dd>{statusLabel[project.status]}</dd></div><div><dt>우선순위</dt><dd>{priorityLabel[project.priority]}</dd></div><div><dt>태그</dt><dd>{project.tag}</dd></div></dl><div className="project-progress-orb"><span>{progress}%</span><small>{linked.length ? `${linked.length}개 중 ${completedCount}개 완료` : '연결 퀘스트 없음 · 0%'}</small></div></div>
+      <div className="project-detail-grid"><dl><div><dt>기간</dt><dd>{project.startDate} — {project.due}</dd></div><div><dt>상태</dt><dd>{statusLabel[project.status]}</dd></div><div><dt>우선순위</dt><dd>{priorityLabel[project.priority]}</dd></div><div><dt>태그</dt><dd>{project.tag}</dd></div></dl><div className="project-progress-orb"><span>{progress}%</span><small>{sub.length ? `서브퀘스트 ${sub.length}개 중 ${completedCount}개 완료` : '연결된 서브퀘스트 없음'}</small>{dailyAdherence !== undefined && <small>일일 수행률 {dailyAdherence}%</small>}</div></div>
       <div className="linked-quests">
         <LinkedQuestSection title="일일퀘스트" quests={daily} projects={projects} onEdit={setEditingQuest} onDelete={deleteQuest}/>
         <LinkedQuestSection title="서브퀘스트" quests={sub} projects={projects} onEdit={setEditingQuest} onDelete={deleteQuest}/>

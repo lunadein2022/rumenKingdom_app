@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core'
 export type SyncEntity = 'project' | 'quest' | 'calendar_event' | 'diary' | 'memo' | 'relationship' | 'relationship_group'
 export type SyncOperation = 'create' | 'update' | 'delete'
 
-type QueueItem = {
+export type SyncQueueItem = {
   userId: string
   deviceId: string
   mutationId: string
@@ -16,19 +16,20 @@ type QueueItem = {
   createdAt: string
 }
 
-type MutationResponse = {
+export type SyncMutationResponse = {
   status: 'applied' | 'conflict' | 'not_found'
   revision?: number
   record?: Record<string, unknown>
   serverRecord?: Record<string, unknown>
 }
+export type SyncConflictDetail = { item: SyncQueueItem; response: SyncMutationResponse }
 
 const DEVICE_KEY = 'rumen-sync-device-id'
 const QUEUE_KEY = 'rumen-sync-outbox-v1'
 const REVISION_KEY = 'rumen-sync-revisions-v1'
 const CURSOR_KEY = 'rumen-sync-cursors-v1'
 
-export function pendingSyncCount() { return readJson<QueueItem[]>(QUEUE_KEY, []).length }
+export function pendingSyncCount() { return readJson<SyncQueueItem[]>(QUEUE_KEY, []).length }
 
 function readJson<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(key) ?? '') as T } catch { return fallback }
@@ -69,7 +70,7 @@ function isRetryableNetworkError(error: unknown) {
   return /failed to fetch|network|load failed|timeout|connection/i.test(message)
 }
 
-async function send(item: QueueItem): Promise<MutationResponse> {
+async function send(item: SyncQueueItem): Promise<SyncMutationResponse> {
   if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
   const { data, error } = await supabase.rpc('apply_sync_mutation', {
     p_device_id: item.deviceId,
@@ -85,7 +86,7 @@ async function send(item: QueueItem): Promise<MutationResponse> {
     p_payload: item.payload,
   })
   if (error) throw error
-  return data as MutationResponse
+  return data as SyncMutationResponse
 }
 
 function announce(type: 'queued' | 'flushed' | 'conflict', detail: unknown) {
@@ -101,7 +102,7 @@ export async function applySyncMutation(input: {
 }) {
   const userId = await currentUserId()
   if (!userId) return { status: 'local' as const }
-  const item: QueueItem = {
+  const item: SyncQueueItem = {
     userId,
     deviceId: deviceId(),
     mutationId: crypto.randomUUID(),
@@ -116,7 +117,7 @@ export async function applySyncMutation(input: {
   }
 
   if (!navigator.onLine) {
-    const queue = readJson<QueueItem[]>(QUEUE_KEY, [])
+    const queue = readJson<SyncQueueItem[]>(QUEUE_KEY, [])
     queue.push(item); writeJson(QUEUE_KEY, queue); announce('queued', item)
     return { status: 'queued' as const }
   }
@@ -131,7 +132,7 @@ export async function applySyncMutation(input: {
     return response
   } catch (error) {
     if (!isRetryableNetworkError(error)) throw error
-    const queue = readJson<QueueItem[]>(QUEUE_KEY, [])
+    const queue = readJson<SyncQueueItem[]>(QUEUE_KEY, [])
     queue.push(item); writeJson(QUEUE_KEY, queue); announce('queued', item)
     return { status: 'queued' as const }
   }
@@ -140,8 +141,8 @@ export async function applySyncMutation(input: {
 export async function flushSyncQueue() {
   const userId = await currentUserId()
   if (!userId || !navigator.onLine) return
-  const all = readJson<QueueItem[]>(QUEUE_KEY, [])
-  const remaining: QueueItem[] = all.filter((item) => item.userId !== userId)
+  const all = readJson<SyncQueueItem[]>(QUEUE_KEY, [])
+  const remaining: SyncQueueItem[] = all.filter((item) => item.userId !== userId)
   const pending = all.filter((item) => item.userId === userId)
 
   for (let index = 0; index < pending.length; index += 1) {
@@ -170,6 +171,26 @@ export async function flushSyncQueue() {
   }
   writeJson(QUEUE_KEY, remaining)
   window.dispatchEvent(new CustomEvent('rumen-sync-queue-changed', { detail: { pending: remaining.length } }))
+}
+
+export async function resolveSyncConflict(detail: SyncConflictDetail, strategy: 'server' | 'local' | 'merge' | 'restore') {
+  if (strategy === 'server') return { status: 'discarded' as const }
+  const { item, response } = detail
+  const serverRecord = response.serverRecord ?? {}
+  const payload = strategy === 'merge' ? { ...serverRecord, ...item.payload } : item.payload
+  const retry: SyncQueueItem = {
+    ...item,
+    mutationId: crypto.randomUUID(),
+    operation: strategy === 'restore' || response.status === 'not_found' ? 'create' : 'update',
+    expectedRevision: strategy === 'restore' || response.status === 'not_found' ? undefined : Number(serverRecord.revision ?? response.revision ?? 1),
+    payload,
+    createdAt: new Date().toISOString(),
+  }
+  const result = await send(retry)
+  if (result.status !== 'applied') throw new Error('충돌을 해결하지 못했어요. 최신 내용을 다시 확인해 주세요.')
+  rememberSyncRevision(retry.entityType, retry.recordId, result.revision)
+  announce('flushed', retry)
+  return result
 }
 
 export function startSyncEngine(onRemoteChanges: () => void) {

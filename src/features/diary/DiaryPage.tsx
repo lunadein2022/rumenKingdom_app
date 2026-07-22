@@ -33,7 +33,7 @@ function DiaryEditor() {
   const [mood, setMood] = usePersistentState(dk('mood'), existing?.mood ?? '평온')
   const [tags, setTags] = usePersistentState(dk('tags'), existing?.tags.join(', ') ?? '')
   const recurringCompletionIds = new Set(questCompletions.filter((item) => item.occurrenceDate === entryDate).map((item) => item.questId))
-  const completedQuests = quests.filter((quest) => quest.recurrenceRule
+  const completedQuests = quests.filter((quest) => quest.type === 'daily' || quest.recurrenceRule
     ? recurringCompletionIds.has(quest.id)
     : quest.completedAt && serviceDate(new Date(quest.completedAt)) === entryDate)
   const [selectedQuestIds, setSelectedQuestIds] = useState(() => new Set(existing?.questSnapshots?.map((item) => item.sourceQuestId) ?? []))

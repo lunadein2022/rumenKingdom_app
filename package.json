@@ -15,9 +15,11 @@
   "dependencies": {
     "@capacitor/android": "8.4.2",
     "@capacitor/core": "8.4.2",
+    "@ssabrojs/hwpxjs": "^0.4.0",
     "@supabase/supabase-js": "2.57.4",
     "@vitejs/plugin-react": "5.1.1",
     "date-fns": "4.1.0",
+    "jszip": "^3.10.1",
     "lucide-react": "0.468.0",
     "mammoth": "1.11.0",
     "react": "19.2.3",

@@ -18,7 +18,7 @@ type CalendarRow = {
   revision: number
 }
 
-const fromRow = (row: CalendarRow): CalendarEvent => {
+const fromRow = (row: CalendarRow, recurrenceExceptions?: CalendarEvent['recurrenceExceptions']): CalendarEvent => {
   rememberSyncRevision('calendar_event', row.id, row.revision)
   return ({
   id: row.id,
@@ -33,6 +33,7 @@ const fromRow = (row: CalendarRow): CalendarEvent => {
   kind: row.kind,
   important: row.important,
   recurrenceRule: row.recurrence_rule ?? undefined,
+  recurrenceExceptions,
   })
 }
 
@@ -46,14 +47,31 @@ const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89
 
 export async function listCalendarEvents(): Promise<CalendarEvent[] | null> {
   if (!supabase || !(await hasAuthenticatedUser())) return null
-  const { data, error } = await supabase
+  const [{ data, error }, { data: exceptions, error: exceptionError }] = await Promise.all([supabase
     .from('calendar_events')
     .select('id,title,description,event_date,end_date,starts_at,ends_at,all_day,kind,important,recurrence_rule,revision')
     .order('event_date')
-    .order('starts_at')
+    .order('starts_at'), supabase.from('recurrence_exceptions').select('calendar_event_id,occurrence_date,replacement,cancelled')])
 
+  if (error || exceptionError) throw error ?? exceptionError
+  const byEvent = (exceptions ?? []).reduce<Record<string, NonNullable<CalendarEvent['recurrenceExceptions']>>>((result, row) => {
+    result[row.calendar_event_id] ??= {}
+    result[row.calendar_event_id][row.occurrence_date] = { cancelled: row.cancelled, replacement: row.replacement as Partial<CalendarEvent> | undefined }
+    return result
+  }, {})
+  return (data as CalendarRow[]).map((row) => fromRow(row, byEvent[row.id]))
+}
+
+export async function saveCalendarOccurrence(eventId: string, occurrenceDate: string, replacement?: Partial<CalendarEvent>, cancelled = false) {
+  if (!supabase || !isUuid(eventId) || !(await hasAuthenticatedUser())) return false
+  const { error } = await supabase.from('recurrence_exceptions').upsert({
+    calendar_event_id: eventId,
+    occurrence_date: occurrenceDate,
+    replacement: replacement ?? null,
+    cancelled,
+  }, { onConflict: 'user_id,calendar_event_id,occurrence_date' })
   if (error) throw error
-  return (data as CalendarRow[]).map(fromRow)
+  return true
 }
 
 export async function createCalendarEvent(event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent | null> {

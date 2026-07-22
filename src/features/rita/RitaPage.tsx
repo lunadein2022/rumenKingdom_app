@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, CirclePlus, FileText, Image as ImageIcon, LoaderCircle, Music, Send, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { RitaFace, type RitaExpression } from '../../components/RitaFace'
-import { analyzeRitaAttachment, interpretRitaRequest, type AttachmentIntent, type RitaAttachmentAnalysis, type RitaRequestAnalysis } from '../../services/ritaService'
+import { analyzeRitaAttachment, interpretRitaRequest, maximumAttachmentBytes, type AttachmentIntent, type RitaAttachmentAnalysis, type RitaRequestAnalysis } from '../../services/ritaService'
 import { calendarKinds, useKingdomStore } from '../../store'
 import type { CalendarKind, Project, QuestPriority, QuestType } from '../../types'
 import { accountStorage, accountStorageKey } from '../../lib/accountScope'
@@ -10,6 +10,7 @@ import { PrincessPortrait } from '../../components/PrincessPortrait'
 import { useSelectedPrincess } from '../../lib/princesses'
 import { useRuntimeConfig } from '../runtime/RuntimeConfig'
 import { useRitaUsage } from '../../lib/useRitaUsage'
+import { deleteRitaConversations, loadRecentRitaConversation, saveRitaConversation } from '../../services/ritaConversationService'
 
 type ChatMessage = { from: 'rita' | 'user'; text: string; expression?: RitaExpression }
 type MemoDraft = { kind: 'memo'; title: string; content: string; tags: string[] }
@@ -32,6 +33,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
   const { usage } = useRitaUsage(!demoMode)
   const location = useLocation()
   const fileInput = useRef<HTMLInputElement>(null)
+  const dragDepth = useRef(0)
   const messagesRef = useRef<HTMLDivElement>(null)
   const { projects, addProject, addQuest, addEvent } = useKingdomStore()
   const conversationStorageKey = accountStorageKey('rumen-rita-conversation')
@@ -42,25 +44,44 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [savedAction, setSavedAction] = useState<{ path: string; label: string } | null>(null)
   const [attachment, setAttachment] = useState<File | null>(null)
+  const [dragActive, setDragActive] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       return JSON.parse(conversationStorage.getItem(conversationStorageKey) ?? 'null') as ChatMessage[] || [welcomeMessage]
     } catch { return [welcomeMessage] }
   })
+  const [conversationReady, setConversationReady] = useState(demoMode)
   const expectedPoints = attachment
     ? expectedAttachmentPoints(config.aiPointPolicy.requestCosts.attachment, attachment)
     : config.aiPointPolicy.requestCosts.interpretRequest
 
   useEffect(() => { conversationStorage.setItem(conversationStorageKey, JSON.stringify(messages.slice(-40))) }, [conversationStorage, conversationStorageKey, messages])
+  useEffect(() => {
+    if (demoMode) return
+    let active = true
+    void loadRecentRitaConversation().then((saved) => {
+      if (active && saved.length) setMessages(saved as ChatMessage[])
+    }).catch(() => undefined).finally(() => { if (active) setConversationReady(true) })
+    return () => { active = false }
+  }, [demoMode])
+  useEffect(() => {
+    if (demoMode || !conversationReady) return
+    const timer = window.setTimeout(() => void saveRitaConversation(messages).catch(() => undefined), 900)
+    return () => window.clearTimeout(timer)
+  }, [conversationReady, demoMode, messages])
   useEffect(() => { const el = messagesRef.current; if (el) el.scrollTop = el.scrollHeight }, [messages, draft, loading, savedAction])
   useEffect(() => { if (prompt) navigate('/rita', { replace: true, state: null }) }, [navigate, prompt])
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])
 
   const selectFile = (file?: File) => {
     if (!file) return
-    if (file.size > 4 * 1024 * 1024) {
-      setMessages((current) => [...current, { from: 'rita', text: '현재는 4MB 이하의 파일만 읽을 수 있어요.', expression: 'concern' }])
+    const intent = attachmentIntent(file)
+    if (file.size > maximumAttachmentBytes(file, intent)) {
+      const message = intent === 'audio' ? '음성 파일은 25MB·30분 이하로 첨부해 주세요.'
+        : /\.(?:hwp|hwpx)$/i.test(file.name) ? 'HWP·HWPX는 20MB·200쪽 이하로 첨부해 주세요.'
+          : '문서와 이미지는 10MB 이하로 첨부해 주세요.'
+      setMessages((current) => [...current, { from: 'rita', text: message, expression: 'concern' }])
       return
     }
     if (previewUrl) URL.revokeObjectURL(previewUrl)
@@ -74,6 +95,10 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
     setPreviewUrl(null)
     setAttachment(null)
     if (fileInput.current) fileInput.current.value = ''
+  }
+  const clearConversation = () => {
+    setMessages([welcomeMessage]); setDraft(null); removeAttachment()
+    if (!demoMode) void deleteRitaConversations().catch(() => undefined)
   }
 
   const submit = async () => {
@@ -91,6 +116,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
       try {
         const result = await analyzeRitaAttachment(attachment, intent)
         setDraft(result)
+        removeAttachment()
         setMessages((current) => [...current, {
           from: 'rita',
           text: result.kind === 'business-card'
@@ -161,7 +187,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
     } else if (draft.kind === 'memorandum') {
       navigate('/library/memos/new', { state: { draft: {
         title: draft.title,
-        content: draft.summary,
+        content: memorandumContent(draft),
         tags: draft.tags,
         transcript: draft.transcript,
         sourceAttachment: draft.attachment,
@@ -242,10 +268,15 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
     }
   }
 
-  return <div className="rita-layout">
+  return <div className={`rita-layout ${dragActive ? 'is-dragging' : ''}`}
+    onDragEnter={(event) => { event.preventDefault(); dragDepth.current += 1; setDragActive(true) }}
+    onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'copy' }}
+    onDragLeave={(event) => { event.preventDefault(); dragDepth.current -= 1; if (dragDepth.current <= 0) { dragDepth.current = 0; setDragActive(false) } }}
+    onDrop={(event) => { event.preventDefault(); dragDepth.current = 0; setDragActive(false); if (featureEnabled('fileAnalysis')) selectFile(event.dataTransfer.files?.[0]) }}>
+    {dragActive && <div className="rita-drop-overlay"><FileText size={34}/><b>여기에 놓아 리타에게 전해 주세요</b><span>명함·PDF·DOCX·HWP·HWPX·텍스트·음성</span></div>}
     <aside className="rita-portrait glass-panel"><div className="portrait-halo"/><img className="rita-full-character" src="/assets/characters/rita-full.webp" alt="왕실 메이드 리타"/><div className="rita-portrait-copy"><small>ROYAL MAID</small><h2>리타</h2><p>공주님의 하루가 조금 더 가벼워지도록 곁에서 정리해 드릴게요.</p></div></aside>
     <section className="chat glass-panel" aria-busy={loading}>
-      <div className="chat-head"><div><span className="online"/><b>왕실 메이드 리타</b><small>{loading ? '자료를 읽고 정리하고 있어요' : '언제나 곁에 있어요'}</small></div><button className="chat-clear" onClick={() => { setMessages([welcomeMessage]); setDraft(null); removeAttachment() }}>대화 지우기</button></div>
+      <div className="chat-head"><div><span className="online"/><b>왕실 메이드 리타</b><small>{loading ? '자료를 읽고 정리하고 있어요' : '언제나 곁에 있어요'}</small></div><button className="chat-clear" onClick={clearConversation}>대화 지우기</button></div>
       {demoMode && <div className="rita-demo-notice">데모 모드에서는 리타의 화면만 미리 볼 수 있어요. 실제 대화와 첨부 분석은 로그인이 필요합니다.</div>}
       <div className="messages" aria-live="polite" ref={messagesRef}>
         {messages.map((message, index) => <div key={index} className={`message ${message.from}`}>{message.from === 'rita' ? <RitaFace expression={message.expression}/> : <PrincessPortrait className="princess-message-avatar" princess={princess}/>}<p>{message.text}</p></div>)}
@@ -262,7 +293,7 @@ export function RitaPage({ demoMode = false }: { demoMode?: boolean }) {
       <div className="suggestions">{['오늘 일정 정리해줘', '메인퀘스트 요약해줘', '이 내용을 비망록에 메모해줘'].map((value) => <button key={value} onClick={() => setInput(value)}>{value}</button>)}</div>
       {attachment && <AttachmentTray file={attachment} previewUrl={previewUrl} loading={loading} onRemove={removeAttachment}/>} 
       <div className="composer">
-        <input ref={fileInput} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.pdf,.docx,.txt,.md,.csv,audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/m4a,audio/ogg" onChange={(event) => selectFile(event.target.files?.[0])}/>
+        <input ref={fileInput} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,image/gif,.pdf,.docx,.hwp,.hwpx,.txt,.md,.csv,audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/m4a,audio/ogg,audio/webm" onChange={(event) => selectFile(event.target.files?.[0])}/>
         <button aria-label="파일 첨부" title={featureEnabled('fileAnalysis') ? '명함, 문서 또는 음성 첨부' : '파일 분석은 현재 점검 중입니다'} disabled={!featureEnabled('fileAnalysis')} onClick={() => fileInput.current?.click()}><CirclePlus size={19}/></button>
         <input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && !event.nativeEvent.isComposing && void submit()} placeholder={attachment ? '파일과 함께 전할 말을 적어 주세요…' : '리타에게 말해 주세요…'}/>
         <button className="send" onClick={() => void submit()} disabled={loading || (!input.trim() && !attachment)} aria-label="보내기"><Send size={17}/></button>
@@ -370,7 +401,7 @@ function RelationshipDraftConfirmation({ draft, onChange, onClose, onConfirm }: 
 
 function attachmentIntent(file: File): AttachmentIntent {
   if (file.type.startsWith('image/')) return 'business-card'
-  if (file.type.startsWith('audio/')) return 'audio'
+  if (file.type.startsWith('audio/') || /\.(?:mp3|m4a|wav|ogg|webm)$/i.test(file.name)) return 'audio'
   return 'document'
 }
 
@@ -381,5 +412,15 @@ function attachmentRequest(intent: AttachmentIntent, name: string) {
 }
 
 function formatBytes(size: number) { return size < 1024 * 1024 ? `${Math.ceil(size / 1024)}KB` : `${(size / 1024 / 1024).toFixed(1)}MB` }
+function memorandumContent(draft: Extract<RitaAttachmentAnalysis, { kind: 'memorandum' }>) {
+  const sections = [draft.summary]
+  const append = (title: string, items?: string[]) => { if (items?.length) sections.push(`${title}\n${items.map((item) => `- ${item}`).join('\n')}`) }
+  append('핵심 내용', draft.keyPoints)
+  append('결정 사항', draft.decisions)
+  append('할 일', draft.actionItems)
+  append('일자', draft.dates)
+  append('관련 인물', draft.people)
+  return sections.filter(Boolean).join('\n\n')
+}
 function inferTags(content: string) { return ['Hydro Hawk', 'Princess OS', '회의', '아이디어', '중요'].filter((tag) => content.toLocaleLowerCase('ko').includes(tag.toLocaleLowerCase('ko'))).slice(0, 3) }
 function expectedAttachmentPoints(costs: { businessCard: number; audioBase: number; audioPerMiB: number; documentBase: number; documentPerMiB: number; maximum: number }, file: File) { const chunks = Math.ceil(file.size / 1024 / 1024); const kind = attachmentIntent(file); return kind === 'business-card' ? costs.businessCard : Math.min(costs.maximum, kind === 'audio' ? costs.audioBase + chunks * costs.audioPerMiB : costs.documentBase + chunks * costs.documentPerMiB) }

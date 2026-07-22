@@ -3,9 +3,10 @@ import { createRoot } from 'react-dom/client'
 import App from './App'
 import './styles.css'
 import './runtime.css'
+import { AppErrorBoundary } from './components/AppErrorBoundary'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AppErrorBoundary><App /></AppErrorBoundary>
   </StrictMode>,
 )

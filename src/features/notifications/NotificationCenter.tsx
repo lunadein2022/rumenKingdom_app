@@ -9,6 +9,8 @@ import {
   type AccountNotification,
 } from '../../services/notificationService'
 import { useRuntimeConfig } from '../runtime/RuntimeConfig'
+import { eventOccurrencesOnDate } from '../../lib/recurrence'
+import { isQuestOnDate } from '../../lib/questSchedule'
 import { NotificationCenterContext, type KingdomNotification } from './notificationContext'
 
 export function NotificationCenterProvider({ demoMode, children }: { demoMode: boolean; children: ReactNode }) {
@@ -71,8 +73,7 @@ export function NotificationCenterProvider({ demoMode, children }: { demoMode: b
       read: Boolean(item.readAt),
       createdAt: item.createdAt,
     })),
-    ...events
-      .filter((event) => event.date <= serviceToday && (event.endDate ?? event.date) >= serviceToday)
+    ...eventOccurrencesOnDate(events, serviceToday)
       .map((event) => {
         const id = `event:${event.id}:${serviceToday}`
         return {
@@ -86,14 +87,15 @@ export function NotificationCenterProvider({ demoMode, children }: { demoMode: b
       }),
     ...quests.flatMap((quest) => {
       const due = quest.scheduledDate
-      const id = `quest:${quest.id}:${due}`
-      return !quest.done && due && due <= serviceToday ? [{
+      const occurrenceDate = quest.type === 'daily' || quest.recurrenceRule ? serviceToday : due
+      const id = `quest:${quest.id}:${occurrenceDate}`
+      return !quest.done && occurrenceDate && isQuestOnDate(quest, serviceToday) ? [{
         id,
         title: quest.title,
-        summary: due < serviceToday ? '마감일 지남' : `오늘 ${quest.scheduledTime ?? '마감'}`,
+        summary: `오늘 ${quest.scheduledTime ?? '할 일'}`,
         path: `/library/item/${encodeURIComponent(`${quest.type === 'daily' ? 'dailyQuest' : 'subQuest'}:${quest.id}`)}`,
         read: readLocalIds.includes(id),
-        createdAt: `${due}T${quest.scheduledTime || '00:00'}:00`,
+        createdAt: `${serviceToday}T${quest.scheduledTime || '00:00'}:00`,
       }] : []
     }),
     ...memos.filter((memo) => memo.status === 'review').map((memo) => {

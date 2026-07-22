@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { addDays, differenceInCalendarDays, format, parseISO, setDate } from 'date-fns'
-import { createCalendarEvent, listCalendarEvents, removeCalendarEvent, updateCalendarEvent, updateCalendarEventDate } from './services/calendarRepository'
+import { createCalendarEvent, listCalendarEvents, removeCalendarEvent, saveCalendarOccurrence, updateCalendarEvent, updateCalendarEventDate } from './services/calendarRepository'
 import { createProject as createProjectRow, listProjects, removeProject as removeProjectRow, updateProject as updateProjectRow } from './services/projectRepository'
 import { createQuest as createQuestRow, listQuests, removeQuest as removeQuestRow, updateQuest as updateQuestRow } from './services/questRepository'
 import { createMemo as createMemoRow, listMemos, removeMemo as removeMemoRow, updateMemo as updateMemoRow } from './services/memoRepository'
@@ -12,6 +12,7 @@ import { listQuestCompletions, removeQuestCompletion, saveQuestCompletion } from
 import type { CalendarEvent, CalendarKind, DiaryEntry, LibraryRecordType, Memo, Project, Quest, QuestCompletion, Relationship, RelationshipGroup } from './types'
 import { getActiveAccountScope, setActiveAccountScope } from './lib/accountScope'
 import { serviceDate } from './lib/serviceTime'
+import { requestWebPushForFirstReminder } from './services/pushService'
 
 type ProjectInput = Omit<Project, 'id' | 'createdAt' | 'updatedAt'>
 type QuestInput = Omit<Quest, 'id' | 'createdAt' | 'updatedAt' | 'completedAt'>
@@ -36,6 +37,8 @@ interface KingdomState {
   setSelectedDate: (date: string) => void
   addEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<{ event: CalendarEvent; storage: 'cloud' | 'local' }>
   updateEvent: (id: string, event: Omit<CalendarEvent, 'id'>) => void
+  updateEventOccurrence: (id: string, occurrenceDate: string, event: Partial<CalendarEvent>) => Promise<boolean>
+  deleteEventOccurrence: (id: string, occurrenceDate: string) => Promise<boolean>
   deleteEvent: (id: string) => void
   moveEvent: (id: string, date: string) => void
   hydrateEvents: () => Promise<void>
@@ -154,9 +157,21 @@ const assertStoredWhenRequired = (stored: boolean) => {
 }
 
 export function projectProgress(project: Project, quests: Quest[]) {
-  const linked = quests.filter((quest) => quest.projectId === project.id)
+  const linked = quests.filter((quest) => quest.projectId === project.id && quest.type === 'sub')
   if (!linked.length) return Math.min(100, Math.max(0, project.progress || 0))
   return Math.round((linked.filter((quest) => quest.done || quest.status === 'completed').length / linked.length) * 100)
+}
+
+export function projectDailyAdherence(project: Project, quests: Quest[], completions: QuestCompletion[]) {
+  const dailyIds = new Set(quests.filter((quest) => quest.projectId === project.id && quest.type === 'daily').map((quest) => quest.id))
+  if (!dailyIds.size) return undefined
+  const scheduledDays = new Set(completions.filter((item) => dailyIds.has(item.questId)).map((item) => `${item.questId}:${item.occurrenceDate}`))
+  const eligibleDays = quests.filter((quest) => dailyIds.has(quest.id)).reduce((sum, quest) => {
+    const start = serviceDate(new Date(quest.createdAt))
+    const end = quest.scheduledDate && quest.scheduledDate < serviceDate() ? quest.scheduledDate : serviceDate()
+    return sum + Math.max(0, differenceInCalendarDays(parseISO(end), parseISO(start)) + 1)
+  }, 0)
+  return eligibleDays ? Math.round((scheduledDays.size / eligibleDays) * 100) : 0
 }
 
 type PersistedState = {
@@ -199,6 +214,7 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
         events: saved ? state.events.map((item) => item.id === optimisticId ? saved : item) : state.events,
         calendarSync: { status: 'saved', message: saved ? '왕국 기록에 일정을 저장했어요.' : '이 기기에 일정을 저장했어요.' },
       }))
+      void requestWebPushForFirstReminder()
       return { event: saved ?? optimistic, storage: saved ? 'cloud' as const : 'local' as const }
     }).catch((error) => {
       set((state) => ({ events: state.events.filter((item) => item.id !== optimisticId), calendarSync: { status: 'error', message: '일정을 저장하지 못했어요. 다시 시도해 주세요.' } }))
@@ -215,6 +231,21 @@ export const useKingdomStore = create<KingdomState>()(persist((set, get) => ({
       events: saved ? state.events.map((item) => item.id === id ? saved : item) : state.events,
       calendarSync: { status: 'saved', message: saved ? '일정 변경사항을 왕국 기록에 저장했어요.' : '일정 변경사항을 이 기기에 저장했어요.' },
     }))).catch(() => set((state) => ({ events: previous ? state.events.map((item) => item.id === id ? previous as CalendarEvent : item) : state.events, calendarSync: { status: 'error', message: '일정을 수정하지 못해 이전 내용으로 되돌렸어요.' } })))
+  },
+  updateEventOccurrence: async (id, occurrenceDate, event) => {
+    const previous = get().events.find((item) => item.id === id)
+    if (!previous) return false
+    const replacement = { ...event, seriesDate: undefined, recurrenceExceptions: undefined }
+    set((state) => ({ events: state.events.map((item) => item.id === id ? { ...item, recurrenceExceptions: { ...item.recurrenceExceptions, [occurrenceDate]: { replacement } } } : item), calendarSync: { status: 'saving', message: '이 반복 일정만 변경하고 있어요.' } }))
+    try { await saveCalendarOccurrence(id, occurrenceDate, replacement); set({ calendarSync: { status: 'saved', message: '선택한 일정만 변경했어요.' } }); return true }
+    catch { set((state) => ({ events: state.events.map((item) => item.id === id ? previous : item), calendarSync: { status: 'error', message: '반복 일정을 변경하지 못했어요.' } })); return false }
+  },
+  deleteEventOccurrence: async (id, occurrenceDate) => {
+    const previous = get().events.find((item) => item.id === id)
+    if (!previous) return false
+    set((state) => ({ events: state.events.map((item) => item.id === id ? { ...item, recurrenceExceptions: { ...item.recurrenceExceptions, [occurrenceDate]: { cancelled: true } } } : item), calendarSync: { status: 'saving', message: '이 반복 일정만 삭제하고 있어요.' } }))
+    try { await saveCalendarOccurrence(id, occurrenceDate, undefined, true); set({ calendarSync: { status: 'saved', message: '선택한 일정만 삭제했어요.' } }); return true }
+    catch { set((state) => ({ events: state.events.map((item) => item.id === id ? previous : item), calendarSync: { status: 'error', message: '반복 일정을 삭제하지 못했어요.' } })); return false }
   },
   deleteEvent: (id) => {
     let removed: CalendarEvent | undefined

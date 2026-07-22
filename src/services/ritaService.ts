@@ -31,6 +31,11 @@ export interface MemorandumAnalysis {
   title: string
   summary: string
   tags: string[]
+  keyPoints?: string[]
+  decisions?: string[]
+  actionItems?: string[]
+  dates?: string[]
+  people?: string[]
   transcript?: string
   attachment: SourceAttachment
 }
@@ -164,54 +169,86 @@ export async function interpretRitaRequest(messages: RitaMessage[], projects: Ri
 }
 
 export async function analyzeRitaAttachment(file: File, intent: AttachmentIntent): Promise<RitaAttachmentAnalysis> {
-  if (file.size > 4 * 1024 * 1024) throw new Error('현재 첨부 파일은 4MB 이하만 분석할 수 있어요.')
-  const response = await fetch('/.netlify/functions/claude', {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({
-      action: 'analyze-attachment',
-      intent,
-      attachment: {
-        name: file.name,
-        mimeType: file.type || fallbackMimeType(file.name),
-        size: file.size,
-        data: await fileToBase64(file),
-      },
-    }),
-  })
+  const maximum = maximumAttachmentBytes(file, intent)
+  if (file.size > maximum) throw new Error(attachmentLimitMessage(file, intent))
+  if (intent === 'audio') await assertAudioDuration(file)
+  if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
 
-  const payload = await readJson<{ analysis?: RitaAttachmentAnalysis; error?: string }>(response)
-  if (!response.ok || !payload.analysis) throw new Error(payload.error ?? '첨부 파일을 분석하지 못했습니다.')
-  signalUsageChanged()
-  const storagePath = await uploadOriginalAttachment(file).catch(() => undefined)
-  return { ...payload.analysis, attachment: { ...payload.analysis.attachment, storagePath } }
-}
-
-async function uploadOriginalAttachment(file: File) {
-  if (!supabase) return undefined
   const { data: auth } = await supabase.auth.getUser()
-  if (!auth.user) return undefined
+  if (!auth.user) throw new Error('리타와 대화하려면 로그인이 필요합니다.')
   const safeName = file.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g, '-').slice(-100) || 'attachment'
-  const path = `${auth.user.id}/${crypto.randomUUID()}-${safeName}`
-  const { error } = await supabase.storage.from('rita-attachments').upload(path, file, { contentType: file.type, upsert: false })
-  if (error) throw error
-  return path
-}
-
-function fileToBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onerror = () => reject(new Error('파일을 읽지 못했습니다.'))
-    reader.onload = () => resolve(String(reader.result).split(',')[1] ?? '')
-    reader.readAsDataURL(file)
+  const storagePath = `${auth.user.id}/temporary/${crypto.randomUUID()}-${safeName}`
+  const { error: uploadError } = await supabase.storage.from('rita-attachments').upload(storagePath, file, {
+    contentType: file.type || fallbackMimeType(file.name),
+    upsert: false,
   })
+  if (uploadError) throw new Error('첨부 파일을 안전하게 올리지 못했어요.')
+
+  try {
+    const response = await fetch('/.netlify/functions/claude', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({
+        action: 'analyze-attachment',
+        intent,
+        attachment: {
+          name: file.name,
+          mimeType: file.type || fallbackMimeType(file.name),
+          size: file.size,
+          storagePath,
+        },
+      }),
+    })
+
+    const payload = await readJson<{ analysis?: RitaAttachmentAnalysis; error?: string }>(response)
+    if (!response.ok || !payload.analysis) throw new Error(payload.error ?? '첨부 파일을 분석하지 못했습니다.')
+    signalUsageChanged()
+    return payload.analysis
+  } catch (error) {
+    await supabase.storage.from('rita-attachments').remove([storagePath]).catch(() => undefined)
+    throw error
+  }
 }
 
 function fallbackMimeType(name: string) {
   const extension = name.split('.').pop()?.toLowerCase()
   return extension === 'pdf' ? 'application/pdf'
     : extension === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      : extension === 'hwp' ? 'application/x-hwp'
+        : extension === 'hwpx' ? 'application/vnd.hancom.hwpx'
       : extension === 'csv' ? 'text/csv'
         : extension === 'md' ? 'text/markdown'
           : 'text/plain'
+}
+
+export function maximumAttachmentBytes(file: File, intent = inferAttachmentIntent(file)) {
+  if (intent === 'audio') return 25 * 1024 * 1024
+  if (/\.(?:hwp|hwpx)$/i.test(file.name)) return 20 * 1024 * 1024
+  return 10 * 1024 * 1024
+}
+
+function inferAttachmentIntent(file: File): AttachmentIntent {
+  if (file.type.startsWith('image/')) return 'business-card'
+  if (file.type.startsWith('audio/')) return 'audio'
+  return 'document'
+}
+
+function attachmentLimitMessage(file: File, intent: AttachmentIntent) {
+  if (intent === 'audio') return '음성 파일은 25MB·30분 이하로 첨부해 주세요.'
+  if (/\.(?:hwp|hwpx)$/i.test(file.name)) return 'HWP·HWPX 파일은 20MB·200쪽 이하로 첨부해 주세요.'
+  return '문서와 이미지는 10MB 이하로 첨부해 주세요.'
+}
+
+async function assertAudioDuration(file: File) {
+  const url = URL.createObjectURL(file)
+  try {
+    const duration = await new Promise<number>((resolve) => {
+      const audio = document.createElement('audio')
+      audio.preload = 'metadata'
+      audio.onloadedmetadata = () => resolve(Number.isFinite(audio.duration) ? audio.duration : 0)
+      audio.onerror = () => resolve(0)
+      audio.src = url
+    })
+    if (duration > 30 * 60) throw new Error('음성 파일은 30분 이하로 첨부해 주세요.')
+  } finally { URL.revokeObjectURL(url) }
 }

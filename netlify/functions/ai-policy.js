@@ -1,6 +1,8 @@
 const MEBIBYTE = 1024 * 1024
 export const MAX_AI_REQUEST_BYTES = 6 * MEBIBYTE
-export const MAX_ATTACHMENT_BYTES = 4 * MEBIBYTE
+export const MAX_ATTACHMENT_BYTES = 25 * MEBIBYTE
+export const MAX_DOCUMENT_BYTES = 10 * MEBIBYTE
+export const MAX_HWP_BYTES = 20 * MEBIBYTE
 
 const ACTIONS = new Set(['chat', 'interpret-request', 'analyze-attachment'])
 const RESPONSE_STYLES = new Set(['concise', 'warm', 'detailed'])
@@ -9,6 +11,10 @@ const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp
 const DOCUMENT_TYPES = new Set([
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/x-hwp',
+  'application/haansofthwp',
+  'application/vnd.hancom.hwpx',
+  'application/hwp+zip',
   'text/plain',
   'text/markdown',
   'text/csv',
@@ -52,6 +58,17 @@ function cleanFilename(value) {
     .slice(0, 150) || 'attachment'
 }
 
+function cleanStoragePath(value) {
+  const path = String(value ?? '').trim()
+  if (!path || path.length > 400 || path.includes('..') || !/^[a-zA-Z0-9/_\-.]+$/.test(path)) return ''
+  return path
+}
+
+function isHwpAttachment(attachment = {}) {
+  return /\.(?:hwp|hwpx)$/i.test(String(attachment.name ?? ''))
+    || ['application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwpx', 'application/hwp+zip'].includes(String(attachment.mimeType ?? '').toLowerCase())
+}
+
 function normalizeMessages(value) {
   if (!Array.isArray(value)) return []
   return value
@@ -84,17 +101,21 @@ export function validateAiInput(value) {
     const attachment = value.attachment
     if (!attachment || typeof attachment !== 'object' || Array.isArray(attachment)) throw requestError('첨부 파일이 필요합니다.')
     const data = typeof attachment.data === 'string' ? attachment.data : ''
-    if (!data || data.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(data)) throw requestError('첨부 파일 형식이 올바르지 않습니다.')
-    const size = attachmentBytes({ data })
+    const storagePath = cleanStoragePath(attachment.storagePath)
+    if (!storagePath && (!data || data.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(data))) throw requestError('첨부 파일 형식이 올바르지 않습니다.')
+    const size = storagePath ? Math.max(0, Number(attachment.size) || 0) : attachmentBytes({ data })
     if (!size) throw requestError('첨부 파일이 비어 있습니다.')
-    if (size > MAX_ATTACHMENT_BYTES) throw requestError('현재 첨부 파일은 4MB 이하만 분석할 수 있습니다.', 413)
+    const maximum = value.intent === 'audio' ? MAX_ATTACHMENT_BYTES : isHwpAttachment(attachment) ? MAX_HWP_BYTES : MAX_DOCUMENT_BYTES
+    if (size > maximum) throw requestError(value.intent === 'audio'
+      ? '음성 파일은 25MB·30분 이하만 분석할 수 있습니다.'
+      : isHwpAttachment(attachment) ? 'HWP·HWPX 파일은 20MB·200쪽 이하만 분석할 수 있습니다.' : '문서와 이미지는 10MB 이하만 분석할 수 있습니다.', 413)
 
     const mimeType = String(attachment.mimeType ?? '').toLowerCase().slice(0, 100)
     const allowed = value.intent === 'business-card' ? IMAGE_TYPES : value.intent === 'audio' ? AUDIO_TYPES : DOCUMENT_TYPES
     if (!allowed.has(mimeType)) throw requestError('지원하지 않는 첨부 파일 형식입니다.', 415)
 
     input.intent = value.intent
-    input.attachment = { name: cleanFilename(attachment.name), mimeType, size, data }
+    input.attachment = { name: cleanFilename(attachment.name), mimeType, size, ...(storagePath ? { storagePath } : { data }) }
   }
 
   return input

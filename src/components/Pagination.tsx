@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- shared hook and component intentionally live together */
 import { useCallback, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 

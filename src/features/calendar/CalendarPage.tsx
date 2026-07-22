@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth,
+  addDays, addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, isSameMonth,
   parseISO, startOfMonth, startOfWeek,
 } from 'date-fns'
 import { ko } from 'date-fns/locale'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Archive, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Crown,
   Flower2, LoaderCircle, Pencil, Plus, Search, Settings2, Star, Trash2, X,
@@ -14,7 +14,7 @@ import { Pagination, usePaginatedList } from '../../components/Pagination'
 import { RecurrenceEditor } from '../../components/RecurrenceEditor'
 import { calendarKinds, useKingdomStore } from '../../store'
 import type { CalendarEvent, CalendarKind } from '../../types'
-import { eventOccurrenceOn, expandEventsBetween } from '../../lib/recurrence'
+import { eventOccurrenceOn, expandEventsBetween, replaceRecurrenceUntil } from '../../lib/recurrence'
 
 type CalendarView = '월간' | '주간' | '일간' | '목록'
 
@@ -26,7 +26,9 @@ const dateKey = (date: Date) => format(date, 'yyyy-MM-dd')
 
 export function CalendarPage() {
   const navigate = useNavigate()
-  const { selectedDate, setSelectedDate, events, addEvent, updateEvent, deleteEvent, moveEvent, calendarSync, clearCalendarSync } = useKingdomStore()
+  const location = useLocation()
+  const quickCreate = Boolean((location.state as { quickCreate?: boolean } | null)?.quickCreate)
+  const { selectedDate, setSelectedDate, events, addEvent, updateEvent, updateEventOccurrence, deleteEventOccurrence, deleteEvent, moveEvent, calendarSync, clearCalendarSync } = useKingdomStore()
   useEffect(() => {
     // 일정 저장/오류 알림도 일정 시간 뒤 자동으로 사라진다.
     if (calendarSync.status !== 'saved' && calendarSync.status !== 'error') return
@@ -35,7 +37,7 @@ export function CalendarPage() {
   }, [calendarSync.status, calendarSync.message, clearCalendarSync])
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(parseISO(selectedDate)))
   const [filters, setFilters] = useState<CalendarKind[]>(calendarKinds.map((kind) => kind.id))
-  const [modal, setModal] = useState(false)
+  const [modal, setModal] = useState(quickCreate)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [query, setQuery] = useState('')
   const [view, setView] = useState<CalendarView>('월간')
@@ -59,6 +61,29 @@ export function CalendarPage() {
   const moveMonth = (amount: number) => setVisibleMonth((month) => addMonths(month, amount))
   const openCreate = () => { setEditingEvent(null); setModal(true) }
   const openEdit = (event: CalendarEvent) => { setSelectedDate(event.date); setEditingEvent(event); setModal(true) }
+  const removeEvent = (event: CalendarEvent) => {
+    if (!event.recurrenceRule) { deleteEvent(event.id); return }
+    const scope = prompt('반복 일정 삭제 범위를 입력해 주세요: 이번 / 이후 / 전체', '이번')
+    if (scope === '이번') void deleteEventOccurrence(event.id, event.date)
+    else if (scope === '이후') {
+      const series = events.find((item) => item.id === event.id)
+      if (series) updateEvent(series.id, { ...series, recurrenceRule: replaceRecurrenceUntil(series.recurrenceRule, format(addDays(parseISO(event.date), -1), 'yyyy-MM-dd')) })
+    } else if (scope === '전체') deleteEvent(event.id)
+  }
+  const saveEvent = (event: Omit<CalendarEvent, 'id'>, scope: 'this' | 'future' | 'all') => {
+    if (!editingEvent) { void addEvent(event); setModal(false); return }
+    const series = events.find((item) => item.id === editingEvent.id)
+    if (!editingEvent.recurrenceRule || scope === 'all' || !series) {
+      const anchorDate = scope === 'all' && editingEvent.seriesDate && event.date === editingEvent.date ? editingEvent.seriesDate : event.date
+      updateEvent(editingEvent.id, { ...event, date: anchorDate, seriesDate: undefined, recurrenceExceptions: series?.recurrenceExceptions })
+    } else if (scope === 'this') void updateEventOccurrence(editingEvent.id, editingEvent.date, event)
+    else {
+      updateEvent(series.id, { ...series, recurrenceRule: replaceRecurrenceUntil(series.recurrenceRule, format(addDays(parseISO(editingEvent.date), -1), 'yyyy-MM-dd')) })
+      void addEvent({ ...event, recurrenceRule: replaceRecurrenceUntil(series.recurrenceRule) })
+    }
+    setModal(false)
+  }
+  useEffect(() => { if (quickCreate) navigate('/calendar', { replace: true, state: null }) }, [navigate, quickCreate])
 
   return <div className="calendar-shell glass-panel">
     <aside className="calendar-sidebar">
@@ -85,14 +110,14 @@ export function CalendarPage() {
 
     <aside className="day-panel">
       <div className="day-title"><div><span>{selectedDateLabel}</span><small>{selectedDate === today ? '오늘의 일정' : '선택한 날의 일정'}</small></div>{selectedDate === today && <em>오늘</em>}</div>
-      <div className="agenda-list">{selectedEvents.length ? selectedEventPage.visibleItems.map((event) => <div className="agenda-item" key={event.id}><i className={kindClass[event.kind]} /><div><span>{event.allDay ? '하루 종일' : event.start || '시간 미정'}{event.end ? ` — ${event.end}` : ''}</span><b>{event.title}</b><small>{calendarKinds.find((kind) => kind.id === event.kind)?.label}{event.endDate && event.endDate !== event.date ? ` · ${event.date} ~ ${event.endDate}` : ''}</small></div><button onClick={() => openEdit(event)} aria-label={`${event.title} 편집`}><Pencil size={14} /></button><button onClick={() => deleteEvent(event.id)} aria-label={`${event.title} 삭제`}><Trash2 size={14} /></button></div>) : <EmptyMini onCreate={openCreate} />}</div>
+      <div className="agenda-list">{selectedEvents.length ? selectedEventPage.visibleItems.map((event) => <div className="agenda-item" key={event.id}><i className={kindClass[event.kind]} /><div><span>{event.allDay ? '하루 종일' : event.start || '시간 미정'}{event.end ? ` — ${event.end}` : ''}</span><b>{event.title}</b><small>{calendarKinds.find((kind) => kind.id === event.kind)?.label}{event.endDate && event.endDate !== event.date ? ` · ${event.date} ~ ${event.endDate}` : ''}</small></div><button onClick={() => openEdit(event)} aria-label={`${event.title} 편집`}><Pencil size={14} /></button><button onClick={() => removeEvent(event)} aria-label={`${event.title} 삭제`}><Trash2 size={14} /></button></div>) : <EmptyMini onCreate={openCreate} />}</div>
       <Pagination page={selectedEventPage.page} totalItems={selectedEventPage.totalItems} onPageChange={selectedEventPage.setPage} label="선택한 날의 일정"/>
       <div className="important-head"><span>중요 일정</span><button onClick={() => setView('목록')}>더보기 <ChevronRight size={12} /></button></div>
       <div className="important-list">{importantEvents.length ? importantEvents.map((event) => <button key={event.id} onClick={() => selectDate(event.date)}><small>{format(parseISO(event.date), 'M월 d일 (EEE)', { locale: ko })}</small><span>{event.title}</span>{event.kind === 'anniversary' ? <Crown size={15} /> : event.kind === 'project' ? <Archive size={15} /> : <Flower2 size={15} />}</button>) : <p className="important-empty">표시할 중요 일정이 없습니다.</p>}</div>
       <div className="rita-note"><RitaFace expression="notification" /><p><b>리타의 한마디</b>{selectedEvents.length ? `공주님, 선택한 날에는 일정이 ${selectedEvents.length}건 있어요.` : '공주님, 선택한 날은 아직 여유로워요.'}</p></div>
     </aside>
     {calendarSync.status !== 'idle' && <div className={`calendar-sync ${calendarSync.status}`} role="status">{calendarSync.status === 'saving' && <LoaderCircle size={15} className="spin" />}<span>{calendarSync.message}</span>{calendarSync.status !== 'saving' && <button onClick={clearCalendarSync} aria-label="알림 닫기"><X size={14} /></button>}</div>}
-    {modal && <EventModal date={selectedDate} initial={editingEvent ?? undefined} onClose={() => setModal(false)} onSave={(event) => { if (editingEvent) updateEvent(editingEvent.id, event); else addEvent(event); setModal(false) }} />}
+    {modal && <EventModal date={selectedDate} initial={editingEvent ?? undefined} onClose={() => setModal(false)} onSave={saveEvent} />}
   </div>
 }
 
@@ -125,7 +150,7 @@ function AlternativeCalendarView({ mode, events, selected, onSelect }: { mode: E
   return <div className="alternative-view"><div className="alternative-title"><CalendarDays size={21} /><span>{mode} 보기</span></div>{filtered.length ? pagination.visibleItems.map((event) => <button key={`${event.id}:${event.date}`} onClick={() => onSelect(event.date)}><i className={kindClass[event.kind]} /><time>{format(parseISO(event.date), 'M월 d일 (EEE)', { locale: ko })}{event.endDate && event.endDate !== event.date ? ` ~ ${format(parseISO(event.endDate), 'M월 d일 (EEE)', { locale: ko })}` : ''} · {event.allDay ? '하루 종일' : event.start || '시간 미정'}</time><b>{event.title}</b><ChevronRight size={15} /></button>) : <div className="calendar-empty"><CalendarDays size={28}/><b>표시할 일정이 없습니다.</b><span>다른 날짜나 필터를 선택해 보세요.</span></div>}<Pagination page={pagination.page} totalItems={pagination.totalItems} onPageChange={pagination.setPage} label={`${mode} 일정`}/></div>
 }
 
-function EventModal({ date, initial, onClose, onSave }: { date: string; initial?: CalendarEvent; onClose: () => void; onSave: (event: Omit<CalendarEvent, 'id'>) => void }) {
+function EventModal({ date, initial, onClose, onSave }: { date: string; initial?: CalendarEvent; onClose: () => void; onSave: (event: Omit<CalendarEvent, 'id'>, scope: 'this' | 'future' | 'all') => void }) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [eventDate, setEventDate] = useState(initial?.date ?? date)
@@ -136,8 +161,9 @@ function EventModal({ date, initial, onClose, onSave }: { date: string; initial?
   const [kind, setKind] = useState<CalendarKind>(initial?.kind ?? 'royal')
   const [important, setImportant] = useState(initial?.important ?? false)
   const [recurrenceRule, setRecurrenceRule] = useState(initial?.recurrenceRule ?? '')
+  const [scope, setScope] = useState<'this' | 'future' | 'all'>(initial?.recurrenceRule ? 'this' : 'all')
   useEffect(() => { const listener = (event: KeyboardEvent) => event.key === 'Escape' && onClose(); document.addEventListener('keydown', listener); return () => document.removeEventListener('keydown', listener) }, [onClose])
-  return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal glass-panel" role="dialog" aria-modal="true" aria-labelledby="event-modal-title" onSubmit={(event) => { event.preventDefault(); if (title.trim() && endDate >= eventDate) onSave({ title: title.trim(), description: description.trim(), date: eventDate, endDate, start: allDay ? '' : start, end: allDay ? undefined : end || undefined, allDay, kind, important, recurrenceRule: recurrenceRule || undefined }) }} onMouseDown={(event) => event.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">{initial ? 'EDIT SCHEDULE' : 'NEW SCHEDULE'}</span><h2 id="event-modal-title">{initial ? '일정 상세 편집' : '새 일정 만들기'}</h2></div><button type="button" aria-label="닫기" onClick={onClose}><X size={18} /></button></div><label>일정 이름<input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} placeholder="어떤 일정인가요?" required /></label><label>설명<textarea className="modal-textarea compact" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="일정에 필요한 내용을 적어 주세요."/></label><div className="form-row"><label>시작일<input type="date" value={eventDate} onChange={(event) => { setEventDate(event.target.value); if (endDate < event.target.value) setEndDate(event.target.value) }} /></label><label>종료일<input type="date" min={eventDate} value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label></div><label className="important-check"><input type="checkbox" checked={allDay} onChange={(event) => setAllDay(event.target.checked)}/> 종일 일정</label>{!allDay && <div className="form-row"><label>시작 시간<input type="time" value={start} onChange={(event) => setStart(event.target.value)} /></label><label>종료 시간<input type="time" value={end} min={start} onChange={(event) => setEnd(event.target.value)} /></label></div>}<RecurrenceEditor value={recurrenceRule} anchorDate={eventDate} onChange={setRecurrenceRule}/><label>캘린더<select value={kind} onChange={(event) => setKind(event.target.value as CalendarKind)}>{calendarKinds.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label className="important-check"><input type="checkbox" checked={important} onChange={(event) => setImportant(event.target.checked)}/> 중요 일정으로 표시</label><div className="modal-actions"><button type="button" className="ghost" onClick={onClose}>취소</button><button type="submit" className="primary">{initial ? <Pencil size={15} /> : <Plus size={15} />} {initial ? '변경사항 저장' : '일정 추가'}</button></div></form></div>
+  return <div className="modal-backdrop" onMouseDown={onClose}><form className="modal glass-panel" role="dialog" aria-modal="true" aria-labelledby="event-modal-title" onSubmit={(event) => { event.preventDefault(); if (title.trim() && endDate >= eventDate) onSave({ title: title.trim(), description: description.trim(), date: eventDate, endDate, start: allDay ? '' : start, end: allDay ? undefined : end || undefined, allDay, kind, important, recurrenceRule: recurrenceRule || undefined }, scope) }} onMouseDown={(event) => event.stopPropagation()}><div className="modal-head"><div><span className="eyebrow">{initial ? 'EDIT SCHEDULE' : 'NEW SCHEDULE'}</span><h2 id="event-modal-title">{initial ? '일정 상세 편집' : '새 일정 만들기'}</h2></div><button type="button" aria-label="닫기" onClick={onClose}><X size={18} /></button></div><label>일정 이름<input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} placeholder="어떤 일정인가요?" required /></label><label>설명<textarea className="modal-textarea compact" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="일정에 필요한 내용을 적어 주세요."/></label><div className="form-row"><label>시작일<input type="date" value={eventDate} onChange={(event) => { setEventDate(event.target.value); if (endDate < event.target.value) setEndDate(event.target.value) }} /></label><label>종료일<input type="date" min={eventDate} value={endDate} onChange={(event) => setEndDate(event.target.value)} /></label></div><label className="important-check"><input type="checkbox" checked={allDay} onChange={(event) => setAllDay(event.target.checked)}/> 종일 일정</label>{!allDay && <div className="form-row"><label>시작 시간<input type="time" value={start} onChange={(event) => setStart(event.target.value)} /></label><label>종료 시간<input type="time" value={end} min={start} onChange={(event) => setEnd(event.target.value)} /></label></div>}<RecurrenceEditor value={recurrenceRule} anchorDate={eventDate} onChange={setRecurrenceRule}/>{initial?.recurrenceRule && <label>변경 범위<select value={scope} onChange={(event) => setScope(event.target.value as typeof scope)}><option value="this">이 일정만</option><option value="future">이 일정과 이후</option><option value="all">반복 전체</option></select></label>}<label>캘린더<select value={kind} onChange={(event) => setKind(event.target.value as CalendarKind)}>{calendarKinds.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label className="important-check"><input type="checkbox" checked={important} onChange={(event) => setImportant(event.target.checked)}/> 중요 일정으로 표시</label><div className="modal-actions"><button type="button" className="ghost" onClick={onClose}>취소</button><button type="submit" className="primary">{initial ? <Pencil size={15} /> : <Plus size={15} />} {initial ? '변경사항 저장' : '일정 추가'}</button></div></form></div>
 }
 
 function EmptyMini({ onCreate }: { onCreate: () => void }) { return <div className="empty-mini"><CalendarDays size={24}/><b>선택한 날의 일정이 없어요</b><button onClick={onCreate}>새 일정 추가</button></div> }

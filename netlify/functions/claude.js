@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createHmac, randomUUID } from 'node:crypto'
 import mammoth from 'mammoth'
+import { HwpxReader, hwpToText } from '@ssabrojs/hwpxjs'
 import {
   estimateClaudeCostUsd,
   MAX_AI_REQUEST_BYTES,
@@ -21,6 +22,8 @@ const SYSTEM_PROMPT = `당신은 루멘왕국의 왕실 메이드이자 일정·
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 const TEXT_TYPES = new Set(['text/plain', 'text/markdown', 'text/csv'])
 const DOCX_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const HWP_TYPES = new Set(['application/x-hwp', 'application/haansofthwp'])
+const HWPX_TYPES = new Set(['application/vnd.hancom.hwpx', 'application/hwp+zip'])
 let pointPolicyCache = { value: null, expiresAt: 0 }
 
 const responseStylePrompt = (value) => value === 'warm'
@@ -161,7 +164,7 @@ export const handler = async (event) => {
 
     const metering = { claudeUsage: null, openAiUsage: null }
     let response
-    if (input.action === 'analyze-attachment') response = await analyzeAttachment(input, apiKey, model, metering)
+    if (input.action === 'analyze-attachment') response = await analyzeAttachment(input, apiKey, model, metering, serviceClient, userId)
     else if (input.action === 'interpret-request') response = await interpretRequest(input, apiKey, model, metering)
     else response = await chat(input, apiKey, model, metering)
 
@@ -364,14 +367,26 @@ async function chat(input, apiKey, model, metering) {
   return reply ? json(200, { reply }) : json(502, { error: '리타의 응답이 비어 있습니다.' })
 }
 
-async function analyzeAttachment(input, apiKey, model, metering) {
+async function analyzeAttachment(input, apiKey, model, metering, serviceClient, userId) {
   const attachment = input.attachment ?? {}
-  const data = String(attachment.data ?? '')
-  const bytes = Buffer.from(data, 'base64')
   const mimeType = String(attachment.mimeType ?? '').toLowerCase()
-  const metadata = { name: String(attachment.name ?? 'attachment'), mimeType, size: Number(attachment.size ?? bytes.length) }
-  if (!data || !bytes.length) return json(400, { error: '첨부 파일이 비어 있습니다.' })
-  if (bytes.length > MAX_ATTACHMENT_BYTES) return json(413, { error: '현재 첨부 파일은 4MB 이하만 분석할 수 있습니다.' })
+  const storagePath = String(attachment.storagePath ?? '')
+  let bytes
+  if (storagePath) {
+    const expectedPrefix = `${userId}/temporary/`
+    if (!storagePath.startsWith(expectedPrefix)) return json(403, { error: '본인의 임시 첨부 파일만 분석할 수 있습니다.' })
+    const { data: storedFile, error } = await serviceClient.storage.from('rita-attachments').download(storagePath)
+    if (error || !storedFile) return json(404, { error: '첨부 파일을 읽지 못했어요. 다시 첨부해 주세요.' })
+    bytes = Buffer.from(await storedFile.arrayBuffer())
+  } else {
+    bytes = Buffer.from(String(attachment.data ?? ''), 'base64')
+  }
+  const data = bytes.toString('base64')
+  const metadata = { name: String(attachment.name ?? 'attachment'), mimeType, size: bytes.length }
+  if (!bytes.length) return json(400, { error: '첨부 파일이 비어 있습니다.' })
+  if (bytes.length > MAX_ATTACHMENT_BYTES) return json(413, { error: '첨부 파일은 최대 25MB까지 분석할 수 있어요.' })
+
+  try {
 
   if (input.intent === 'business-card') {
     if (!IMAGE_TYPES.has(mimeType)) return json(415, { error: '명함은 JPG, PNG, GIF, WebP 이미지로 첨부해 주세요.' })
@@ -405,21 +420,47 @@ async function analyzeAttachment(input, apiKey, model, metering) {
     content = [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data } },
       { type: 'text', text: memorandumPrompt(metadata.name) }]
   } else {
-    const text = await extractDocumentText(bytes, mimeType)
+    const text = await extractDocumentText(bytes, metadata)
+    if ((HWP_TYPES.has(mimeType) || HWPX_TYPES.has(mimeType) || /\.hwpx?$/i.test(metadata.name)) && text.length > 600000) {
+      throw Object.assign(new Error('HWP·HWPX는 200쪽 이하의 문서만 분석할 수 있어요.'), { statusCode: 413 })
+    }
     content = `${memorandumPrompt(metadata.name)}\n\n<document>\n${text.slice(0, 60000)}\n</document>`
   }
   const result = await callClaude(apiKey, model, { system: SYSTEM_PROMPT, max_tokens: 1000, messages: [{ role: 'user', content }] }, metering)
   const parsed = parseClaudeJson(textFromClaude(result))
-  return json(200, { analysis: { kind: 'memorandum', title: clean(parsed.title) || metadata.name, summary: clean(parsed.summary), tags: stringArray(parsed.tags), attachment: metadata } })
+  return json(200, { analysis: { kind: 'memorandum', ...normalizeMemorandum(parsed, metadata.name), attachment: metadata } })
+  } finally {
+    if (storagePath) {
+      const { error } = await serviceClient.storage.from('rita-attachments').remove([storagePath])
+      if (error) console.warn('Failed to remove temporary Rita attachment', error.message)
+    }
+  }
 }
 
-async function extractDocumentText(bytes, mimeType) {
+async function extractDocumentText(bytes, metadata) {
+  const mimeType = metadata.mimeType
+  const extension = metadata.name.split('.').pop()?.toLowerCase()
   if (TEXT_TYPES.has(mimeType)) return bytes.toString('utf8')
   if (mimeType === DOCX_TYPE) {
     const result = await mammoth.extractRawText({ buffer: bytes })
     return result.value
   }
-  throw Object.assign(new Error('PDF, DOCX, TXT, MD, CSV 문서만 지원합니다.'), { statusCode: 415 })
+  try {
+    if (HWP_TYPES.has(mimeType) || extension === 'hwp') return await hwpToText(new Uint8Array(bytes))
+    if (HWPX_TYPES.has(mimeType) || extension === 'hwpx') {
+      const reader = new HwpxReader()
+      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+      await reader.loadFromArrayBuffer(buffer)
+      return await reader.extractText()
+    }
+  } catch (error) {
+    const detail = String(error?.message ?? '').toLowerCase()
+    if (detail.includes('encrypt') || detail.includes('암호')) {
+      throw Object.assign(new Error('암호·DRM·배포용으로 보호된 HWP/HWPX는 분석할 수 없어요. 보호를 풀고 다시 저장해 주세요.'), { statusCode: 422 })
+    }
+    throw Object.assign(new Error('HWP/HWPX 문서를 읽지 못했어요. HWP 5.x 또는 최신 HWPX 형식인지 확인해 주세요.'), { statusCode: 422 })
+  }
+  throw Object.assign(new Error('PDF, DOCX, HWP, HWPX, TXT, MD, CSV 문서만 지원합니다.'), { statusCode: 415 })
 }
 
 async function transcribeAudio(bytes, metadata, openAiKey, metering) {
@@ -438,12 +479,25 @@ async function transcribeAudio(bytes, metadata, openAiKey, metering) {
 async function summarizeText(apiKey, model, text, fallbackTitle, metering) {
   const result = await callClaude(apiKey, model, { system: SYSTEM_PROMPT, max_tokens: 1000, messages: [{ role: 'user', content: `${memorandumPrompt(fallbackTitle)}\n\n<transcript>\n${text.slice(0, 60000)}\n</transcript>` }] }, metering)
   const parsed = parseClaudeJson(textFromClaude(result))
-  return { title: clean(parsed.title) || fallbackTitle, summary: clean(parsed.summary), tags: stringArray(parsed.tags) }
+  return normalizeMemorandum(parsed, fallbackTitle)
+}
+
+function normalizeMemorandum(value, fallbackTitle) {
+  return {
+    title: clean(value.title) || fallbackTitle,
+    summary: clean(value.summary),
+    tags: stringArray(value.tags),
+    keyPoints: stringArray(value.keyPoints),
+    decisions: stringArray(value.decisions),
+    actionItems: stringArray(value.actionItems),
+    dates: stringArray(value.dates),
+    people: stringArray(value.people),
+  }
 }
 
 function memorandumPrompt(filename) {
   return `파일 ${filename}의 핵심을 한국어 비망록으로 정리하세요. 중요한 사실, 결정, 해야 할 일, 날짜와 인물을 빠뜨리지 마세요.
-반드시 JSON 하나만 반환하세요: {"title":"짧은 제목","summary":"읽기 좋은 요약","tags":["최대 5개"]}. 추측한 내용은 포함하지 마세요.`
+반드시 JSON 하나만 반환하세요: {"title":"짧은 제목","summary":"읽기 좋은 요약","tags":["최대 5개"],"keyPoints":[],"decisions":[],"actionItems":[],"dates":[],"people":[]}. 추측한 내용은 포함하지 마세요.`
 }
 
 async function callClaude(apiKey, model, body, metering, options = {}) {

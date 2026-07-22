@@ -14,6 +14,7 @@ import { startSyncEngine } from './lib/syncEngine'
 import { Capacitor } from '@capacitor/core'
 import { MobileServiceSetup } from './components/MobileServiceSetup'
 import { RuntimeConfigProvider } from './features/runtime/RuntimeConfig'
+import { PasswordRecoveryScreen } from './components/PasswordRecoveryScreen'
 
 function App() {
   if (Capacitor.isNativePlatform() && !isSupabaseConfigured) return <MobileServiceSetup />
@@ -31,6 +32,7 @@ function ConfiguredApp() {
   const [session, setSession] = useState<Session | null>(null)
   const [authReady, setAuthReady] = useState(!supabase)
   const [authNotice, setAuthNotice] = useState('')
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
   const [demoSessionId, setDemoSessionId] = useState<string | null>(() => {
     if (sessionStorage.getItem(DEMO_MODE_KEY) !== 'true') return null
     return currentDemoSessionId() ?? createDemoSessionId()
@@ -66,11 +68,12 @@ function ConfiguredApp() {
         setAuthReady(true)
       })
 
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return
       window.clearTimeout(timeout)
       setAuthReady(true)
       setAuthNotice('')
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
       // 같은 사용자에 대한 토큰 갱신·탭 포커스 재진입 이벤트는 무시한다.
       // (앱 전체를 재하이드레이션하면 입력 중이던 폼이 사라지므로)
       const nextUserId = nextSession?.user?.id ?? null
@@ -155,6 +158,8 @@ function ConfiguredApp() {
   return <BrowserRouter><RuntimeConfigProvider>
     {!authReady
       ? <div className="auth-loading"><img src="/assets/brand/main-logo.webp" alt="루멘왕국, 공주의 하루"/><span>왕실 문을 준비하고 있어요...</span></div>
+      : passwordRecovery
+        ? <PasswordRecoveryScreen onComplete={() => setPasswordRecovery(false)}/>
       : !session && !guestMode
         ? <LoginScreen onGuest={enterGuest} initialMessage={authNotice}/>
         : !dataReady

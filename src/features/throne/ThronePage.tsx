@@ -8,12 +8,14 @@ import { defaultPreferences, loadPreferences, removeRoomBackground, savePreferen
 import type { PageId } from '../../types'
 import { PrincessPortrait } from '../../components/PrincessPortrait'
 import { Pagination, usePaginatedList } from '../../components/Pagination'
+import { DataExportPanel } from './DataExportPanel'
 import { getPrincess, princessOptions, readSelectedPrincessId, storeSelectedPrincessId, type PrincessId } from '../../lib/princesses'
 import { configureServiceTime } from '../../lib/serviceTime'
 import { getRitaActivity, type RitaActivity } from '../../services/ritaService'
 import { useRitaUsage } from '../../lib/useRitaUsage'
 import { deleteMyAccount } from '../../services/accountService'
 import { useRuntimeConfig } from '../runtime/RuntimeConfig'
+import { disableWebPush, enableWebPush } from '../../services/pushService'
 
 type SettingId = 'profile' | 'background' | 'notifications' | 'ai' | 'data' | null
 
@@ -49,6 +51,15 @@ export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = ()
     return () => window.removeEventListener('rumen-ai-usage-changed', refresh)
   }, [demoMode])
   const persistPreferences = (patch: Partial<UserPreferences>) => savePreferences({ ...defaultPreferences, profileName: name, profileIntro: intro, notifications, aiStyle: aiStyle as UserPreferences['aiStyle'], timezone, serviceDayStartsAt, selectedPrincessId: princessId, ...patch })
+  const changeNotifications = async (value: boolean) => {
+    setNotifications(value)
+    writeAccountStorage('rumen-in-app-notifications', value ? 'on' : 'off')
+    window.dispatchEvent(new CustomEvent('rumen-notification-setting', { detail: value }))
+    await persistPreferences({ notifications: value }).catch(() => undefined)
+    if (demoMode) return
+    if (value) await enableWebPush().catch((error) => alert(error instanceof Error ? error.message : '푸시 알림을 설정하지 못했어요.'))
+    else await disableWebPush().catch(() => undefined)
+  }
 
   const saveProfile = async () => {
     const nextName = draftName.trim() || '루멘왕국의 공주'
@@ -148,13 +159,13 @@ export function ThronePage({ demoMode = false, isAdmin = false, onResetDemo = ()
           <button className="primary" onClick={() => void saveProfile()}><Save size={14}/> 저장</button>
         </div>}
         {setting === 'background' && <BackgroundSettings/>}
-        {setting === 'notifications' && <label className="setting-toggle"><span><b>앱 내부 알림</b><small>일정과 확인할 기록을 헤더에서 안내합니다.</small></span><input type="checkbox" checked={notifications} onChange={(event) => { const value = event.target.checked; setNotifications(value); writeAccountStorage('rumen-in-app-notifications', value ? 'on' : 'off'); window.dispatchEvent(new CustomEvent('rumen-notification-setting', { detail: value })); void persistPreferences({ notifications: value }) }}/></label>}
+        {setting === 'notifications' && <label className="setting-toggle"><span><b>앱 내부 알림</b><small>일정과 확인할 기록을 헤더에서 안내합니다.</small></span><input type="checkbox" checked={notifications} onChange={(event) => void changeNotifications(event.target.checked)}/></label>}
         {setting === 'ai' && <label className="setting-select">리타의 답변 방식<select value={aiStyle} onChange={(event) => { const value = event.target.value as UserPreferences['aiStyle']; setAiStyle(value); writeAccountStorage('rumen-rita-style', value); void persistPreferences({ aiStyle: value }) }}><option value="concise">간결하게</option><option value="warm">다정하게</option><option value="detailed">자세하게</option></select><small>계정에 저장되어 다른 기기에서도 같은 답변 방식을 사용합니다.</small></label>}
         {setting === 'data' && <div className="setting-note"><Database size={20}/><div><b>{demoMode ? '데모 왕국 관리' : '내 왕국 기록 보관'}</b><p>{demoMode ? '수정한 데모 기록을 처음 예시 상태로 되돌릴 수 있습니다.' : '현재 계정의 프로젝트, 퀘스트, 일정, 기록을 버전이 포함된 JSON으로 보관하고 다시 불러올 수 있습니다.'}</p>{demoMode ? <button onClick={() => { if (confirm('데모 왕국을 처음 예시 데이터로 되돌릴까요?')) { onResetDemo(); setSetting(null) } }}>데모 데이터 초기화</button> : <><div className="data-actions"><button onClick={exportData}>왕국 기록 내보내기</button><label>백업 기록 가져오기<input type="file" accept="application/json,.json" onChange={(event) => void importData(event.target.files?.[0])}/></label></div><button className="danger account-delete" disabled={deletingAccount} onClick={() => void deleteAccount()}>{deletingAccount ? '계정 삭제 중…' : '계정과 모든 데이터 삭제'}</button></>}</div></div>}
       </SettingPanel>}
     </section>
 
-    <section className="kingdom-connections panel glass-panel"><header><span className="eyebrow">CONNECTION</span><h2>연결 상태</h2></header><div className="connection-row"><span><Database size={18}/></span><div><b>계정별 기록 저장소</b><small>각 계정과 게스트 기록을 이 기기에서 분리 보관</small></div><em>분리됨</em></div><div className="connection-row"><span><Sparkles size={18}/></span><div><b>AI 메이드 리타</b><small>계정별 대화, 문서 요약, 명함 정리</small></div><em>로그인 후 확인</em></div><div className="connection-row"><span><Cloud size={18}/></span><div><b>일정 클라우드 동기화</b><small>왕실 일정표를 로그인 계정별로 안전하게 동기화</small></div><em>{isSupabaseConfigured ? '준비됨' : '설정 필요'}</em></div></section>
+    <DataExportPanel demoMode={demoMode}/><section className="kingdom-connections panel glass-panel"><header><span className="eyebrow">CONNECTION</span><h2>연결 상태</h2></header><div className="connection-row"><span><Database size={18}/></span><div><b>계정별 기록 저장소</b><small>각 계정과 게스트 기록을 이 기기에서 분리 보관</small></div><em>분리됨</em></div><div className="connection-row"><span><Sparkles size={18}/></span><div><b>AI 메이드 리타</b><small>계정별 대화, 문서 요약, 명함 정리</small></div><em>로그인 후 확인</em></div><div className="connection-row"><span><Cloud size={18}/></span><div><b>일정 클라우드 동기화</b><small>왕실 일정표를 로그인 계정별로 안전하게 동기화</small></div><em>{isSupabaseConfigured ? '준비됨' : '설정 필요'}</em></div></section>
 
     <button className="signout-button kingdom-signout" onClick={() => void onSignOut()}><LogOut size={16}/> {demoMode ? '로그인해서 내 왕국 만들기' : '왕국에서 나가기'}</button>
   </div>

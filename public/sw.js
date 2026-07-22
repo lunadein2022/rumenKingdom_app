@@ -18,6 +18,31 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
 })
 
+self.addEventListener('push', (event) => {
+  const payload = readPushPayload(event)
+  event.waitUntil(self.registration.showNotification(payload.title || '루멘왕국 왕실 알림', {
+    body: payload.body || '새 소식이 도착했어요.',
+    icon: '/assets/apple-touch-icon.png',
+    badge: '/assets/favicon.png',
+    data: { path: payload.path || '/notifications' },
+    tag: payload.tag || undefined,
+  }))
+})
+
+function readPushPayload(event) {
+  try { return event.data?.json() ?? {} } catch { return { body: event.data?.text() ?? '' } }
+}
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const destination = new URL(event.notification.data?.path || '/notifications', self.location.origin).href
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    const existing = clients.find((client) => client.url.startsWith(self.location.origin))
+    if (existing) { existing.navigate(destination); return existing.focus() }
+    return self.clients.openWindow(destination)
+  }))
+})
+
 self.addEventListener('fetch', (event) => {
   const request = event.request
   if (request.method !== 'GET') return
