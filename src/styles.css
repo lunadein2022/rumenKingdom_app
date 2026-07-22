@@ -361,3 +361,14 @@ body.body-overlay-open,body:has(.modal-backdrop),body:has(.search-overlay){overf
 .garden-player button {
   text-shadow: 0 1px 4px rgba(80, 90, 120, 0.35);
 }
+/* Secret Garden Player - pastel override */
+.garden-player.glass-panel {
+background: linear-gradient(
+  100deg,
+  rgba(175, 207, 237, 0.82),
+  rgba(237, 195, 216, 0.82)
+) !important;
+
+  border-color: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px);
+}
